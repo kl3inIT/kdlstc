@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Seed deterministic. Tổng kiểm:
+         - Thu H1/2026 = 3.300.000.000đ (theo mọi chiều đều cộng ra đúng số này)
+         - Thu H1/2025 (cùng kỳ) = 1.700.000.000đ
+         - Dự toán 2026: mỗi chiều (DIA_BAN / CO_QUAN_THU / NGUON_THU) đều = 6.600.000.000đ -->
+
+    <changeSet id="1" author="mock-thu">
+        <sql>
+            INSERT INTO DANH_MUC (ID, VERSION, LOAI, MA, TEN, MA_CHA) VALUES
+            (1,1,'DIA_BAN','HY01','Thanh pho Hung Yen',NULL),
+            (2,1,'DIA_BAN','HY02','Huyen Van Lam',NULL),
+            (3,1,'DIA_BAN','HY03','Huyen My Hao',NULL),
+            (4,1,'DIA_BAN','HY04','Huyen Khoai Chau',NULL),
+            (5,1,'DIA_BAN','HY05','Huyen Kim Dong',NULL),
+            (11,1,'CO_QUAN_THU','CQT01','Cuc Thue tinh Hung Yen',NULL),
+            (12,1,'CO_QUAN_THU','CQT02','Chi cuc Thue TP Hung Yen','CQT01'),
+            (13,1,'CO_QUAN_THU','CQT03','Chi cuc Thue Van Lam - My Hao','CQT01'),
+            (21,1,'NGUON_THU','NT01','Thue GTGT',NULL),
+            (22,1,'NGUON_THU','NT02','Thue TNDN',NULL),
+            (23,1,'NGUON_THU','NT03','Thue TNCN',NULL),
+            (24,1,'NGUON_THU','NT04','Thue mon bai',NULL),
+            (31,1,'TIEU_MUC','1701','Thue gia tri gia tang hang SX-KD trong nuoc',NULL),
+            (32,1,'TIEU_MUC','1052','Thue thu nhap doanh nghiep don vi hach toan toan nganh',NULL),
+            (33,1,'TIEU_MUC','1001','Thue thu nhap ca nhan tu tien luong tien cong',NULL),
+            (34,1,'TIEU_MUC','2863','Le phi mon bai muc 1',NULL);
+        </sql>
+    </changeSet>
+
+    <changeSet id="2" author="mock-thu">
+        <sql>
+            INSERT INTO THU_GIAO_DICH (ID, VERSION, NGAY, MA_CO_QUAN_THU, MA_DIA_BAN, MA_CHUONG, MA_TIEU_MUC, MA_NGUON_THU, MA_SO_THUE, SO_TIEN) VALUES
+            (1,1,'2026-01-15','CQT02','HY01','754','1701','NT01','MST0001',200000000),
+            (2,1,'2026-02-20','CQT02','HY01','754','1701','NT01','MST0002',300000000),
+            (3,1,'2026-03-10','CQT02','HY01','552','1052','NT02','MST0003',400000000),
+            (4,1,'2026-05-18','CQT02','HY01','754','1001','NT03','MST0004',300000000),
+            (5,1,'2026-01-25','CQT03','HY02','754','1701','NT01','MST0005',500000000),
+            (6,1,'2026-04-12','CQT03','HY02','552','1052','NT02','MST0006',300000000),
+            (7,1,'2026-02-14','CQT03','HY03','754','1701','NT01','MST0007',350000000),
+            (8,1,'2026-06-05','CQT03','HY03','754','1001','NT03','MST0008',250000000),
+            (9,1,'2026-03-22','CQT01','HY04','552','1052','NT02','MST0009',250000000),
+            (10,1,'2026-05-30','CQT01','HY04','754','1701','NT01','MST0010',200000000),
+            (11,1,'2026-01-08','CQT01','HY05','754','2863','NT04','MST0005',100000000),
+            (12,1,'2026-04-25','CQT01','HY05','754','1701','NT01','MST0002',150000000),
+            (13,1,'2025-02-10','CQT02','HY01','754','1701','NT01','MST0001',450000000),
+            (14,1,'2025-04-15','CQT02','HY01','552','1052','NT02','MST0003',550000000),
+            (15,1,'2025-03-20','CQT03','HY02','754','1701','NT01','MST0005',700000000);
+        </sql>
+    </changeSet>
+
+    <changeSet id="3" author="mock-thu">
+        <sql>
+            INSERT INTO THU_DU_TOAN (ID, VERSION, NAM, LOAI_CHIEU, KHOA, DU_TOAN) VALUES
+            (1,1,2026,'DIA_BAN','HY01',2400000000),
+            (2,1,2026,'DIA_BAN','HY02',1600000000),
+            (3,1,2026,'DIA_BAN','HY03',1200000000),
+            (4,1,2026,'DIA_BAN','HY04',900000000),
+            (5,1,2026,'DIA_BAN','HY05',500000000),
+            (11,1,2026,'CO_QUAN_THU','CQT01',1400000000),
+            (12,1,2026,'CO_QUAN_THU','CQT02',2400000000),
+            (13,1,2026,'CO_QUAN_THU','CQT03',2800000000),
+            (21,1,2026,'NGUON_THU','NT01',3000000000),
+            (22,1,2026,'NGUON_THU','NT02',2200000000),
+            (23,1,2026,'NGUON_THU','NT03',1000000000),
+            (24,1,2026,'NGUON_THU','NT04',400000000);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

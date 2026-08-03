@@ -1,0 +1,9 @@
+# Python dependencies bổ sung cho image Airflow của dự án.
+# Pin cứng để image dựng lại được y hệt (reproducible).
+#
+# Airflow base: apache/airflow:3.3.0-python3.13 (xem Dockerfile)
+# Cài qua constraint của Airflow 3.3.0 để không phá vỡ dependency của core.
+
+# Provider Oracle: cần cho DAG ingest nguồn Thuế (TMS) trên Oracle.
+# oracledb thin mode -> KHÔNG cần Oracle Instant Client.
+apache-airflow-providers-oracle==4.6.2

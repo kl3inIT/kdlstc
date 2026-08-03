@@ -1,0 +1,22 @@
+{
+  "ma_bieu": "DHTC_CHI_02",
+  "ten_bieu": "Báo cáo chi theo đơn vị sử dụng ngân sách",
+  "chieu": "don_vi",
+  "nguon_calls": [
+    {"id": "chi", "nguon": "CHI", "path": "/rest/chi/tong-hop?group_by=don_vi&tu_ngay={tu}&den_ngay={den}"},
+    {"id": "chi_dt", "nguon": "CHI", "path": "/rest/chi/du-toan?nam={nam}&group_by=don_vi"}
+  ],
+  "cot": [
+    {"ten": "du_toan_dau_nam", "nhan": "DT đầu năm", "tu_call": "chi_dt", "field": "du_toan_dau_nam"},
+    {"ten": "dieu_chinh", "nhan": "Điều chỉnh trong năm", "tu_call": "chi_dt", "field": "dieu_chinh_trong_nam"},
+    {"ten": "du_toan", "nhan": "Dự toán hiện hành", "op": "SUM", "args": ["du_toan_dau_nam", "dieu_chinh"]},
+    {"ten": "thuc_chi", "nhan": "Thực chi", "tu_call": "chi", "field": "thuc_chi"},
+    {"ten": "du_tam_ung", "nhan": "Dư tạm ứng", "tu_call": "chi", "field": "du_tam_ung"},
+    {"ten": "luy_ke_chi", "nhan": "Lũy kế chi", "op": "SUM", "args": ["thuc_chi", "du_tam_ung"]},
+    {"ten": "con_lai", "nhan": "Còn lại", "op": "SUB", "args": ["du_toan", "luy_ke_chi"]},
+    {"ten": "ty_le_giai_ngan", "nhan": "Tỷ lệ giải ngân (%)", "op": "RATIO_PCT", "args": ["luy_ke_chi", "du_toan"]},
+    {"ten": "so_luong_ct", "nhan": "Số CT", "tu_call": "chi", "field": "so_luong_ct"},
+    {"ten": "tien_do_chuan", "nhan": "Tiến độ chuẩn (%)", "op": "TIEN_DO_CHUAN", "args": []},
+    {"ten": "chenh_tien_do", "nhan": "Chênh tiến độ", "op": "SUB", "args": ["ty_le_giai_ngan", "tien_do_chuan"]}
+  ]
+}
