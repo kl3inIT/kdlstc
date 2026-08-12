@@ -1,0 +1,73 @@
+# Keycloak 26.6.4 · chart codecentric/keycloakx 7.2.2 · namespace stc-hy
+# DB: jmix-ha (10.1.50.103) — PostgreSQL 18, nằm trong danh sách hỗ trợ chính thức của Keycloak
+
+replicas: 1
+
+# Chart KHÔNG tự đặt command — README yêu cầu khai tường minh
+command:
+  - "/opt/keycloak/bin/kc.sh"
+  - "start"
+  - "--http-port=8080"
+
+http:
+  # mặc định chart là "/auth" (tương thích ngược Keycloak cũ).
+  # Keycloak 26 dùng root, đặt "/" để URL đúng chuẩn:
+  #   /realms/khodl/.well-known/openid-configuration
+  relativePath: "/"
+
+database:
+  vendor: postgres
+  hostname: "10.1.50.103"
+  port: 5432
+  database: stc_keycloak
+  username: stc_keycloak
+  existingSecret: keycloak-db
+  existingSecretKey: password
+
+# init container chờ DB sẵn sàng rồi mới khởi động Keycloak
+dbchecker:
+  enabled: true
+
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: "http://sso-stc.10.123.123.194.nip.io"
+  # Split-horizon: pod trong cluster KHÔNG tới được 10.123.123.x (ingress VIP),
+  # nên backchannel (token, userinfo, jwks) phải dùng URL nội bộ, còn frontend
+  # (authorize, logout — trình duyệt đi) vẫn giữ URL công khai ở KC_HOSTNAME.
+  - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+    value: "true"
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin
+        key: username
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin
+        key: password
+  - name: JAVA_OPTS_APPEND
+    value: "-XX:MaxRAMPercentage=70 -Djgroups.dns.query=kc-keycloakx-headless.stc-hy.svc.cluster.local"
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  rules:
+    - host: "sso-stc.10.123.123.194.nip.io"
+      paths:
+        - path: /
+          pathType: Prefix
+
+# JVM: khởi động ngốn CPU — rút kinh nghiệm api-server Airflow, cho hẳn 1 core
+resources:
+  requests:
+    cpu: 300m
+    memory: 768Mi
+  limits:
+    cpu: 1
+    memory: 1536Mi
+
+# startupProbe: giữ mặc định của chart — 60 lần × 5s = 300s để khởi động, đã dư
+
+serviceMonitor:
+  enabled: false

@@ -1,0 +1,80 @@
+# SeaweedFS 4.41 — vùng Bronze (raw/) cho kho dữ liệu · namespace stc-hy
+# Thay MinIO: repo MinIO Community đã archive 04/2026, không còn vá lỗi
+# (đúng khuyến nghị mục 5 tài liệu "Đề xuất framework nguồn mở")
+
+global:
+  seaweedfs:
+    # Chart mặc định tạo ClusterRole + ClusterRoleBinding -> project-member
+    # không tạo được. Tắt đi; SeaweedFS không cần gọi API k8s cho luồng này.
+    createClusterRole: false
+
+master:
+  replicas: 1
+  data:
+    # mặc định là hostPath /ssd -> ghi vào đĩa node, mất khi pod dời node
+    type: "persistentVolumeClaim"
+    size: "1Gi"
+    storageClass: "longhorn"
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+volume:
+  replicas: 1
+  dataDirs:
+    - name: data1
+      type: "persistentVolumeClaim"
+      size: "10Gi"
+      storageClass: "longhorn"
+      # KHÔNG để 0. Số 0 = "tự tính" = đĩa / volumeSizeLimitMB = 10Gi/1000MB = 9 khe.
+      # Mỗi bucket là một collection và xin khe riêng -> vài bucket là cạn khe,
+      # báo "No writable volumes" dù đĩa còn trống nguyên.
+      # Volume file là sparse nên khe thừa không tốn đĩa; trần thật là dung lượng PVC.
+      maxVolumes: 30
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 768Mi}
+
+filer:
+  replicas: 1
+  data:
+    type: "persistentVolumeClaim"
+    size: "3Gi"
+    storageClass: "longhorn"
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 768Mi}
+
+s3:
+  enabled: true
+  replicas: 1
+  port: 8333
+  # enableAuth=false: chỉ ClusterIP, KHÔNG ingress, chỉ pod trong cluster gọi được.
+  # Bật auth khi có dữ liệu thật — xem ghi chú cuối file.
+  enableAuth: false
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+# Admin UI — tương đương MinIO Console: duyệt bucket/file, xem topology, volume
+# Xác thực gốc chỉ có user/password tĩnh, KHÔNG có OIDC.
+# → đứng sau oauth2-proxy để đăng nhập bằng Keycloak (xem ingress bên dưới).
+admin:
+  enabled: true
+  replicas: 1
+  port: 23646
+  # KHÔNG đặt secret/adminPassword -> tắt xác thực nội bộ của SeaweedFS.
+  # Chỉ có MỘT cổng duy nhất là oauth2-proxy + Keycloak ở tầng ingress.
+  # Bật cả hai sẽ bắt người dùng đăng nhập hai lần — vô nghĩa.
+  # An toàn vì Service là ClusterIP, chỉ vào được qua ingress đã bị gác.
+  data:
+    type: "emptyDir"      # cấu hình dựng lại được, không cần PVC
+  logs:
+    type: "emptyDir"
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+# Không bật cosi (Container Object Storage Interface) — nó cần CRD
+cosi:
+  enabled: false

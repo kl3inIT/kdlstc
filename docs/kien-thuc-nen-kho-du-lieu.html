@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Kiến thức nền kho dữ liệu — tóm lược Phần A và Phần B, dự án Kho dữ liệu Tài chính Hưng Yên">
+<style>*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}</style>
+<title>Kiến thức nền — Kho dữ liệu Tài chính Hưng Yên</title>
+</head>
+<body>
+<style>
+:root {
+  --ground:        #F6F8FA;
+  --surface:       #FFFFFF;
+  --surface-sunk:  #EDF1F5;
+  --ink:           #14181F;
+  --ink-soft:      #414C59;
+  --ink-faint:     #6B7787;
+  --rule:          #D8DFE7;
+  --rule-strong:   #B9C4D0;
+  --seal:          #A6231F;
+  --seal-wash:     #FBEDEC;
+  --ledger:        #2C5876;
+  --ledger-wash:   #E7EEF4;
+  --gold:          #8A6A1F;
+  --gold-wash:     #F7F1E2;
+
+  --f-display: Cambria, "Palatino Linotype", "Times New Roman", Georgia, serif;
+  --f-body: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, "Courier New", monospace;
+
+  --measure: 68ch;
+  --s1: .35rem; --s2: .7rem; --s3: 1.1rem; --s4: 1.7rem; --s5: 2.6rem; --s6: 4rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:       #0E1116;
+    --surface:      #161B22;
+    --surface-sunk: #1C222B;
+    --ink:          #E4E8ED;
+    --ink-soft:     #AEB8C4;
+    --ink-faint:    #7F8B99;
+    --rule:         #2A323C;
+    --rule-strong:  #3C4550;
+    --seal:         #E8756A;
+    --seal-wash:    #2A1917;
+    --ledger:       #7FB0D2;
+    --ledger-wash:  #16222C;
+    --gold:         #D6B25F;
+    --gold-wash:    #241E12;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:       #0E1116;
+  --surface:      #161B22;
+  --surface-sunk: #1C222B;
+  --ink:          #E4E8ED;
+  --ink-soft:     #AEB8C4;
+  --ink-faint:    #7F8B99;
+  --rule:         #2A323C;
+  --rule-strong:  #3C4550;
+  --seal:         #E8756A;
+  --seal-wash:    #2A1917;
+  --ledger:       #7FB0D2;
+  --ledger-wash:  #16222C;
+  --gold:         #D6B25F;
+  --gold-wash:    #241E12;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s5);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s6);
+}
+
+@media (min-width: 1020px) {
+  .wrap { grid-template-columns: 232px minmax(0, 1fr); gap: var(--s6); }
+}
+
+/* ---------- nav rail ---------- */
+.rail { font-size: .875rem; }
+@media (min-width: 1020px) {
+  .rail { position: sticky; top: var(--s4); align-self: start; max-height: calc(100vh - 3rem); overflow-y: auto; }
+}
+.rail-label {
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: var(--s2);
+}
+.rail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.rail a {
+  display: flex; gap: .6rem;
+  padding: .3rem .5rem .3rem 0;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  padding-left: .7rem;
+  line-height: 1.4;
+}
+.rail a:hover { color: var(--ink); border-left-color: var(--rule-strong); }
+.rail a:focus-visible { outline: 2px solid var(--ledger); outline-offset: 2px; }
+.rail .num { font-family: var(--f-mono); font-size: .72rem; color: var(--ink-faint); padding-top: .12rem; }
+
+/* ---------- masthead ---------- */
+.masthead { border-bottom: 3px double var(--rule-strong); padding-bottom: var(--s4); margin-bottom: var(--s5); }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--seal);
+  margin-bottom: var(--s2);
+}
+h1 {
+  font-family: var(--f-display);
+  font-size: clamp(1.9rem, 4.2vw, 2.9rem);
+  line-height: 1.15;
+  font-weight: 700;
+  margin: 0 0 var(--s3);
+  text-wrap: balance;
+  letter-spacing: -.01em;
+}
+.standfirst { font-size: 1.06rem; color: var(--ink-soft); max-width: var(--measure); margin: 0; }
+
+/* ---------- sections ---------- */
+section { margin-bottom: var(--s6); scroll-margin-top: var(--s3); }
+h2 {
+  font-family: var(--f-display);
+  font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+  line-height: 1.25;
+  font-weight: 700;
+  margin: 0 0 var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--rule);
+  text-wrap: balance;
+  display: flex; align-items: baseline; gap: .75rem;
+}
+h2 .sec-num {
+  font-family: var(--f-mono);
+  font-size: .78rem;
+  color: var(--seal);
+  letter-spacing: .08em;
+  flex: none;
+}
+h3 {
+  font-family: var(--f-body);
+  font-size: 1.02rem;
+  font-weight: 650;
+  margin: var(--s4) 0 var(--s2);
+  color: var(--ink);
+}
+p, li { max-width: var(--measure); }
+p { margin: 0 0 var(--s3); }
+ul, ol.body-list { margin: 0 0 var(--s3); padding-left: 1.15rem; }
+li { margin-bottom: var(--s1); }
+strong { font-weight: 650; }
+em { font-style: normal; font-family: var(--f-mono); font-size: .92em; color: var(--ledger); }
+
+code {
+  font-family: var(--f-mono);
+  font-size: .87em;
+  background: var(--surface-sunk);
+  padding: .1em .38em;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+}
+
+/* ---------- term ---------- */
+.term { font-weight: 650; }
+.term .en { font-family: var(--f-mono); font-size: .84em; color: var(--ink-faint); font-weight: 400; }
+
+/* ---------- layer spine ---------- */
+.spine { display: flex; flex-direction: column; gap: 0; margin: var(--s4) 0; }
+.layer {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-top: 1px solid var(--rule);
+}
+.layer:last-child { border-bottom: 1px solid var(--rule); }
+.layer-tag {
+  font-family: var(--f-mono);
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding-top: .2rem;
+}
+.layer-tag b { display: block; font-size: .82rem; letter-spacing: .04em; margin-bottom: .15rem; }
+.l-bronze { color: var(--gold); }
+.l-silver { color: var(--ledger); }
+.l-gold   { color: var(--seal); }
+.layer-body p { margin: 0 0 var(--s2); }
+.layer-body p:last-child { margin-bottom: 0; }
+.layer-body .ban { color: var(--ink-faint); font-size: .93em; }
+
+/* ---------- tables ---------- */
+.tw { overflow-x: auto; margin: var(--s3) 0 var(--s4); border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; min-width: 480px; }
+th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 500;
+  background: var(--surface-sunk);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- law box ---------- */
+.law {
+  background: var(--seal-wash);
+  border-left: 3px solid var(--seal);
+  padding: var(--s3) var(--s4);
+  margin: var(--s4) 0;
+  border-radius: 0 4px 4px 0;
+}
+.law-label {
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--seal);
+  margin-bottom: var(--s2);
+}
+.law p:last-child, .law ul:last-child, .law ol:last-child { margin-bottom: 0; }
+.law ol { padding-left: 1.15rem; margin-bottom: 0; }
+
+.note {
+  background: var(--ledger-wash);
+  border-left: 3px solid var(--ledger);
+  padding: var(--s3) var(--s4);
+  margin: var(--s4) 0;
+  border-radius: 0 4px 4px 0;
+}
+.note-label {
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ledger);
+  margin-bottom: var(--s2);
+}
+.note p:last-child { margin-bottom: 0; }
+
+/* ---------- pre ---------- */
+pre {
+  font-family: var(--f-mono);
+  font-size: .84rem;
+  line-height: 1.6;
+  background: var(--surface-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: var(--s3);
+  overflow-x: auto;
+  margin: var(--s3) 0 var(--s4);
+}
+pre code { background: none; border: none; padding: 0; font-size: 1em; }
+
+/* ---------- concept cards ---------- */
+.cards { display: grid; gap: var(--s3); margin: var(--s4) 0; }
+@media (min-width: 720px) { .cards.two { grid-template-columns: 1fr 1fr; } }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: var(--s3) var(--s4);
+}
+.card h4 {
+  font-family: var(--f-body);
+  font-size: .97rem;
+  font-weight: 650;
+  margin: 0 0 var(--s2);
+}
+.card p { margin: 0 0 var(--s2); font-size: .94rem; }
+.card p:last-child { margin-bottom: 0; }
+.card .k {
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: block;
+  margin-bottom: var(--s1);
+}
+
+/* ---------- checklist ---------- */
+.check { list-style: none; padding: 0; margin: var(--s3) 0 var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.check li {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: .5rem;
+  max-width: var(--measure);
+  margin: 0;
+  align-items: start;
+}
+.check li::before {
+  content: "☐";
+  font-family: var(--f-mono);
+  color: var(--ledger);
+  line-height: 1.6;
+}
+
+/* ---------- quiz ---------- */
+.quiz { counter-reset: q; list-style: none; padding: 0; margin: var(--s3) 0; display: flex; flex-direction: column; gap: var(--s3); }
+.quiz li {
+  counter-increment: q;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: .6rem;
+  max-width: var(--measure);
+  margin: 0;
+}
+.quiz li::before {
+  content: counter(q, decimal-leading-zero);
+  font-family: var(--f-mono);
+  font-size: .78rem;
+  color: var(--seal);
+  padding-top: .28rem;
+}
+
+/* ---------- glossary ---------- */
+dl.gloss { display: grid; gap: 0; margin: var(--s3) 0; }
+dl.gloss div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .15rem;
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+@media (min-width: 640px) {
+  dl.gloss div { grid-template-columns: 200px minmax(0, 1fr); gap: var(--s3); align-items: baseline; }
+}
+dl.gloss dt { font-family: var(--f-mono); font-size: .82rem; color: var(--ledger); }
+dl.gloss dd { margin: 0; font-size: .94rem; color: var(--ink-soft); }
+
+footer {
+  border-top: 3px double var(--rule-strong);
+  padding-top: var(--s3);
+  margin-top: var(--s6);
+  font-size: .87rem;
+  color: var(--ink-faint);
+}
+footer p { max-width: var(--measure); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+
+<div class="wrap">
+
+<nav class="rail" aria-label="Mục lục">
+  <div class="rail-label">Mục lục</div>
+  <ol>
+    <li><a href="#s1"><span class="num">01</span><span>Vì sao cần kho dữ liệu</span></a></li>
+    <li><a href="#s2"><span class="num">02</span><span>Năm lớp dữ liệu</span></a></li>
+    <li><a href="#s3"><span class="num">03</span><span>Ba khái niệm sống còn</span></a></li>
+    <li><a href="#s4"><span class="num">04</span><span>Mô hình sao Kimball</span></a></li>
+    <li><a href="#s5"><span class="num">05</span><span>Thu thập dữ liệu</span></a></li>
+    <li><a href="#s6"><span class="num">06</span><span>Chất lượng &amp; đối soát</span></a></li>
+    <li><a href="#s7"><span class="num">07</span><span>Điều phối pipeline</span></a></li>
+    <li><a href="#s8"><span class="num">08</span><span>Luật vàng</span></a></li>
+    <li><a href="#s9"><span class="num">09</span><span>Tự kiểm tra</span></a></li>
+    <li><a href="#s10"><span class="num">10</span><span>Từ điển thuật ngữ</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="masthead">
+  <div class="eyebrow">Kho dữ liệu tổng hợp ngành Tài chính · Tỉnh Hưng Yên</div>
+  <h1>Kiến thức nền — đọc trước khi chạm vào code</h1>
+  <p class="standfirst">Tóm lược có hệ thống từ Phần A (giáo trình) và Phần B (đặc tả kiến trúc) của bộ tài liệu dự án. Mục tiêu: sau khi đọc, bạn phản xạ được ba câu hỏi mà mọi reviewer sẽ hỏi — <em>grain là gì?</em>, <em>chạy lại thì sao?</em>, <em>số này ở đâu ra?</em></p>
+</header>
+
+<section id="s1">
+  <h2><span class="sec-num">01</span> Vì sao cần một kho dữ liệu</h2>
+
+  <p>Các hệ thống Sở Tài chính đang dùng — MISA, TABMIS, DMS, QL Giá, MSTT — đều là <span class="term">OLTP <span class="en">Online Transaction Processing</span></span>: sinh ra để <strong>ghi từng nghiệp vụ</strong> nhanh và chính xác. Kho dữ liệu là <span class="term">OLAP <span class="en">Online Analytical Processing</span></span>: sinh ra để <strong>đọc và tổng hợp</strong> hàng triệu dòng.</p>
+
+  <p>Một hệ không thể giỏi cả hai. Bảng thiết kế để ghi nhanh thì gộp chậm, và ngược lại. Đó là toàn bộ lý do tồn tại của kho.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Tiêu chí</th><th>OLTP (MISA, TABMIS…)</th><th>OLAP (kho dữ liệu)</th></tr></thead>
+      <tbody>
+        <tr><td>Câu hỏi tiêu biểu</td><td>“Lưu chứng từ chi lương tháng 8 của xã Tân Hòa”</td><td>“Tổng chi thường xuyên toàn tỉnh 3 năm, theo đơn vị và khoản mục?”</td></tr>
+        <tr><td>Thao tác chính</td><td>INSERT / UPDATE từng bản ghi</td><td>SELECT + GROUP BY hàng triệu dòng</td></tr>
+        <tr><td>Phạm vi một lần chạm</td><td>vài dòng</td><td>cả bảng, nhiều năm</td></tr>
+        <tr><td>Điều tối kỵ</td><td>mất hoặc ghi sai một giao dịch</td><td>trả lời chậm, hoặc ra số sai</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Năm lý do không truy vấn thẳng vào nguồn</h3>
+  <ol class="body-list">
+    <li><strong>Lệch mã danh mục.</strong> Cùng “Sở Y tế” nhưng MISA một mã, TABMIS mã ĐVQHNS, MSTT mã khác. Muốn cộng chéo nguồn phải quy về mã chuẩn.</li>
+    <li><strong>Nguồn không giữ lịch sử tổ chức.</strong> Sáp nhập xã xong, phần mềm nghiệp vụ chỉ còn đơn vị mới — báo cáo quá khứ mất chỗ dựa.</li>
+    <li><strong>Đè hiệu năng hệ nghiệp vụ.</strong> Một câu <code>GROUP BY</code> ba năm có thể làm kế toán toàn tỉnh nhập liệu chậm theo.</li>
+    <li><strong>Không có nơi hợp nhất chéo miền.</strong> “Đơn giá mua sắm so với giá thị trường cùng kỳ” cần MSTT và QL Giá đứng chung một mô hình.</li>
+    <li><strong>Không ai gác chất lượng.</strong> Thiếu tầng kiểm tra và đối soát thì số liệu không bảo vệ được trước chất vấn.</li>
+  </ol>
+
+  <h3>ELT chứ không phải ETL</h3>
+  <p><span class="term">ETL</span> biến đổi <em>trước</em> khi vào kho, dữ liệu gốc thường bị vứt. <span class="term">ELT</span> nạp nguyên trạng vào trước, biến đổi sau bằng SQL ngay trong kho. Dự án chọn ELT vì một lý do quyết định: <strong>đổi quy tắc chuẩn hóa thì replay từ raw, không phải đi xin lại dữ liệu từ nguồn.</strong></p>
+
+  <p>Về kiến trúc lưu trữ, dự án là <strong>lakehouse thu nhỏ</strong>: phần “lake” là vùng <code>raw/</code> trên SeaweedFS (Excel, JSON, PDF bản quét); phần “warehouse” là PostgreSQL (<code>staging</code> → <code>curated</code>).</p>
+
+  <div class="note">
+    <div class="note-label">Hiểu nhầm thường gặp</div>
+    <p>ELT <strong>không</strong> có nghĩa là “khỏi cần biến đổi”. Nó chỉ dời việc biến đổi vào bên trong kho. Bỏ qua bước biến đổi thì rác từ nguồn tràn thẳng lên báo cáo.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="sec-num">02</span> Năm lớp dữ liệu — kiến trúc Medallion</h2>
+
+  <p>Kho được chia thành các lớp tinh dần. Dữ liệu chỉ chảy một chiều, mỗi lớp có một <strong>hợp đồng</strong> riêng: nhận vào cái gì, cam kết đầu ra cái gì, và tuyệt đối cấm cái gì.</p>
+
+  <div class="spine">
+    <div class="layer">
+      <div class="layer-tag l-bronze"><b>Bronze</b>raw/ · S3</div>
+      <div class="layer-body">
+        <p><strong>Nhận:</strong> dữ liệu nguyên trạng từ nguồn. <strong>Cam kết:</strong> bất biến, có checksum và <code>run_id</code>.</p>
+        <p class="ban">CẤM: sửa hoặc xóa tệp đã ghi · ứng dụng đọc trực tiếp để phục vụ người dùng.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-tag l-silver"><b>Silver-1</b>staging.stg_*</div>
+      <div class="layer-body">
+        <p><strong>Nhận:</strong> tệp raw đã parse. <strong>Cam kết:</strong> đúng kiểu dữ liệu, 1-1 với nguồn, có <code>_run_id</code> / <code>_loaded_at</code> / <code>_source</code>.</p>
+        <p class="ban">CẤM: quy đổi mã · tính toán nghiệp vụ · ứng dụng và BI đọc vào đây.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-tag l-silver"><b>Silver-2</b>chuẩn hóa + GX</div>
+      <div class="layer-body">
+        <p><strong>Nhận:</strong> <code>stg_*</code>. <strong>Cam kết:</strong> đã quy về mã chuẩn theo <code>mapping_rules</code>, đã qua cổng chất lượng.</p>
+        <p class="ban">CẤM: cho dữ liệu rớt ngưỡng “đi tiếp cho xong” · xóa dòng reject chưa xử lý.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-tag l-gold"><b>Gold</b>curated.dim_* / fact_*</div>
+      <div class="layer-body">
+        <p><strong>Nhận:</strong> dữ liệu đã đạt chuẩn. <strong>Cam kết:</strong> đúng grain, có <code>batch_id</code>, chỉ công bố khi <code>publish_status = approved</code>.</p>
+        <p class="ban">CẤM: bất kỳ ai ngoài dbt ghi vào · nhận dữ liệu chưa qua Silver-2 · UPDATE tay.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-tag l-gold"><b>Serving</b>Cube · OpenSearch · pgvector</div>
+      <div class="layer-body">
+        <p><strong>Nhận:</strong> Gold. <strong>Cam kết:</strong> số liệu theo định nghĩa chỉ tiêu đã phê duyệt, có phân quyền.</p>
+        <p class="ban">CẤM: tự chế công thức nằm ngoài Lớp ngữ nghĩa · index tài liệu mà không mang theo quyền.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="law">
+    <div class="law-label">Hai luật bất di bất dịch</div>
+    <ol>
+      <li><strong>Không nhảy cóc.</strong> Nguồn không được đổ thẳng vào Gold; báo cáo không được đọc staging.</li>
+      <li><strong>Không chảy ngược.</strong> Lớp sau không bao giờ ghi về lớp trước. Sửa dữ liệu = sửa quy tắc rồi replay, không sửa tay.</li>
+    </ol>
+  </div>
+
+  <h3>Bốn loại dữ liệu “phụ mà không phụ”</h3>
+  <p>Thiếu chúng thì kho “chạy được nhưng không vận hành được”:</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Loại</th><th>Bảng</th><th>Vai trò</th></tr></thead>
+      <tbody>
+        <tr><td>Nhật ký phiên nạp</td><td><code>ingestion.sources</code>, <code>ingestion.runs</code></td><td>lô nào, khi nào, bao nhiêu dòng, checksum gì</td></tr>
+        <tr><td>Vùng reject / ngoại lệ</td><td><code>mapping_rejections</code>, hàng đợi chất lượng</td><td>dòng lỗi không biến mất — chờ xử lý rồi nạp lại</td></tr>
+        <tr><td>Dữ liệu đối soát</td><td><code>stg_kbnn_reconcile</code> → <code>fact_doi_soat_kbnn</code></td><td>so số kho với số KBNN, lưu chênh lệch</td></tr>
+        <tr><td>Cổng công bố</td><td><code>batch_summary</code>, <code>publish_status</code></td><td>Gold chỉ “ra mắt” khi lô đạt chuẩn</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="sec-num">03</span> Ba khái niệm sống còn</h2>
+
+  <p>Nếu chỉ nhớ được ba thứ trong toàn bộ tài liệu này, hãy nhớ ba thứ dưới đây. Điểm chung của cả ba: <strong>sai chúng thì hệ thống vẫn chạy, log vẫn xanh, chỉ có số là sai</strong> — loại lỗi nguy hiểm nhất của kho dữ liệu.</p>
+
+  <h3>1 · Idempotency — chạy lại không nhân đôi</h3>
+  <p><span class="term">Idempotent</span> nghĩa là pipeline chạy 1 lần hay 5 lần — kể cả chết giữa chừng rồi chạy lại — đều cho đúng một kết quả. Đây là điều kiện tiên quyết để dám replay và dám backfill.</p>
+
+  <p>Có đúng ba chiến lược ghi. Phải chọn một và khai báo ngay trong đặc tả:</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Chiến lược</th><th>Dùng khi</th><th>Ví dụ dự án</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Append</strong><br>chỉ thêm dòng mới</td><td>sự kiện đã xảy ra là bất biến</td><td>vùng raw; log; biến động tài sản</td></tr>
+        <tr><td><strong>Merge / Upsert</strong><br>có thì cập nhật, chưa có thì thêm</td><td>mỗi bản ghi có khóa nghiệp vụ, nguồn gửi lại bản mới hơn</td><td>văn bản DMS theo <code>so_ky_hieu</code></td></tr>
+        <tr><td><strong>Replace theo kỳ</strong><br>xóa trọn kỳ rồi nạp lại</td><td>dữ liệu chốt theo kỳ, nạp lại cả lát</td><td><code>fact_ngan_sach</code>, <code>fact_gia</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="law">
+    <div class="law-label">Câu hỏi vàng của reviewer</div>
+    <p>Mọi model và mọi task phải tự trả lời được <strong>“chạy lại thì sao?”</strong> ngay lúc thiết kế. Câu này nằm trong checklist review của mọi PR.</p>
+  </div>
+
+  <h3>2 · Grain — câu hỏi phải trả lời ĐẦU TIÊN</h3>
+  <p><span class="term">Grain <span class="en">độ mịn</span></span> là tuyên bố “một dòng trong bảng fact đại diện cho đúng cái gì”. Phải viết ra <em>trước</em> khi chọn bất kỳ cột nào.</p>
+
+  <p>Sai grain hỏng thế nào — ví dụ kinh điển, trộn dòng tháng với dòng quý:</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>ky</th><th>don_vi</th><th>tieu_muc</th><th>so_thuc_hien</th></tr></thead>
+      <tbody>
+        <tr><td>2026-01</td><td>Sở GD&amp;ĐT</td><td>6701</td><td class="num">200</td></tr>
+        <tr><td>2026-02</td><td>Sở GD&amp;ĐT</td><td>6701</td><td class="num">300</td></tr>
+        <tr><td>2026-03</td><td>Sở GD&amp;ĐT</td><td>6701</td><td class="num">250</td></tr>
+        <tr><td>2026-Q1</td><td>Sở GD&amp;ĐT</td><td>6701</td><td class="num">750</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><code>SUM(so_thuc_hien)</code> ra <strong>1.500</strong> thay vì 750. Dashboard lãnh đạo sai gấp đôi mà không có một dòng lỗi nào.</p>
+
+  <p>Checklist khai báo grain — BA và Dev cùng ký:</p>
+  <ul class="check">
+    <li>Một dòng đại diện cho cái gì? (viết thành một câu tiếng Việt)</li>
+    <li>Những chiều nào xác định duy nhất một dòng?</li>
+    <li>Kỳ dữ liệu là gì: ngày / tháng / quý / phiên khảo sát?</li>
+    <li>Nguồn có lẫn dòng tổng và dòng chi tiết không? Lọc ở lớp nào?</li>
+  </ul>
+
+  <h3>3 · SCD Type 2 — không viết lại lịch sử</h3>
+  <p><span class="term">SCD <span class="en">Slowly Changing Dimension</span></span> xử lý việc thuộc tính của chiều thay đổi theo thời gian mà không làm sai số liệu lịch sử.</p>
+
+  <p>Tình huống đinh của dự án: từ 01/07/2025, xã Tân Hưng và xã Hòa Bình hợp nhất thành xã Tân Hòa. Báo cáo chi tháng 5/2025 <strong>phải</strong> hiện “xã Tân Hưng”; báo cáo tháng 8/2025 hiện “xã Tân Hòa”.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>don_vi_key</th><th>ma_dvqhns</th><th>ten_don_vi</th><th>effective_from</th><th>effective_to</th><th>is_current</th></tr></thead>
+      <tbody>
+        <tr><td class="num">101</td><td class="num">1054101</td><td>UBND xã Tân Hưng</td><td>2020-01-01</td><td>2025-06-30</td><td>false</td></tr>
+        <tr><td class="num">102</td><td class="num">1054102</td><td>UBND xã Hòa Bình</td><td>2020-01-01</td><td>2025-06-30</td><td>false</td></tr>
+        <tr><td class="num">251</td><td class="num">1099001</td><td>UBND xã Tân Hòa</td><td>2025-07-01</td><td>9999-12-31</td><td>true</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Khi nạp fact, chọn phiên bản chiều theo <strong>ngày nghiệp vụ của kỳ dữ liệu</strong> — không phải ngày nạp:</p>
+  <pre><code>join dim_don_vi d
+  on  d.ma_dvqhns = s.ma_don_vi
+  and s.ngay_ky between d.effective_from and d.effective_to</code></pre>
+
+  <div class="cards two">
+    <div class="card">
+      <h4><span class="k">Câu hỏi người dùng</span>“Chi 6 tháng đầu 2025 theo bộ máy lúc đó”</h4>
+      <p><strong>as-was</strong> — join theo khoảng hiệu lực như SQL trên. Đây là mặc định.</p>
+    </div>
+    <div class="card">
+      <h4><span class="k">Câu hỏi người dùng</span>“Chi cả năm 2025 quy về bộ máy hiện hành”</h4>
+      <p><strong>as-is</strong> — dùng cột ánh xạ kế thừa <code>ke_thua_boi_key</code> trong <code>dim_don_vi</code>.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <div class="note-label">Vì sao SCD-2 bắt buộc phải có surrogate key</div>
+    <p>Vì cùng một mã nghiệp vụ giờ có nhiều dòng (nhiều phiên bản lịch sử) — mã nghiệp vụ hết tính duy nhất, không làm khóa được nữa.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="sec-num">04</span> Mô hình sao Kimball</h2>
+
+  <p>Mọi câu hỏi nghiệp vụ đều có dạng: <strong>đo cái gì</strong> + <strong>cắt theo gì</strong>. Ví dụ “Tổng chi thường xuyên của Sở Y tế quý 1/2026 là bao nhiêu?”</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Thành phần câu hỏi</th><th>Vai trò</th><th>Nằm ở đâu</th></tr></thead>
+      <tbody>
+        <tr><td>số tiền chi</td><td>measure — thứ cần đo</td><td>cột số trong bảng <strong>fact</strong></td></tr>
+        <tr><td>Sở Y tế</td><td>góc cắt “đơn vị”</td><td><code>dim_don_vi</code></td></tr>
+        <tr><td>chi thường xuyên</td><td>góc cắt “khoản mục”</td><td><code>dim_khoan_muc_nsnn</code></td></tr>
+        <tr><td>quý 1/2026</td><td>góc cắt “thời gian”</td><td><code>dim_thoi_gian</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Khóa: surrogate vs natural</h3>
+  <div class="cards two">
+    <div class="card">
+      <h4><span class="k">Natural key</span>Mã nghiệp vụ do nguồn cấp</h4>
+      <p>Ví dụ: mã ĐVQHNS <code>1054101</code>, mã tiểu mục <code>6701</code>. Chỉ nằm trong dimension, để đối chiếu ngược về nguồn. Đặt tên tiền tố <code>ma_*</code>.</p>
+    </div>
+    <div class="card">
+      <h4><span class="k">Surrogate key</span>Số nguyên vô nghĩa do kho tự sinh</h4>
+      <p>Ví dụ <code>don_vi_key = 251</code>. Chỉ dùng nội bộ kho. Bảng fact <strong>chỉ được chứa</strong> <code>*_key</code>, không chứa mã nghiệp vụ, không chứa tên.</p>
+    </div>
+  </div>
+
+  <p>Mọi dimension đều có sẵn dòng “Không xác định” với key <code>-1</code>, để fact không bao giờ chứa NULL ở khóa ngoại — mất dòng khi join là kiểu thiếu hụt âm thầm khó phát hiện nhất.</p>
+
+  <h3>Conformed dimension và Bus Matrix</h3>
+  <p><span class="term">Conformed dimension <span class="en">chiều dùng chung</span></span>: một dimension duy nhất, cùng khóa cùng thuộc tính, được mọi fact dùng chung. Nhờ đó mới trả lời được câu hỏi chéo miền như “Đơn vị X mua mặt hàng Y với đơn giá cao hơn giá thị trường cùng kỳ bao nhiêu %?”.</p>
+
+  <div class="law">
+    <div class="law-label">Anti-pattern bị cấm</div>
+    <p>Mỗi miền tự tạo một <code>dim_don_vi</code> riêng “cho tiện”. Hậu quả: hai miền không bao giờ join khớp nhau, và mỗi lần sáp nhập đơn vị phải sửa ở N chỗ.</p>
+  </div>
+
+  <h3>Bốn loại fact</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Loại</th><th>Một dòng là…</th><th>Ví dụ dự án</th></tr></thead>
+      <tbody>
+        <tr><td>Transaction</td><td>1 sự kiện đã xảy ra — insert-only</td><td>biến động tăng/giảm tài sản</td></tr>
+        <tr><td>Periodic snapshot</td><td>trạng thái/tổng của 1 kỳ — nạp lại kỳ = xóa-ghi lại kỳ đó</td><td><code>fact_ngan_sach</code>, <code>fact_gia</code></td></tr>
+        <tr><td>Accumulating snapshot</td><td>1 vòng đời hồ sơ, các cột mốc điền dần</td><td><code>fact_mua_sam</code> — 1 dòng/gói thầu, mốc KHLCNT → mở thầu → ký HĐ → nghiệm thu</td></tr>
+        <tr><td>Reconciliation</td><td>1 cặp so khớp giữa 2 nguồn</td><td><code>fact_doi_soat_kbnn</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Quy tắc dự án về hình dạng: <strong>dimension để phẳng</strong> (denormalized). Cấp hành chính, loại hình, đơn vị cha đều là cột ngay trong <code>dim_don_vi</code>, không tách bảng con. Dung lượng dimension không đáng kể so với fact — đổi lấy truy vấn đơn giản là lãi.</p>
+</section>
+
+<section id="s5">
+  <h2><span class="sec-num">05</span> Thu thập dữ liệu</h2>
+
+  <h3>Full load và Incremental load</h3>
+  <p><span class="term">Cursor <span class="en">con trỏ tăng dần</span></span> là cột đơn điệu tăng theo thời gian, thường là <code>updated_at</code>. <span class="term">Checkpoint</span> là giá trị cursor lớn nhất đã nạp — dlt tự lưu và tự đọc lại ở lần chạy sau.</p>
+
+  <div class="note">
+    <div class="note-label">Điều kiện để tin được cursor</div>
+    <p>Nguồn phải cập nhật <code>updated_at</code> <strong>mỗi khi sửa</strong> bản ghi, không chỉ khi tạo. Cursor theo <code>created_at</code> nghĩa là bản ghi bị sửa sẽ không bao giờ được kéo lại. Phải kiểm chứng bằng cách sửa thử một bản ghi ở nguồn trước khi code connector.</p>
+  </div>
+
+  <p><span class="term">Late-arriving data</span>: bản ghi thuộc kỳ cũ nhưng xuất hiện sau — chứng từ tháng 6 nhập bổ sung vào tháng 8. Dự án bắt bằng hai lưới: cursor <code>updated_at</code> (bản bổ sung có <code>updated_at</code> mới nên vẫn được kéo) và <span class="term">lookback window</span> (mỗi lần chạy kéo lại N ngày gần nhất), kết hợp ghi merge hoặc replace để không trùng.</p>
+
+  <h3>Schema contract — chặn tại cửa</h3>
+  <p><span class="term">Schema drift <span class="en">trôi lược đồ</span></span> là việc nguồn lặng lẽ đổi cấu trúc. Đối sách: mỗi dataset có lược đồ đăng ký có phiên bản trong Apicurio Registry; mỗi lần nạp, pipeline đối chiếu thực tế với bản đăng ký.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Thay đổi ở nguồn</th><th>Phân loại</th><th>Pipeline phải làm</th></tr></thead>
+      <tbody>
+        <tr><td>Thêm cột mới không bắt buộc</td><td>tương thích lùi</td><td>cho qua, ghi nhận phiên bản mới, báo Quản trị dữ liệu quyết định dùng hay bỏ</td></tr>
+        <tr><td>Đổi kiểu cột đang dùng</td><td><strong>phá vỡ</strong></td><td><strong>DỪNG</strong> nạp nguồn đó + cảnh báo</td></tr>
+        <tr><td>Xóa hoặc đổi tên cột đang dùng</td><td><strong>phá vỡ</strong></td><td><strong>DỪNG</strong> + cảnh báo</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="law">
+    <div class="law-label">Nguyên tắc</div>
+    <p>Thà <strong>thiếu số liệu có chủ đích</strong> còn hơn <strong>sai số liệu âm thầm</strong>. Cột lạ không bao giờ tự chảy lên báo cáo — nó dừng ở staging chờ BA đặc tả.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="sec-num">06</span> Chất lượng và đối soát</h2>
+
+  <p>Sáu chiều chất lượng kinh điển. Điểm mấu chốt: <strong>bốn chiều đầu tự động hóa được bằng quy tắc nội bộ, chiều thứ năm thì không</strong>.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Chiều</th><th>Câu hỏi</th><th>Dự án phủ bằng</th></tr></thead>
+      <tbody>
+        <tr><td>Completeness — đầy đủ</td><td>có thiếu không?</td><td>Great Expectations</td></tr>
+        <tr><td>Validity — hợp lệ</td><td>đúng định dạng, đúng miền giá trị?</td><td>Great Expectations</td></tr>
+        <tr><td>Uniqueness — duy nhất</td><td>có trùng không?</td><td>Great Expectations</td></tr>
+        <tr><td>Consistency — nhất quán</td><td>các con số khớp nhau?</td><td>Great Expectations</td></tr>
+        <tr><td><strong>Accuracy — chính xác</strong></td><td><strong>đúng với thực tế?</strong></td><td><strong>đối soát KBNN</strong></td></tr>
+        <tr><td>Timeliness — kịp thời</td><td>mới đến đâu?</td><td>freshness trên dashboard</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Dữ liệu có thể đầy đủ, hợp lệ, duy nhất, nhất quán — mà vẫn <strong>sai so với thực tế</strong>. Tự soi không bao giờ thấy. Vì vậy phải có nguồn sự thật bên ngoài để đối chiếu.</p>
+
+  <h3>Hai mức quy tắc — phải thuộc</h3>
+  <div class="cards two">
+    <div class="card">
+      <h4><span class="k">Blocker</span>Chặn cả lô, không thương lượng</h4>
+      <p>Trùng khóa · mã không có trong danh mục · sai kiểu dữ liệu. Đây là lỗi cấu trúc.</p>
+    </div>
+    <div class="card">
+      <h4><span class="k">Scoring</span>Trừ điểm lô</h4>
+      <p>Dòng lỗi vào hàng đợi ngoại lệ; lô vẫn qua nếu tổng điểm ≥ ngưỡng. Dùng cho thiếu giá trị lẻ tẻ, lệch nhẹ.</p>
+    </div>
+  </div>
+
+  <p>Ai đặt ngưỡng? <strong>BA cùng chủ dữ liệu của nguồn — không phải Dev tự quyết.</strong> Bộ quy tắc có phiên bản và người phê duyệt; đổi ngưỡng là một quyết định nghiệp vụ có ghi vết.</p>
+
+  <h3>Năm trạng thái đối soát</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Trạng thái</th><th>Nghĩa</th><th>Hành động</th></tr></thead>
+      <tbody>
+        <tr><td><code>matched</code></td><td>khớp tuyệt đối</td><td>không</td></tr>
+        <tr><td><code>within_tolerance</code></td><td>lệch trong dung sai</td><td>ghi nhận</td></tr>
+        <tr><td><code>mismatch</code></td><td>lệch vượt ngưỡng</td><td>điều tra + ticket</td></tr>
+        <tr><td><code>only_in_dwh</code></td><td>kho có, KBNN không</td><td>nghi nạp trùng hoặc sai kỳ ở kho</td></tr>
+        <tr><td><code>only_in_kbnn</code></td><td>KBNN có, kho không</td><td>nghi thiếu tệp nguồn hoặc chứng từ bổ sung</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="law">
+    <div class="law-label">Fix-at-source — sửa tại nguồn là mặc định</div>
+    <p>Kho là tấm gương của nguồn. Gương phản chiếu sai thì lau vật thể, không vẽ lại ảnh trong gương. Sửa tay tại kho khiến lần replay sau sai lại y nguyên, và số của kho không còn đối chiếu được với nguồn.</p>
+  </div>
+</section>
+
+<section id="s7">
+  <h2><span class="sec-num">07</span> Điều phối pipeline</h2>
+
+  <h3>Khái niệm hay ngộ nhận nhất: ngày chạy ≠ kỳ dữ liệu</h3>
+  <p>Mỗi lần chạy gắn với một <span class="term">logical date / data interval <span class="en">kỳ lô-gích</span></span>. Lần chạy “của kỳ 07/2026” <strong>luôn</strong> xử lý dữ liệu kỳ 07 — dù nó chạy ngày 01/08 theo lịch hay ngày 15/10 khi chạy bù.</p>
+
+  <div class="law">
+    <div class="law-label">Cấm tuyệt đối</div>
+    <p>Dùng <code>datetime.now()</code> trong logic dữ liệu. Mọi task phải đọc kỳ từ context của run. Backfill 3 kỳ trên code dùng <code>now()</code> = kéo “hôm nay” ba lần.</p>
+  </div>
+
+  <div class="cards two">
+    <div class="card">
+      <h4><span class="k">Catchup</span>Tự đuổi kịp</h4>
+      <p>Airflow tự động sinh các run đã lỡ khi DAG bật lại sau thời gian tắt.</p>
+    </div>
+    <div class="card">
+      <h4><span class="k">Backfill</span>Chạy bù chủ động</h4>
+      <p>Người vận hành ra lệnh cho một dải kỳ — dùng khi bổ sung quá khứ hoặc replay sau khi sửa quy tắc.</p>
+    </div>
+  </div>
+
+  <h3>Phân loại lỗi trước khi retry</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Loại lỗi</th><th>Ví dụ</th><th>Hành vi đúng</th></tr></thead>
+      <tbody>
+        <tr><td>Tạm thời</td><td>mạng chập chờn, nguồn bận, timeout</td><td>retry 3 lần, giãn cách tăng dần</td></tr>
+        <tr><td>Cứng</td><td>lược đồ phá vỡ, sai credentials, tệp hỏng</td><td><strong>fail ngay, không retry</strong> — retry chỉ trì hoãn cảnh báo</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Template DAG bắt buộc của dự án:</p>
+  <pre><code>default_args = dict(owner="da-team", retries=3,
+                    retry_delay=..., retry_exponential_backoff=True)
+
+DAG(..., max_active_runs=1, catchup=True, sla=...,
+    tags=["nguon:qlgia", "mien:gia", "uc:19"])
+
+# Mọi task đọc kỳ từ data_interval — CẤM datetime.now() trong logic dữ liệu.
+# Lỗi cứng -> raise AirflowFailException: fail ngay, không retry.</code></pre>
+
+  <p><code>max_active_runs=1</code> không phải gợi ý mà là <strong>luật</strong>: phiên trước chưa xong thì phiên sau xếp hàng. Hai phiên cùng ghi một kỳ là nguyên nhân kinh điển của dữ liệu nhân đôi.</p>
+
+  <h3>Airflow hay sự kiện?</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Luồng</th><th>Cơ chế</th><th>Vì sao</th></tr></thead>
+      <tbody>
+        <tr><td>Ingest số liệu theo kỳ, dbt, báo cáo, đối soát KBNN</td><td>Airflow</td><td>có kỳ, có lịch, cần backfill</td></tr>
+        <tr><td>Văn bản DMS về → OCR → index</td><td>sự kiện <code>ocr.requested</code></td><td>văn bản đến lúc nào xử lúc đó</td></tr>
+        <tr><td>Gold công bố → nhiều bên phản ứng</td><td>sự kiện <code>curated.published</code></td><td>một phát, nhiều bên nghe</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Quy tắc chọn nhanh: <strong>có kỳ và cần bù kỳ → Airflow; đến bất định và nhiều người nghe → sự kiện.</strong></p>
+</section>
+
+<section id="s8">
+  <h2><span class="sec-num">08</span> Luật vàng — bảng dán tường</h2>
+
+  <div class="law">
+    <div class="law-label">Sáu điều không tranh luận từng lần</div>
+    <ol>
+      <li>Nguồn → Bronze → Silver → Gold → Serving. <strong>Không nhảy cóc, không chảy ngược.</strong></li>
+      <li><strong>Chỉ dbt được ghi Gold.</strong> Chỉ replay được sửa dữ liệu. Không UPDATE tay ở bất kỳ lớp nào sau Bronze.</li>
+      <li>Mọi dòng lỗi phải nhìn thấy được — reject và ngoại lệ có người phụ trách kèm hạn. <strong>Cấm silently drop.</strong></li>
+      <li>Mọi bảng Gold có <code>batch_id</code>; mọi bảng staging có <code>_run_id</code> / <code>_loaded_at</code> / <code>_source</code>.</li>
+      <li>Mọi consumer sự kiện idempotent; mọi DAG <code>max_active_runs=1</code>; mọi task đọc kỳ lô-gích, không đọc đồng hồ.</li>
+      <li>Ứng dụng khai thác chỉ nhìn thấy Gold và Serving, qua role read-only kèm RLS.</li>
+    </ol>
+  </div>
+
+  <h3>Vòng đời một con số — và cách truy ngược</h3>
+  <p>Khi lãnh đạo hỏi “tổng chi thường xuyên lấy đâu ra?”, đường truy ngược là: mở định nghĩa chỉ tiêu → xem lineage của fact → tra <code>batch_id</code> → về đúng tệp Excel gốc kèm checksum và ngày nhận. Toàn bộ hệ thống được thiết kế để câu trả lời này mất <strong>dưới 2 phút</strong>.</p>
+</section>
+
+<section id="s9">
+  <h2><span class="sec-num">09</span> Tự kiểm tra</h2>
+  <p>Trả lời được trôi chảy 12 câu dưới đây thì coi như đã nắm phần nền. Đáp án mẫu nằm ở mục D5 của bộ tài liệu.</p>
+
+  <ol class="quiz">
+    <li>Nêu hai điểm khác nhau căn bản giữa thiết kế bảng cho OLTP và cho OLAP.</li>
+    <li>ELT khác ETL ở chỗ nào, và lợi ích lớn nhất của ELT với dự án này là gì?</li>
+    <li>Định nghĩa idempotent bằng một câu, và cho ví dụ một task <em>không</em> idempotent.</li>
+    <li>Vì sao <code>fact_ngan_sach</code> chọn replace-theo-kỳ mà văn bản DMS lại chọn merge theo <code>so_ky_hieu</code>?</li>
+    <li>Tự tuyên bố grain của <code>fact_gia</code> bằng một câu.</li>
+    <li>Vì sao fact không được chứa cột <code>ten_don_vi</code>? Nêu hai lý do.</li>
+    <li>Tháng 8/2025 nhập bù một chứng từ chi kỳ tháng 6/2025 thuộc xã Tân Hưng (đã hợp nhất từ 01/07). Dòng fact trỏ <code>don_vi_key</code> nào — 101 hay 251? Vì sao?</li>
+    <li>Vì sao dùng SCD-2 thì bắt buộc phải có surrogate key?</li>
+    <li>Thay đổi lược đồ nào được “cho qua có ghi nhận”, thay đổi nào phải DỪNG? Vì sao thà dừng còn hơn cho chạy?</li>
+    <li>Vì sao bốn nhóm quy tắc nội bộ không bắt được lỗi accuracy? Cho một ví dụ dữ liệu “đẹp mà sai”.</li>
+    <li>Phân biệt ngày chạy và kỳ lô-gích; vì sao nhầm hai thứ này làm hỏng backfill?</li>
+    <li><code>max_active_runs=1</code> chống rủi ro gì, và nó liên hệ thế nào với idempotent?</li>
+  </ol>
+</section>
+
+<section id="s10">
+  <h2><span class="sec-num">10</span> Từ điển thuật ngữ</h2>
+  <dl class="gloss">
+    <div><dt>OLTP / OLAP</dt><dd>Xử lý giao dịch trực tuyến / Xử lý phân tích trực tuyến</dd></div>
+    <div><dt>Medallion</dt><dd>Kiến trúc phân lớp Bronze → Silver → Gold</dd></div>
+    <div><dt>Immutability</dt><dd>Tính bất biến — ghi một lần, không sửa không xóa</dd></div>
+    <div><dt>Idempotent</dt><dd>Chạy lại bao nhiêu lần cũng ra đúng một kết quả</dd></div>
+    <div><dt>Replay</dt><dd>Chạy lại từ vùng raw sau khi sửa quy tắc</dd></div>
+    <div><dt>Grain</dt><dd>Độ mịn — một dòng fact đại diện cho cái gì</dd></div>
+    <div><dt>Measure</dt><dd>Số đo — cột số cần tổng hợp trong fact</dd></div>
+    <div><dt>Dimension</dt><dd>Chiều — góc cắt của câu hỏi nghiệp vụ</dd></div>
+    <div><dt>Surrogate key</dt><dd>Khóa thay thế — số nguyên vô nghĩa do kho tự sinh</dd></div>
+    <div><dt>Natural key</dt><dd>Khóa tự nhiên — mã nghiệp vụ do nguồn cấp</dd></div>
+    <div><dt>SCD Type 2</dt><dd>Chiều thay đổi chậm — thêm dòng phiên bản, giữ trọn lịch sử</dd></div>
+    <div><dt>as-was / as-is</dt><dd>Theo bộ máy lúc đó / quy về bộ máy hiện hành</dd></div>
+    <div><dt>Conformed dimension</dt><dd>Chiều dùng chung giữa nhiều fact</dd></div>
+    <div><dt>Bus Matrix</dt><dd>Ma trận quy trình nghiệp vụ × chiều dùng chung</dd></div>
+    <div><dt>Cursor</dt><dd>Con trỏ tăng dần, thường là <code>updated_at</code></dd></div>
+    <div><dt>Checkpoint / state</dt><dd>Giá trị cursor lớn nhất đã nạp</dd></div>
+    <div><dt>Late-arriving data</dt><dd>Dữ liệu kỳ cũ đến muộn</dd></div>
+    <div><dt>Lookback window</dt><dd>Cửa sổ nhìn lại N ngày mỗi lần chạy</dd></div>
+    <div><dt>Schema drift</dt><dd>Trôi lược đồ — nguồn lặng lẽ đổi cấu trúc</dd></div>
+    <div><dt>Schema contract</dt><dd>Hợp đồng lược đồ có phiên bản, chặn thay đổi phá vỡ</dd></div>
+    <div><dt>Quality gate</dt><dd>Cổng chất lượng giữa Silver và Gold</dd></div>
+    <div><dt>Blocker / Scoring</dt><dd>Quy tắc chặn lô / quy tắc trừ điểm lô</dd></div>
+    <div><dt>Reconciliation</dt><dd>Đối soát với nguồn độc lập (KBNN)</dd></div>
+    <div><dt>Fix-at-source</dt><dd>Sửa tại nguồn thay vì vá tại kho</dd></div>
+    <div><dt>Lineage</dt><dd>Nguồn gốc — đường đi của dữ liệu qua các bảng</dd></div>
+    <div><dt>Logical date</dt><dd>Kỳ lô-gích của một lần chạy DAG</dd></div>
+    <div><dt>Catchup / Backfill</dt><dd>Tự đuổi kịp / chạy bù chủ động</dd></div>
+    <div><dt>Orchestration</dt><dd>Điều phối tập trung (Airflow)</dd></div>
+    <div><dt>Choreography</dt><dd>Phối hợp qua sự kiện (RabbitMQ)</dd></div>
+  </dl>
+</section>
+
+<footer>
+  <p>Tóm lược từ bộ tài liệu đào tạo nội bộ “Kho dữ liệu Tài chính” — Phần A (chương A1–A12) và Phần B (đặc tả kiến trúc B1–B6), năm 2026. Đây là bản rút gọn để nắm nhanh phần nền; mọi con số, tên bảng và ngưỡng chính thức lấy theo Phần B, và thay đổi thiết kế phải đi qua PR.</p>
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>

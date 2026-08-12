@@ -1,0 +1,237 @@
+# Airflow 3.2.2 / chart 1.22.0  →  namespace stc-hy-airflow (project Jmix team)
+# Quota ns: req 3 CPU / 6Gi · lim 8 CPU / 12Gi · 5 PVC · 20Gi
+
+# ── BẮT BUỘC: project-member không tạo được Role/RoleBinding ──────────────
+rbac:
+  create: false
+
+# ── ingress: dùng nip.io để khỏi phải cấu hình DNS ────────────────────────
+#    airflow-stc.10.123.123.194.nip.io  ->  tự resolve về 10.123.123.194
+#    Khi có hostname thật dưới congchuc.ai thì đổi dòng name: bên dưới.
+ingress:
+  apiServer:
+    enabled: true
+    ingressClassName: nginx
+    path: "/"
+    pathType: "Prefix"
+    hosts:
+      - name: airflow-stc.10.123.123.194.nip.io
+
+# ── bỏ component không dùng ở dev ─────────────────────────────────────────
+statsd:
+  enabled: false
+flower:
+  enabled: false
+pgbouncer:
+  enabled: false
+
+# ── metadata DB: bundle của chart (đổi sang jmix-ha sau bằng helm upgrade) ─
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      size: 5Gi
+      storageClass: longhorn
+    resources:
+      requests: {cpu: 250m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+
+redis:
+  enabled: true
+  persistence:
+    size: 1Gi
+    storageClassName: longhorn
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 300m, memory: 256Mi}
+
+# ── các component Airflow ─────────────────────────────────────────────────
+# ── SSO: client secret Keycloak bơm vào pod dưới dạng biến môi trường ─────
+secret:
+  - envName: KEYCLOAK_CLIENT_SECRET
+    secretName: keycloak-airflow
+    secretKey: client-secret
+  # Kho dữ liệu stc_dwh trên cụm jmix-ha. Tách khỏi metadata DB của Airflow:
+  # Airflow hỏng thì kho vẫn nguyên, và ngược lại.
+  - envName: DWH_HOST
+    secretName: dwh-db
+    secretKey: host
+  - envName: DWH_DBNAME
+    secretName: dwh-db
+    secretKey: dbname
+  - envName: DWH_USER
+    secretName: dwh-db
+    secretKey: user
+  - envName: DWH_PASSWORD
+    secretName: dwh-db
+    secretKey: password
+
+# ── ĐƯỜNG NẠP DAG ─────────────────────────────────────────────────────────
+# Khi dags.persistence và dags.gitSync cùng tắt, chart KHÔNG mount gì cả — DAG
+# buộc phải nằm sẵn trong image. Ở đây chưa build được image riêng, nên mount
+# ConfigMap "airflow-dags" vào đúng AIRFLOW__CORE__DAGS_FOLDER (/opt/airflow/dags).
+#   ưu   không tốn PVC (quota chỉ còn 1 khe), không cần git server, sửa là áp ngay
+#   nhược ConfigMap tối đa 1MiB, kubelet đồng bộ sau ~60s, không có lịch sử phiên bản
+# Khi lên thật thì đổi sang gitSync trỏ vào repo nội bộ.
+# Phải mount ở CẢ dagProcessor (phân tích), workers (chạy) và apiServer (xem mã).
+apiServer:
+  extraVolumes:
+    - name: dags-cm
+      configMap: {name: airflow-dags}
+  extraVolumeMounts:
+    - name: dags-cm
+      mountPath: /opt/airflow/dags
+      readOnly: true
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    # 500m quá chặt: boot Airflow api-server bị throttle, không kịp startupProbe
+    limits: {cpu: 1, memory: 1Gi}
+  # mặc định 6×10s = 60s không đủ để boot
+  startupProbe:
+    timeoutSeconds: 20
+    failureThreshold: 18
+    periodSeconds: 10
+
+  # ── đăng nhập bằng Keycloak (realm khodl) ──────────────────────────────
+  # Airflow 3 dùng key apiServerConfig (Airflow 2 là webserver.webserverConfig)
+  apiServerConfig: |
+    import os
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+    from airflow.providers.fab.auth_manager.security_manager.override import (
+        FabAirflowSecurityManagerOverride,
+    )
+
+    # Pod trong cluster KHONG toi duoc 10.123.123.x (ingress VIP), nen moi lenh
+    # goi server-to-server phai di duong Service noi bo. Keycloak bat
+    # KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true nen ban discovery lay tu ben trong se
+    # tra ve: authorize_endpoint = URL CONG KHAI (trinh duyet di),
+    #         token/userinfo/jwks = URL NOI BO (pod di).
+    KEYCLOAK = "http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl"
+
+    AUTH_TYPE = AUTH_OAUTH
+    AUTH_USER_REGISTRATION = True          # user chua co thi tu tao
+    AUTH_USER_REGISTRATION_ROLE = "Viewer" # vai mac dinh neu khong khop mapping
+    AUTH_ROLES_SYNC_AT_LOGIN = True        # moi lan dang nhap dong bo lai vai
+
+    # Keycloak realm role  ->  vai Airflow
+    AUTH_ROLES_MAPPING = {
+        "quan_tri":    ["Admin"],
+        "chuyen_vien": ["Op"],
+        "ke_toan_dv":  ["User"],
+        "lanh_dao":    ["Viewer"],
+    }
+
+    OAUTH_PROVIDERS = [
+        {
+            "name": "keycloak",
+            "icon": "fa-key",
+            "token_key": "access_token",
+            "remote_app": {
+                "client_id": "airflow",
+                "client_secret": os.environ.get("KEYCLOAK_CLIENT_SECRET", ""),
+                "server_metadata_url": KEYCLOAK + "/.well-known/openid-configuration",
+                "api_base_url": KEYCLOAK + "/protocol/openid-connect/",
+                "client_kwargs": {"scope": "openid email profile"},
+            },
+        }
+    ]
+
+
+    class KeycloakSecurityManager(FabAirflowSecurityManagerOverride):
+        """Lay thong tin user + realm role tu userinfo endpoint cua Keycloak."""
+
+        def get_oauth_user_info(self, provider, resp):
+            if provider != "keycloak":
+                return super().get_oauth_user_info(provider, resp)
+            data = self.appbuilder.sm.oauth_remotes[provider].get("userinfo").json()
+            return {
+                "username": data.get("preferred_username"),
+                "email": data.get("email", ""),
+                "first_name": data.get("given_name", ""),
+                "last_name": data.get("family_name", ""),
+                "role_keys": data.get("roles", []),
+            }
+
+
+    SECURITY_MANAGER_CLASS = KeycloakSecurityManager
+
+scheduler:
+  extraVolumes:
+    - name: dags-cm
+      configMap: {name: airflow-dags}
+  extraVolumeMounts:
+    - name: dags-cm
+      mountPath: /opt/airflow/dags
+      readOnly: true
+  resources:
+    requests: {cpu: 250m, memory: 768Mi}
+    limits: {cpu: 1, memory: 1536Mi}
+  logGroomerSidecar:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {cpu: 100m, memory: 64Mi}
+
+dagProcessor:
+  extraVolumes:
+    - name: dags-cm
+      configMap: {name: airflow-dags}
+  extraVolumeMounts:
+    - name: dags-cm
+      mountPath: /opt/airflow/dags
+      readOnly: true
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {cpu: 1, memory: 1Gi}
+  logGroomerSidecar:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {cpu: 100m, memory: 64Mi}
+
+triggerer:
+  persistence:
+    size: 2Gi
+    storageClassName: longhorn
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    # 300m bị đội trần -> throttle -> heartbeat đứng -> unhealthy
+    limits: {cpu: 1, memory: 512Mi}
+
+workers:
+  extraVolumes:
+    - name: dags-cm
+      configMap: {name: airflow-dags}
+  extraVolumeMounts:
+    - name: dags-cm
+      mountPath: /opt/airflow/dags
+      readOnly: true
+  persistence:
+    size: 3Gi
+    storageClassName: longhorn
+  resources:
+    requests: {cpu: 250m, memory: 768Mi}
+    limits: {cpu: 1, memory: 2Gi}
+  logGroomerSidecar:
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {cpu: 100m, memory: 64Mi}
+
+migrateDatabaseJob:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 1Gi}
+
+createUserJob:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 1Gi}
+
+# ── chống OOM và tiết kiệm CPU ở môi trường dev ───────────────────────────
+config:
+  core:
+    parallelism: "8"
+    max_active_tasks_per_dag: "4"
+    load_examples: "False"
+  celery:
+    worker_concurrency: "4"
+  dag_processor:
+    min_file_process_interval: "120"

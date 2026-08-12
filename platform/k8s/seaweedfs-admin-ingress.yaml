@@ -1,0 +1,33 @@
+# Ingress cho SeaweedFS Admin UI, đứng sau oauth2-proxy để đăng nhập bằng Keycloak.
+#
+# Cách hoạt động:
+#   1. Trình duyệt gọi http://s3-stc.../
+#   2. nginx hỏi oauth2-proxy tại auth-url: "người này đăng nhập chưa?"
+#   3. Chưa  -> nginx đá về auth-signin -> oauth2-proxy -> Keycloak realm khodl
+#      Rồi   -> nginx cho qua, chuyển tới sw-seaweedfs-admin:23646
+#
+# Đường /oauth2/* do Ingress riêng của chart oauth2-proxy phục vụ (cùng hostname).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: seaweedfs-admin-ui
+  namespace: stc-hy
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "http://o2p-oauth2-proxy.stc-hy.svc.cluster.local/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "http://s3-stc.10.123.123.194.nip.io/oauth2/start?rd=$escaped_request_uri"
+    # Chuyển danh tính đã xác thực xuống ứng dụng phía sau
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Preferred-Username"
+    nginx.ingress.kubernetes.io/proxy-body-size: "512m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: s3-stc.10.123.123.194.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sw-seaweedfs-admin
+                port:
+                  number: 23646
