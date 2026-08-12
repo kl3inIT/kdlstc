@@ -123,6 +123,51 @@ def sector_for(unit_name):
     return "LV11"
 
 
+BASE_ALLOCATION = {
+    "6001": 900_000_000, "6003": 180_000_000, "6051": 120_000_000,
+    "6101": 90_000_000,  "6103": 40_000_000,  "6112": 210_000_000,
+    "6301": 190_000_000, "6302": 34_000_000,  "6303": 18_000_000,
+    "9051": 450_000_000, "9062": 800_000_000, "7001": 260_000_000,
+}
+
+_PLAN_CACHE = {}
+
+
+def unit_plan(unit_code, unit_level, lines, fundings):
+    """
+    A unit's spending plan for the whole year, stable across every period.
+
+    Seeded from the unit code rather than the period, for two reasons. A body
+    does not spend on a different random set of budget lines each month — it
+    has a plan. And the annual allocation cannot be re-rolled monthly, or the
+    same line shows a different budget in January and February.
+
+    Returning the twelve monthly execution factors up front is what lets the
+    cumulative column be a real cumulative sum instead of a fresh guess.
+    """
+    if unit_code in _PLAN_CACHE:
+        return _PLAN_CACHE[unit_code]
+
+    r = random.Random("plan|" + unit_code)
+    n_lines = {"province": 34, "department": 26, "district": 18}.get(unit_level, 12)
+    scale = {"province": 40, "department": 12, "district": 6}.get(unit_level, 1.6)
+
+    plan = []
+    for line_code, cat, subcat, item in r.sample(lines, min(n_lines, len(lines))):
+        funding = r.choices(fundings, weights=[70, 14, 4, 4, 6, 2], k=1)[0]
+        base = BASE_ALLOCATION.get(line_code, 60_000_000)
+        allocated = int(base * scale * r.uniform(0.85, 1.15) / 1000) * 1000
+        adjusted = 0
+        if r.random() < 0.12:
+            adjusted = int(allocated * r.uniform(-0.15, 0.25) / 1000) * 1000
+        factors = [r.uniform(0.55, 1.35) for _ in range(12)]
+        plan.append((line_code, cat, subcat, item, funding,
+                     allocated, adjusted, factors))
+
+    _PLAN_CACHE[unit_code] = plan
+    return plan
+
+
 def build_rows(period, units, lines, fundings, sectors, rnd, restated=False):
     """
     One period's worth of detail rows, plus the subtotal rows a real export
@@ -138,40 +183,30 @@ def build_rows(period, units, lines, fundings, sectors, rnd, restated=False):
 
         chapter = chapter_for(unit_level, parent_code)
         sector = sector_for(unit_name)
-
-        # Bigger bodies spend on more lines than a commune-level school.
-        n_lines = {"province": 34, "department": 26, "district": 18}.get(unit_level, 12)
-        chosen = rnd.sample(lines, min(n_lines, len(lines)))
-
-        unit_scale = {"province": 40, "department": 12, "district": 6}.get(unit_level, 1.6)
+        plan = unit_plan(unit_code, unit_level, lines, fundings)
 
         unit_rows = []
-        for line_code, cat, subcat, item in chosen:
-            funding = rnd.choices(fundings, weights=[70, 14, 4, 4, 6, 2], k=1)[0]
-
-            base = {
-                "6001": 900_000_000, "6003": 180_000_000, "6051": 120_000_000,
-                "6101": 90_000_000,  "6103": 40_000_000,  "6112": 210_000_000,
-                "6301": 190_000_000, "6302": 34_000_000,  "6303": 18_000_000,
-                "9051": 450_000_000, "9062": 800_000_000, "7001": 260_000_000,
-            }.get(line_code, 60_000_000)
-
-            allocated = int(base * unit_scale * rnd.uniform(0.85, 1.15) / 1000) * 1000
-            adjusted = 0
-            if rnd.random() < 0.12:
-                adjusted = int(allocated * rnd.uniform(-0.15, 0.25) / 1000) * 1000
-
-            # Execution ramps through the year and is never perfectly even.
+        for line_code, cat, subcat, item, funding, allocated, adjusted, factors in plan:
             monthly_target = (allocated + adjusted) / 12
-            executed = int(monthly_target * rnd.uniform(0.55, 1.35) / 1000) * 1000
-            if restated:
-                executed = int(executed * rnd.uniform(0.97, 1.06) / 1000) * 1000
+
+            def spend(m):
+                value = int(monthly_target * factors[m - 1] / 1000) * 1000
+                if restated:
+                    # A restatement adjusts figures; it does not reshuffle them.
+                    value = int(value * 1.03 / 1000) * 1000
+                return value
+
+            executed = spend(month)
+
+            # Cumulative means cumulative: the sum of what came before, not an
+            # independent guess. Deriving it any other way makes the column
+            # wander backwards and trips a consistency rule that is doing its
+            # job — the data would be wrong, not the rule.
+            ytd = sum(spend(m) for m in range(1, month + 1))
 
             advance = 0
-            if rnd.random() < 0.09:
-                advance = int(executed * rnd.uniform(0.05, 0.30) / 1000) * 1000
-
-            ytd = int(executed * month * rnd.uniform(0.92, 1.05) / 1000) * 1000
+            if factors[month - 1] > 1.28:
+                advance = int(executed * 0.18 / 1000) * 1000
 
             unit_rows.append({
                 "kind": "detail",

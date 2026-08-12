@@ -197,15 +197,6 @@ triggerer:
     limits: {cpu: 1, memory: 512Mi}
 
 workers:
-  # openpyxl để đọc tệp .xlsx của TABMIS. Chỉ worker cần — task chạy ở đây, và
-  # DAG import openpyxl BÊN TRONG hàm task chứ không ở đầu tệp, nên dag-processor
-  # phân tích được DAG mà không cần thư viện này.
-  #
-  # Cách này chạy `pip install` mỗi lần pod khởi động: pod lên chậm thêm ~30s và
-  # phụ thuộc PyPI lúc đó có sống không. Đúng bài là nướng sẵn vào image, nhưng
-  # phải build và đẩy registry — món nợ đã ghi ở README.
-  extraPipPackages:
-    - "openpyxl==3.1.5"
   extraVolumes:
     - name: dags-cm
       configMap: {name: airflow-dags}
@@ -233,6 +224,21 @@ createUserJob:
   resources:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: 500m, memory: 1Gi}
+
+# ── thư viện thêm cho các task ────────────────────────────────────────────
+# openpyxl để đọc tệp .xlsx của TABMIS.
+#
+# Chart 1.22.0 KHÔNG có khoá extraPipPackages — thử dùng thì helm nuốt im lặng,
+# không báo lỗi mà cũng không sinh ra thay đổi nào. Cơ chế đúng nằm ở
+# ENTRYPOINT CỦA IMAGE: biến _PIP_ADDITIONAL_REQUIREMENTS được pip cài lúc
+# container khởi động.
+#
+# Đánh đổi: pod lên chậm thêm ~30s và phụ thuộc PyPI lúc đó có sống không.
+# Tài liệu Airflow nói rõ đây là cơ chế cho phát triển, không cho chạy thật.
+# Đúng bài là nướng sẵn vào image — món nợ đã ghi ở README.
+env:
+  - name: _PIP_ADDITIONAL_REQUIREMENTS
+    value: "openpyxl==3.1.5"
 
 # ── chống OOM và tiết kiệm CPU ở môi trường dev ───────────────────────────
 config:

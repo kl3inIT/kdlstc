@@ -249,9 +249,19 @@ def ingest_tabmis():
 
         candidates.sort()
         with warehouse_cursor() as cur:
+            # Only a file that REACHED A VERDICT is finished with.
+            #
+            #   accepted / superseded — its numbers are in the warehouse
+            #   rejected              — the submitter has been told to fix and resend,
+            #                           so re-reading the same bytes would just loop
+            #
+            # A row still sitting at 'received' means the batch died mid-flight.
+            # Those must stay claimable, or a transient failure quietly retires
+            # the file forever — the pipeline would look idle while a month of
+            # data silently never lands.
             cur.execute(
                 "SELECT checksum_sha256 FROM ingestion.intake_files "
-                "WHERE source_code = %s", (SOURCE_CODE,)
+                "WHERE source_code = %s AND status <> 'received'", (SOURCE_CODE,)
             )
             seen = {r[0] for r in cur.fetchall()}
 
@@ -686,6 +696,26 @@ def ingest_tabmis():
             )
             problem_total = cur.fetchone()[0]
 
+            # Split the failures the way the submitter experiences them, not the
+            # way the gate scores them: "a code we do not recognise" and "a
+            # figure that is wrong" call for different people to do different
+            # things. Reporting only quality_score produced a line that read
+            # "100% quality" directly above eight rows to fix.
+            cur.execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE reject_reason = ANY(%s)),
+                    COUNT(*) FILTER (WHERE NOT is_valid
+                                     AND reject_reason <> ALL(%s)
+                                     AND reject_reason <> ALL(%s))
+                FROM staging.stg_tabmis__budget_typed
+                WHERE run_id = %s
+                """,
+                (list(MAPPING_REASONS), list(MAPPING_REASONS),
+                 list(STRUCTURAL_REASONS), run_id),
+            )
+            unmapped_rows, defective_rows = cur.fetchone()
+
         accepted = status == "published"
         lines = [
             f"KET QUA TIEP NHAN TEP  —  {ticket['key'].split('/')[-1]}",
@@ -695,15 +725,26 @@ def ingest_tabmis():
             "",
             ("KET QUA    : DA TIEP NHAN" if accepted else "KET QUA    : TU CHOI"),
         ]
-        if score is not None:
-            lines.append(f"Chat luong : {float(score):.2%}")
         if row_count is not None and accepted:
-            lines.append(f"Da nap     : {row_count} dong vao kho (ky {ticket['period']} da duoc thay the)")
+            lines.append(f"Da nap     : {row_count} dong vao kho "
+                         f"(ky {ticket['period']} da duoc thay the)")
         if message:
             lines.append(f"Ly do      : {message}")
 
+        if unmapped_rows or defective_rows:
+            lines += ["", "TOM TAT VAN DE:"]
+            if unmapped_rows:
+                lines.append(f"  {unmapped_rows:>5} dong  ma khong co trong danh muc "
+                             f"-> can bo sung danh muc, KHONG phai sua tep")
+            if defective_rows:
+                lines.append(f"  {defective_rows:>5} dong  so lieu sai "
+                             f"-> can sua trong tep roi nop lai")
+            lines.append("")
+            lines.append("  Hai loai nay khac nhau: loai tren la thieu danh muc o phia kho,")
+            lines.append("  loai duoi la so trong bieu chua dung.")
+
         if problems:
-            lines += ["", f"CAC DONG CAN SUA ({problem_total} dong):", ""]
+            lines += ["", f"CHI TIET CAC DONG ({problem_total} dong):", ""]
             for number, reason, detail in problems:
                 lines.append(f"  dong {number:>6}  [{reason}]  {detail or ''}".rstrip())
             if problem_total > len(problems):
