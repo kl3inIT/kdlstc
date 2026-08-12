@@ -28,12 +28,14 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-from airflow.exceptions import AirflowException, AirflowSkipException
-
 try:                                    # Airflow 3
     from airflow.sdk import dag, task
+    from airflow.sdk.exceptions import AirflowSkipException
 except ImportError:                     # Airflow 2 fallback
     from airflow.decorators import dag, task
+    from airflow.exceptions import AirflowSkipException
+
+from airflow.exceptions import AirflowException
 
 from psycopg2.extras import Json, execute_values
 

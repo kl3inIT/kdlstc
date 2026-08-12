@@ -1,0 +1,19 @@
+# A ConfigMap mounted as a directory is not a plain directory. Kubernetes
+# writes the real files into a timestamped folder and leaves behind symlinks:
+#
+#   /opt/airflow/dags/
+#     ..2026_08_12_12_07_22.1352022888/   <- real files
+#     ..data -> ..2026_08_12_12_07_22.1352022888
+#     ingest_qlgia.py -> ..data/ingest_qlgia.py
+#
+# Airflow walks the DAG folder with followlinks=True, meets the timestamped
+# folder twice — once directly, once through ..data — and refuses to continue:
+#
+#   RuntimeError: Detected recursive loop when walking DAG directory
+#
+# Pruning both entries avoids it. The ignore filter runs before the recursion
+# check in airflow._shared.module_loading.file_discovery, so this is enough.
+#
+# Syntax is glob (core.dag_ignore_file_syntax), which uses gitignore matching:
+# a pattern with no slash matches by name at any depth.
+..*
