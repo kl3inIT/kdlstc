@@ -1,11 +1,17 @@
 """
 ingest_qlgia — first vertical slice of the finance warehouse.
 
-Source -> Bronze -> Silver-1 -> Silver-2 -> quality gate -> Gold, with a run
-ticket threaded through every step so any published number can be walked back
-to the bytes it came from.
+Source -> Bronze -> Silver-1 -> Silver-2 -> quality gate -> Silver-3 -> Gold,
+with a run ticket threaded through every step so any published number can be
+walked back to the bytes it came from.
 
-Two decisions worth knowing before reading the code:
+Three decisions worth knowing before reading the code:
+
+  The source publishes SURVEY POINTS, the report needs one number. A surveyor
+  visits three to five outlets for the same commodity in the same district, so
+  the grain has to change somewhere. It changes in exactly one place —
+  build_grain — and lands in its own table rather than hiding inside the
+  publish statement, so the collapse can be inspected before Gold sees it.
 
   Silver-1 is loaded FROM BRONZE, not from the HTTP response held in memory.
   It costs an extra read and buys replay: if a mapping rule changes next
@@ -13,8 +19,9 @@ Two decisions worth knowing before reading the code:
   source for numbers it may no longer be able to reproduce.
 
   Rows that fail validation are not dropped. They are written to Silver-2 with
-  a reject_reason and copied to quarantine. "Why is Phu Cu missing from the
-  July report" has to have an answer that points at a row.
+  a reject_reason and copied to quarantine. Judging happens per observation,
+  so one mistyped price does not discard the four sound ones beside it, and
+  the count of what was discarded travels with the average.
 
 The source publishes by SURVEY period, which is not the calendar period — May
 2026 has two, June has one. So the DAG pulls incrementally on a lastModified
@@ -49,7 +56,7 @@ from warehouse import (
 
 SOURCE_CODE = "qlgia"
 SOURCE_BASE_URL = "http://mock-qlgia.stc-hy.svc.cluster.local"
-PAGE_SIZE = 250
+PAGE_SIZE = 500
 HTTP_TIMEOUT = 30
 
 # Publish thresholds. Two separate numbers because they mean different things:
@@ -57,6 +64,10 @@ HTTP_TIMEOUT = 30
 # data. Only the second one should feel like an incident.
 MIN_QUALITY_SCORE = 0.95
 MIN_MAPPING_COVERAGE = 0.50
+
+# An average resting on this few observations is reported but flagged, so a
+# reader can tell a well-surveyed district from a thinly-surveyed one.
+THIN_SURVEY_POINTS = 2
 
 # What a source row must look like. Checked against a sample BEFORE anything
 # is written, so a source that silently changed shape is refused while Bronze
@@ -66,6 +77,8 @@ FIELD_CONTRACT = {
     "itemCode":     (str,),
     "itemName":     (str,),
     "areaCode":     (str, type(None)),
+    "outletCode":   (str, type(None)),
+    "outletName":   (str,),
     "periodCode":   (str,),
     "surveyDate":   (str,),
     "uom":          (str,),
@@ -90,13 +103,13 @@ def _fetch(path, **params):
 
 
 # =========================================================================
-# Silver-2 build. Expressed as one statement so the whole derivation is
-# visible in one place and runs in one transaction.
+# Silver-2 build. One statement so the whole derivation is visible in one
+# place and runs in one transaction. Grain here is still one survey point.
 # =========================================================================
 BUILD_TYPED_SQL = """
 INSERT INTO staging.stg_qlgia__price_typed (
     run_id, commodity_code, locality_code, survey_period, survey_date,
-    unit_of_measure, price, source_updated_at,
+    outlet_code, unit_of_measure, price, source_updated_at,
     src_item_code, src_area_code, source_row_id, raw_path,
     is_valid, reject_reason
 )
@@ -108,6 +121,7 @@ WITH parsed AS (
         s.commodity_code AS src_item_code,
         s.locality_code  AS src_area_code,
         s.survey_period,
+        s.outlet_code,
         s.source_row_id,
         s.raw_path,
         s.unit_of_measure,
@@ -138,20 +152,26 @@ mapped AS (
           AND ml.valid_to     >= CURRENT_DATE
 ),
 deduped AS (
-    -- The source re-sends corrected rows under the same business key.
-    -- Newest lastModified wins; source id breaks exact ties.
-    SELECT DISTINCT ON (src_item_code, COALESCE(src_area_code, '~null~'), survey_period)
-           *
+    -- The source re-sends corrected readings for the same outlet. Newest
+    -- lastModified wins; source id breaks exact ties. The key includes the
+    -- outlet, because several outlets in one district are not duplicates.
+    SELECT DISTINCT ON (
+        src_item_code,
+        COALESCE(src_area_code, '~null~'),
+        survey_period,
+        COALESCE(outlet_code, '~null~')
+    ) *
     FROM mapped
     ORDER BY src_item_code,
              COALESCE(src_area_code, '~null~'),
              survey_period,
+             COALESCE(outlet_code, '~null~'),
              source_updated_at DESC NULLS LAST,
              source_row_id     DESC
 ),
 reference_price AS (
-    -- Median per commodity across the batch, used to catch unit-of-measure
-    -- slips. Subtotal and non-positive rows would drag it, so exclude them.
+    -- Median per commodity across every point in the batch, used to catch
+    -- unit-of-measure slips. Subtotal and non-positive rows would drag it.
     SELECT src_item_code,
            percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS median_price
     FROM mapped
@@ -168,6 +188,7 @@ judged AS (
             -- put a permanent false failure in the quality score.
             WHEN d.src_area_code = 'QLG-TONG'      THEN 'subtotal_row'
             WHEN d.src_area_code IS NULL           THEN 'locality_missing'
+            WHEN d.outlet_code IS NULL             THEN 'outlet_missing'
             WHEN d.survey_date IS NULL             THEN 'survey_date_unparseable'
             WHEN d.price IS NULL                   THEN 'price_unparseable'
             WHEN d.price <= 0                      THEN 'price_not_positive'
@@ -181,7 +202,7 @@ judged AS (
 )
 SELECT
     run_id, commodity_code, locality_code, survey_period, survey_date,
-    unit_of_measure, price, source_updated_at,
+    outlet_code, unit_of_measure, price, source_updated_at,
     src_item_code, src_area_code, source_row_id, raw_path,
     reject_reason IS NULL AS is_valid,
     reject_reason
@@ -189,9 +210,43 @@ FROM judged;
 """
 
 
+# =========================================================================
+# Silver-3 build — the grain change.
+#
+# Rows with no warehouse codes are excluded rather than counted: an unmapped
+# or district-less observation belongs to no group, so it cannot be one
+# group's rejected point.
+# =========================================================================
+BUILD_GRAIN_SQL = """
+INSERT INTO staging.stg_qlgia__price_grain (
+    run_id, commodity_code, locality_code, survey_period, survey_date,
+    unit_of_measure, avg_price, min_price, max_price,
+    survey_points, rejected_points, raw_paths
+)
+SELECT
+    run_id,
+    commodity_code,
+    locality_code,
+    survey_period,
+    MIN(survey_date)     FILTER (WHERE is_valid),
+    MIN(unit_of_measure) FILTER (WHERE is_valid),
+    ROUND(AVG(price)     FILTER (WHERE is_valid), 2),
+    MIN(price)           FILTER (WHERE is_valid),
+    MAX(price)           FILTER (WHERE is_valid),
+    COUNT(*)             FILTER (WHERE is_valid),
+    COUNT(*)             FILTER (WHERE NOT is_valid),
+    ARRAY_AGG(DISTINCT raw_path)
+FROM staging.stg_qlgia__price_typed
+WHERE run_id = %(run_id)s
+  AND commodity_code IS NOT NULL
+  AND locality_code  IS NOT NULL
+GROUP BY run_id, commodity_code, locality_code, survey_period;
+"""
+
+
 @dag(
     dag_id="ingest_qlgia",
-    description="Price Management -> Bronze -> Silver -> quality gate -> Gold",
+    description="Price Management survey points -> Bronze -> Silver -> quality gate -> Gold",
     schedule="0 3 * * *",
     start_date=datetime(2026, 8, 1, tzinfo=timezone.utc),
     catchup=False,
@@ -244,16 +299,15 @@ def ingest_qlgia():
             )
 
             # A retry must not see rows from its own previous attempt.
-            cur.execute("DELETE FROM staging.stg_qlgia__price WHERE run_id = %s",
-                        (run_id,))
-            cur.execute("DELETE FROM staging.stg_qlgia__price_typed WHERE run_id = %s",
-                        (run_id,))
-            cur.execute("DELETE FROM metadata.quarantine_rows WHERE run_id = %s",
-                        (run_id,))
-            cur.execute("DELETE FROM metadata.quality_exceptions WHERE run_id = %s",
-                        (run_id,))
-            cur.execute("DELETE FROM metadata.mapping_rejections WHERE run_id = %s",
-                        (run_id,))
+            for statement in (
+                "DELETE FROM staging.stg_qlgia__price        WHERE run_id = %s",
+                "DELETE FROM staging.stg_qlgia__price_typed  WHERE run_id = %s",
+                "DELETE FROM staging.stg_qlgia__price_grain  WHERE run_id = %s",
+                "DELETE FROM metadata.quarantine_rows        WHERE run_id = %s",
+                "DELETE FROM metadata.quality_exceptions     WHERE run_id = %s",
+                "DELETE FROM metadata.mapping_rejections     WHERE run_id = %s",
+            ):
+                cur.execute(statement, (run_id,))
 
         write_audit("airflow", "run_opened", run_id,
                     {"source": SOURCE_CODE, "cursor": cursor_value})
@@ -425,6 +479,8 @@ def ingest_qlgia():
                     item.get("itemCode"),
                     item.get("itemName"),
                     item.get("areaCode"),
+                    item.get("outletCode"),
+                    item.get("outletName"),
                     item.get("periodCode"),
                     item.get("surveyDate"),
                     item.get("uom"),
@@ -439,12 +495,13 @@ def ingest_qlgia():
                 """
                 INSERT INTO staging.stg_qlgia__price (
                     run_id, source_row_id, commodity_code, commodity_name,
-                    locality_code, survey_period, survey_date, unit_of_measure,
-                    price, source_updated_at, raw_path
+                    locality_code, outlet_code, outlet_name, survey_period,
+                    survey_date, unit_of_measure, price, source_updated_at,
+                    raw_path
                 ) VALUES %s
                 """,
                 rows,
-                page_size=500,
+                page_size=1000,
             )
 
         set_run_status(run_id, "parsed")
@@ -454,7 +511,7 @@ def ingest_qlgia():
     @task
     def build_silver_two(ticket: dict, staged: dict) -> dict:
         """
-        Type, deduplicate, map to warehouse codes, and judge every row.
+        Type, deduplicate, map to warehouse codes, and judge every point.
 
         Source codes with no mapping rule become a queued business question
         with an owner and a due date, not a silently dropped row.
@@ -507,13 +564,13 @@ def ingest_qlgia():
     @task
     def quality_gate(ticket: dict, silver_two: dict) -> dict:
         """
-        Decide whether this batch may be published.
+        Decide whether this batch may be published. Judged per survey point.
 
         Two independent measures, because they call for different responses:
 
           mapping_coverage  how much of the batch the warehouse understands.
                             Low means somebody owes a mapping rule.
-          quality_score     of the rows it does understand, how many are
+          quality_score     of the points it does understand, how many are
                             sound. Low means the data itself is wrong.
 
         Structural exclusions (subtotal rows) count against neither — they are
@@ -538,16 +595,15 @@ def ingest_qlgia():
             for reason, count in sorted(tally.items()):
                 if reason == "__valid__":
                     continue
-                severity = "scoring"
-                denominator = eligible if reason not in MAPPING_REASONS else business
+                denominator = business if reason in MAPPING_REASONS else eligible
                 cur.execute(
                     """
                     INSERT INTO metadata.quality_exceptions
                         (run_id, table_name, rule_name, severity,
                          failed_rows, pass_rate, details)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, 'scoring', %s, %s, %s)
                     """,
-                    (run_id, "staging.stg_qlgia__price_typed", reason, severity,
+                    (run_id, "staging.stg_qlgia__price_typed", reason,
                      count,
                      round(1 - count / denominator, 4) if denominator else None,
                      Json({"structural": reason in STRUCTURAL_REASONS,
@@ -571,20 +627,20 @@ def ingest_qlgia():
             quarantined = cur.rowcount
 
         verdict = {
-            "total_rows": total,
+            "survey_points": total,
             "structural_excluded": structural,
-            "unmapped_rows": unmapped,
-            "eligible_rows": eligible,
-            "valid_rows": valid,
-            "defective_rows": defective,
-            "quarantined_rows": quarantined,
+            "unmapped_points": unmapped,
+            "eligible_points": eligible,
+            "valid_points": valid,
+            "defective_points": defective,
+            "quarantined_points": quarantined,
             "mapping_coverage": round(mapping_coverage, 4),
             "quality_score": round(quality_score, 4),
         }
 
         if eligible == 0:
             set_run_status(run_id, "quality_failed", quality_score=0,
-                           message="no rows survived mapping")
+                           message="no points survived mapping")
             raise AirflowException(f"Nothing publishable in this batch: {verdict}")
 
         if mapping_coverage < MIN_MAPPING_COVERAGE:
@@ -610,9 +666,114 @@ def ingest_qlgia():
 
     # ---------------------------------------------------------------------
     @task
-    def publish(ticket: dict, bronze: dict, verdict: dict) -> dict:
+    def build_grain(ticket: dict, verdict: dict) -> dict:
         """
-        Merge valid rows into Gold and declare the batch visible.
+        Collapse survey points into the reporting grain.
+
+        This is the only place the grain changes: several observations become
+        one commodity x district x period row carrying the average, the spread,
+        and — crucially — how many observations it rests on.
+
+        Two situations are surfaced rather than smoothed over:
+
+          a group whose points were ALL rejected produces no Gold row at all.
+          Publishing a zero there would be inventing a number.
+
+          a group resting on one or two observations is published but flagged,
+          because an average of one is a single shop's price wearing a
+          statistic's clothes.
+        """
+        run_id = ticket["run_id"]
+
+        with warehouse_cursor() as cur:
+            cur.execute(BUILD_GRAIN_SQL, {"run_id": run_id})
+
+            cur.execute(
+                """
+                SELECT
+                    COUNT(*)                                        AS groups_total,
+                    COUNT(*) FILTER (WHERE survey_points = 0)       AS groups_dropped,
+                    COUNT(*) FILTER (WHERE survey_points BETWEEN 1 AND %(thin)s)
+                                                                    AS groups_thin,
+                    COALESCE(SUM(survey_points), 0)                 AS points_kept,
+                    COALESCE(SUM(rejected_points), 0)               AS points_rejected,
+                    ROUND(AVG(survey_points) FILTER (WHERE survey_points > 0), 2)
+                                                                    AS points_per_group
+                FROM staging.stg_qlgia__price_grain
+                WHERE run_id = %(run_id)s
+                """,
+                {"run_id": run_id, "thin": THIN_SURVEY_POINTS},
+            )
+            (groups_total, groups_dropped, groups_thin,
+             points_kept, points_rejected, points_per_group) = cur.fetchone()
+
+            # A dropped group is a hole in the report. Name it, with coordinates.
+            if groups_dropped:
+                cur.execute(
+                    """
+                    INSERT INTO metadata.quality_exceptions
+                        (run_id, table_name, rule_name, severity,
+                         failed_rows, pass_rate, details)
+                    SELECT %(run_id)s, 'staging.stg_qlgia__price_grain',
+                           'grain_dropped_all_points_rejected', 'scoring',
+                           COUNT(*),
+                           ROUND(1 - COUNT(*)::numeric / %(total)s, 4),
+                           jsonb_build_object('groups', jsonb_agg(
+                               jsonb_build_object(
+                                   'commodity', commodity_code,
+                                   'locality',  locality_code,
+                                   'period',    survey_period,
+                                   'rejected',  rejected_points)))
+                    FROM staging.stg_qlgia__price_grain
+                    WHERE run_id = %(run_id)s AND survey_points = 0
+                    """,
+                    {"run_id": run_id, "total": groups_total},
+                )
+
+            # A thin group is publishable but should not read as authoritative.
+            if groups_thin:
+                cur.execute(
+                    """
+                    INSERT INTO metadata.quality_exceptions
+                        (run_id, table_name, rule_name, severity,
+                         failed_rows, pass_rate, details)
+                    SELECT %(run_id)s, 'staging.stg_qlgia__price_grain',
+                           'grain_thin_survey_coverage', 'scoring',
+                           COUNT(*),
+                           ROUND(1 - COUNT(*)::numeric / %(total)s, 4),
+                           jsonb_build_object(
+                               'threshold', %(thin)s,
+                               'groups', jsonb_agg(
+                                   jsonb_build_object(
+                                       'commodity', commodity_code,
+                                       'locality',  locality_code,
+                                       'period',    survey_period,
+                                       'points',    survey_points)))
+                    FROM staging.stg_qlgia__price_grain
+                    WHERE run_id = %(run_id)s
+                      AND survey_points BETWEEN 1 AND %(thin)s
+                    """,
+                    {"run_id": run_id, "total": groups_total,
+                     "thin": THIN_SURVEY_POINTS},
+                )
+
+        summary = {
+            "groups_total": groups_total,
+            "groups_publishable": groups_total - groups_dropped,
+            "groups_dropped": groups_dropped,
+            "groups_thin": groups_thin,
+            "points_kept": points_kept,
+            "points_rejected": points_rejected,
+            "points_per_group": float(points_per_group or 0),
+        }
+        write_audit("airflow", "grain_built", run_id, summary)
+        return summary
+
+    # ---------------------------------------------------------------------
+    @task
+    def publish(ticket: dict, bronze: dict, verdict: dict, grain: dict) -> dict:
+        """
+        Merge the grain rows into Gold and declare the batch visible.
 
         Upsert on the business key, so re-running a batch converges instead of
         accumulating. The cursor only advances after a successful publish — a
@@ -626,20 +787,27 @@ def ingest_qlgia():
                 """
                 INSERT INTO curated.fact_price (
                     commodity_code, locality_code, survey_period, survey_date,
-                    unit_of_measure, price, run_id, batch_id, raw_path
+                    unit_of_measure, avg_price, min_price, max_price,
+                    survey_points, rejected_points, run_id, batch_id, raw_paths
                 )
                 SELECT commodity_code, locality_code, survey_period, survey_date,
-                       unit_of_measure, price, run_id, %(batch_id)s, raw_path
-                FROM staging.stg_qlgia__price_typed
-                WHERE run_id = %(run_id)s AND is_valid
+                       unit_of_measure, avg_price, min_price, max_price,
+                       survey_points, rejected_points,
+                       run_id, %(batch_id)s, raw_paths
+                FROM staging.stg_qlgia__price_grain
+                WHERE run_id = %(run_id)s AND survey_points > 0
                 ON CONFLICT (commodity_code, locality_code, survey_period)
                 DO UPDATE SET
                     survey_date     = EXCLUDED.survey_date,
                     unit_of_measure = EXCLUDED.unit_of_measure,
-                    price           = EXCLUDED.price,
+                    avg_price       = EXCLUDED.avg_price,
+                    min_price       = EXCLUDED.min_price,
+                    max_price       = EXCLUDED.max_price,
+                    survey_points   = EXCLUDED.survey_points,
+                    rejected_points = EXCLUDED.rejected_points,
                     run_id          = EXCLUDED.run_id,
                     batch_id        = EXCLUDED.batch_id,
-                    raw_path        = EXCLUDED.raw_path,
+                    raw_paths       = EXCLUDED.raw_paths,
                     updated_at      = now()
                 """,
                 {"run_id": run_id, "batch_id": batch_id},
@@ -653,13 +821,17 @@ def ingest_qlgia():
                 INSERT INTO curated.batch_summary
                     (batch_id, run_id, source_code, period, target_table,
                      row_count, quality_score, publish_status, data_freshness)
-                SELECT %(batch_id)s || '_' || survey_period,
-                       %(run_id)s, %(source_code)s, survey_period,
+                SELECT %(batch_id)s || '_' || g.survey_period,
+                       %(run_id)s, %(source_code)s, g.survey_period,
                        'curated.fact_price',
-                       COUNT(*), %(score)s, 'approved', MAX(source_updated_at)
-                FROM staging.stg_qlgia__price_typed
-                WHERE run_id = %(run_id)s AND is_valid
-                GROUP BY survey_period
+                       COUNT(*), %(score)s, 'approved',
+                       (SELECT MAX(t.source_updated_at)
+                          FROM staging.stg_qlgia__price_typed t
+                         WHERE t.run_id = g.run_id
+                           AND t.survey_period = g.survey_period)
+                FROM staging.stg_qlgia__price_grain g
+                WHERE g.run_id = %(run_id)s AND g.survey_points > 0
+                GROUP BY g.run_id, g.survey_period
                 ON CONFLICT (batch_id) DO UPDATE SET
                     row_count      = EXCLUDED.row_count,
                     quality_score  = EXCLUDED.quality_score,
@@ -685,7 +857,8 @@ def ingest_qlgia():
         set_run_status(run_id, "published", row_count=published_rows)
         write_audit("airflow", "published", run_id,
                     {"rows": published_rows, "batch_id": batch_id,
-                     "cursor_to": bronze["cursor_to"]})
+                     "cursor_to": bronze["cursor_to"],
+                     "groups_dropped": grain["groups_dropped"]})
 
         return {"batch_id": batch_id, "published_rows": published_rows,
                 "cursor_to": bronze["cursor_to"]}
@@ -696,7 +869,8 @@ def ingest_qlgia():
     staged = load_silver_one(ticket, bronze)
     silver_two = build_silver_two(ticket, staged)
     verdict = quality_gate(ticket, silver_two)
-    publish(ticket, bronze, verdict)
+    grain = build_grain(ticket, verdict)
+    publish(ticket, bronze, verdict, grain)
 
 
 ingest_qlgia()

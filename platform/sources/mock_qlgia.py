@@ -1,16 +1,27 @@
 """
 Mock QL Gia — stands in for the provincial Price Management system.
 
-Contract it honours (from source profile B4.1):
+Contract it honours (source profile B4.1):
     transport    REST, page-based
-    business key commodity x locality x survey period
+    business key commodity x locality x survey period x outlet
     cursor       lastModified
     cadence      by SURVEY period, which is not the calendar period
 
+IMPORTANT — the source publishes SURVEY POINTS, not summaries.
+
+A surveyor visits several outlets for the same commodity in the same district
+and records a price at each one. So one commodity x locality x period is 3 to 5
+rows here, while the report needs a single number. Collapsing those rows into
+one average is the warehouse's job, and it only shows up in the demo because
+the source refuses to do it first.
+
+That difference is also why fact_price carries survey_points: averaging an
+average is wrong. A district surveyed at five outlets and one surveyed at a
+single outlet cannot be combined by adding two numbers and halving them — any
+roll-up has to weight by how many points went in.
+
 Payload keys are camelCase, deliberately different from warehouse column
-names. Renaming source vocabulary into warehouse vocabulary is real work that
-the staging layer has to do, and it only shows up in the demo if the two
-sides actually disagree.
+names, so renaming source vocabulary stays visible work.
 
 Standard library only, so this runs straight on python:3.12-slim with no
 image build.
@@ -55,9 +66,19 @@ AREAS = [
     "QLG-ATHI", "QLG-KCHAU", "QLG-KDONG", "QLG-TLU", "QLG-PCU",
 ]
 
+# Kinds of outlet a surveyor visits. Prices differ systematically between
+# them — a supermarket is not a wet market — which is exactly why the average
+# needs several points to mean anything.
+OUTLET_KINDS = [
+    ("CHO", "Cho trung tam", 1.000),
+    ("ST",  "Sieu thi",      1.045),
+    ("DL",  "Dai ly",        0.975),
+    ("CH",  "Cua hang tap hoa", 1.020),
+    ("HTX", "Hop tac xa",    0.960),
+]
+
 # Survey periods do NOT line up with calendar months: May has two, June one,
-# July two. Anything that assumes one period per month breaks here, which is
-# the point.
+# July two. Anything that assumes one period per month breaks here.
 PERIODS = [
     ("2026-05-K1", "2026-05-08"),
     ("2026-05-K2", "2026-05-22"),
@@ -65,6 +86,23 @@ PERIODS = [
     ("2026-07-K1", "2026-07-09"),
     ("2026-07-K2", "2026-07-24"),
 ]
+
+# ── Situations planted on purpose, addressed by exact coordinates so the
+#    expected outcome is predictable and can be asserted against ──────────
+
+# Every point in this group is unusable. The group must VANISH from the
+# report rather than appear as zero — a warehouse that invents a number here
+# is worse than one that admits the gap.
+ALL_POINTS_BAD = ("QLG-DUONG", "QLG-TLU", "2026-06-K1")
+
+# Only one outlet was surveyed. The average is still computable but rests on
+# a single observation, and survey_points is what tells the reader that.
+SINGLE_POINT = ("QLG-CAT-VANG", "QLG-MHAO", "2026-07-K1")
+
+# The classic clerical slip: price typed in dong instead of thousand dong.
+# One point out of four or five, so the group survives — the demo is that the
+# outlier is dropped and the remaining points still produce a sound average.
+UNIT_SLIP = ("QLG-GAO-TE", "QLG-VLAM", "2026-05-K1")
 
 # Flipped by /admin/schema-drift to exercise the schema contract check.
 SCHEMA_MODE = {"mode": "normal"}
@@ -82,55 +120,78 @@ def _build_dataset():
 
         for item_code, item_name, uom, base_price in ITEMS:
             for area in AREAS:
-                # Phu Cu skipped one period — a gap the report has to explain
-                # rather than silently render as zero.
+                # Phu Cu skipped one period entirely — a gap the report has to
+                # show rather than silently render as zero.
                 if period == "2026-06-K1" and area == "QLG-PCU":
                     continue
 
-                row_id += 1
-                price = base_price * (1 + 0.012 * period_idx) \
+                coords = (item_code, area, period)
+
+                if coords == SINGLE_POINT:
+                    outlets = OUTLET_KINDS[:1]
+                else:
+                    outlets = OUTLET_KINDS[:rnd.choice([3, 4, 5])]
+
+                # Price level for this commodity in this district this period,
+                # before per-outlet variation.
+                local_level = base_price * (1 + 0.012 * period_idx) \
                     * (1 + rnd.uniform(-0.04, 0.04))
-                price = round(price, -2 if base_price > 10_000 else 0)
-                area_code = area
 
-                # ── Defects planted on purpose ─────────────────────────────
-                if row_id % 137 == 0:      # missing locality
-                    area_code = None
-                if row_id % 211 == 0:      # unit-of-measure slip, 1000x
-                    price = price * 1000
-                if row_id % 313 == 0:      # negative price
-                    price = -price
+                for kind_idx, (kind, kind_name, kind_factor) in enumerate(outlets):
+                    row_id += 1
 
-                rows.append({
-                    "id": row_id,
-                    "itemCode": item_code,
-                    "itemName": item_name,
-                    "areaCode": area_code,
-                    "periodCode": period,
-                    "surveyDate": survey_date,
-                    "uom": uom,
-                    "unitPrice": price,
-                    "lastModified": (base_time
-                                     + timedelta(minutes=row_id % 600)).isoformat(),
-                })
+                    price = local_level * kind_factor * (1 + rnd.uniform(-0.012, 0.012))
+                    price = round(price, -2 if base_price > 10_000 else 0)
+                    area_code = area
 
-        # Duplicate business keys, arriving later than the originals. Only a
-        # deduplication step that keeps the newest row survives this.
+                    # ── Defects ────────────────────────────────────────────
+                    if coords == ALL_POINTS_BAD:
+                        price = -price                 # nothing usable here
+                    elif coords == UNIT_SLIP and kind_idx == 1:
+                        price = price * 1000           # dong vs thousand dong
+                    else:
+                        if row_id % 211 == 0:
+                            price = price * 1000
+                        if row_id % 313 == 0:
+                            price = -price
+                        if row_id % 137 == 0:
+                            area_code = None           # which district?
+
+                    rows.append({
+                        "id": row_id,
+                        "itemCode": item_code,
+                        "itemName": item_name,
+                        "areaCode": area_code,
+                        "outletCode": None if area_code is None
+                                      else f"{area_code[4:]}-{kind}-{kind_idx + 1:02d}",
+                        "outletName": kind_name,
+                        "periodCode": period,
+                        "surveyDate": survey_date,
+                        "uom": uom,
+                        "unitPrice": price,
+                        "lastModified": (base_time
+                                         + timedelta(minutes=row_id % 600)).isoformat(),
+                    })
+
+        # The same outlet reported twice, the correction arriving later. Only
+        # a deduplication that keeps the newest row survives this.
         for original in rows[-4:-2]:
             row_id += 1
-            dup = dict(original)
-            dup["id"] = row_id
-            dup["lastModified"] = (base_time + timedelta(hours=20)).isoformat()
-            rows.append(dup)
+            correction = dict(original)
+            correction["id"] = row_id
+            correction["lastModified"] = (base_time + timedelta(hours=20)).isoformat()
+            rows.append(correction)
 
-        # A subtotal row mixed in with detail rows. SUM over the raw feed
-        # double-counts unless this is filtered out.
+        # A provincial subtotal mixed in with the detail rows. SUM over the
+        # raw feed double-counts unless this is filtered out.
         row_id += 1
         rows.append({
             "id": row_id,
             "itemCode": "QLG-GAO-TE",
             "itemName": "TONG CONG gao te (toan tinh)",
             "areaCode": "QLG-TONG",
+            "outletCode": "TONG",
+            "outletName": "Tong hop toan tinh",
             "periodCode": period,
             "surveyDate": survey_date,
             "uom": "kg",
@@ -156,7 +217,8 @@ def _apply_drift(row):
 
     if mode == "break":
         # Breaking change: unitPrice turns from a number into a formatted
-        # string. The pipeline must STOP, not coerce and carry on.
+        # string. The pipeline must STOP, not coerce and carry on — coercing
+        # "16.085.000" yields 16.085, wrong by a factor of a million.
         out = dict(row)
         price = row["unitPrice"]
         out["unitPrice"] = (
@@ -251,6 +313,6 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
-    print(f"mock QL Gia: {len(DATA)} rows, {len(PERIODS)} periods, port {port}",
+    print(f"mock QL Gia: {len(DATA)} survey points, {len(PERIODS)} periods, port {port}",
           flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
