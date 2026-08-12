@@ -657,15 +657,27 @@ def ingest_tabmis():
                 "rows_published": published}
 
     # ---------------------------------------------------------------------
-    @task(trigger_rule="all_done")
+    @task(trigger_rule="none_skipped")
     def write_report(ticket: dict) -> dict:
         """
         Tell the submitter what happened, in the folder they uploaded to.
 
-        trigger_rule='all_done' on purpose: this runs whether the batch passed
-        or was refused. A rejected file with no explanation is the failure mode
-        the documentation calls out for this source — the risk here is a person
-        who never finds out their numbers did not land.
+        The trigger rule has to thread a needle. This step must run when the
+        batch was REFUSED — a rejected file nobody is told about is the failure
+        mode the documentation names for this source. But it must NOT run when
+        there was no file at all, and that is most of the time: the DAG polls
+        every ten minutes and usually finds an empty inbox.
+
+        'all_done' got the first half right and the second half wrong — it
+        fired on every empty poll and failed for want of a file to report on,
+        painting the DAG red around the clock for something that was working
+        exactly as intended.
+
+        'none_skipped' is the rule that distinguishes them. A refusal leaves
+        upstream tasks in failed/upstream_failed, none of them skipped, so this
+        still runs. An empty inbox skips claim_file, which skips everything
+        downstream including this — and a run where every task skipped is a
+        quiet success, not a failure.
         """
         run_id = ticket["run_id"]
         s3 = object_store()
