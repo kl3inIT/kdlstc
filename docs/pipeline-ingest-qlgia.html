@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ingest_qlgia — một lô dữ liệu đi từ nguồn tới báo cáo</title>
+
+<style>
+  /* ═══ Bảng màu: từ vựng của chính bài toán — Bronze, Silver, Gold ═══ */
+  :root {
+    --paper:      #F6F6F4;
+    --surface:    #FFFFFF;
+    --sunken:     #EFEFEC;
+    --ink:        #17181A;
+    --ink-soft:   #4A4E52;
+    --muted:      #7A7F84;
+    --rule:       #DCDDD9;
+    --rule-soft:  #E8E9E5;
+
+    --bronze:     #A9662F;
+    --silver:     #5E6E7A;
+    --gold:       #8A6D14;
+
+    --pass:       #3E6B4A;
+    --reject:     #A33A2A;
+    --queue:      #7A5C1E;
+
+    --serif: Cambria, "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --sans: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #131417;
+      --surface:   #1B1D21;
+      --sunken:    #202327;
+      --ink:       #E9E9E6;
+      --ink-soft:  #B9BCBF;
+      --muted:     #8B9095;
+      --rule:      #33373C;
+      --rule-soft: #26292D;
+
+      --bronze:    #D9924F;
+      --silver:    #9DAEBB;
+      --gold:      #D2B04A;
+
+      --pass:      #6FAE80;
+      --reject:    #E07A63;
+      --queue:     #CFA84A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:     #131417;
+    --surface:   #1B1D21;
+    --sunken:    #202327;
+    --ink:       #E9E9E6;
+    --ink-soft:  #B9BCBF;
+    --muted:     #8B9095;
+    --rule:      #33373C;
+    --rule-soft: #26292D;
+
+    --bronze:    #D9924F;
+    --silver:    #9DAEBB;
+    --gold:      #D2B04A;
+
+    --pass:      #6FAE80;
+    --reject:    #E07A63;
+    --queue:     #CFA84A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 78rem; margin: 0 auto; }
+
+  .label {
+    font-family: var(--sans);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ═══ Đầu trang ═══ */
+  header {
+    padding: 4.5rem 0 2.5rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  header .label { display: block; margin-bottom: 1.1rem; }
+  h1 {
+    font-size: clamp(2rem, 4.6vw, 3.15rem);
+    line-height: 1.08;
+    font-weight: 600;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+  }
+  header p {
+    margin: 0;
+    max-width: var(--measure);
+    color: var(--ink-soft);
+    font-size: 1.08rem;
+  }
+  .stamp {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.75rem;
+    margin-top: 2.25rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+  .stamp div { display: flex; flex-direction: column; gap: 0.2rem; }
+  .stamp b {
+    font-family: var(--mono);
+    font-size: 1.02rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  section { padding-top: 4.25rem; }
+  h2 {
+    font-size: 1.62rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  h2 + .lede { margin: 0 0 2rem; color: var(--ink-soft); max-width: var(--measure); }
+  p { margin: 0 0 1rem; }
+  .note { font-size: 0.9rem; color: var(--muted); max-width: var(--measure); }
+
+  figure { margin: 0; }
+  figcaption {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+    max-width: var(--measure);
+  }
+
+  /* ═══ Sơ đồ SVG ═══ */
+  .diagram { overflow-x: auto; padding-bottom: 0.5rem; }
+  .diagram svg { max-width: 100%; height: auto; min-width: 44rem; color: var(--ink); }
+  .dg-node   { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+  .dg-title  { fill: var(--ink); font-family: var(--sans); font-size: 13px; font-weight: 600; }
+  .dg-sub    { fill: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+  .dg-data   { stroke: var(--bronze); stroke-width: 3.5; fill: none; }
+  .dg-ctrl   { stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 5 4; fill: none; }
+  .dg-thin   { stroke: var(--muted); stroke-width: 1.25; fill: none; }
+  .dg-anno   { fill: var(--ink-soft); font-family: var(--mono); font-size: 11px; }
+  .dg-anno-q { fill: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+  .dg-step   { fill: var(--bronze); font-family: var(--mono); font-size: 10px; font-weight: 700; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 1.75rem;
+    margin-top: 1.25rem; padding-top: 1rem;
+    border-top: 1px solid var(--rule-soft);
+    font-family: var(--mono); font-size: 0.78rem; color: var(--ink-soft);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 0.6rem; }
+  .legend i { display: block; width: 2.1rem; height: 0; }
+  .legend i.data { border-top: 3.5px solid var(--bronze); }
+  .legend i.ctrl { border-top: 1.5px dashed var(--muted); }
+
+  /* ═══ Bản ghi nguồn ═══ */
+  .record {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--bronze);
+    padding: 1.15rem 1.35rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.83rem;
+    line-height: 1.9;
+    white-space: pre;
+  }
+  .k  { color: var(--bronze); }
+  .v  { color: var(--ink-soft); }
+  .bad { color: var(--reject); font-weight: 700; }
+
+  .annot {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .annot div { border-top: 2px solid var(--bronze); padding-top: 0.75rem; }
+  .annot p { margin: 0.35rem 0 0; font-size: 0.93rem; color: var(--ink-soft); }
+
+  /* ═══ Xương sống ═══ */
+  .spine { margin-top: 1rem; }
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+  }
+  .rail { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .step:not(:last-child) .rail::after {
+    content: "";
+    position: absolute;
+    top: 2.6rem; bottom: -2rem;
+    width: 2px;
+    background: var(--rule);
+  }
+  .dot {
+    width: 2.35rem; height: 2.35rem;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 0.86rem; font-weight: 600;
+    background: var(--surface);
+    border: 2px solid var(--rule);
+    color: var(--muted);
+    position: relative; z-index: 1;
+  }
+  .step[data-tier="bronze"] .dot { border-color: var(--bronze); color: var(--bronze); }
+  .step[data-tier="silver"] .dot { border-color: var(--silver); color: var(--silver); }
+  .step[data-tier="gold"]   .dot { border-color: var(--gold);   color: var(--gold); }
+  .step[data-tier="gate"]   .dot { border-color: var(--ink);    color: var(--ink); }
+
+  .body h3 { margin: 0.25rem 0 0.1rem; font-size: 1.14rem; font-weight: 600; }
+  .body h3 code { font-size: 0.78em; color: var(--muted); font-weight: 400; }
+  .body p { margin: 0.4rem 0 0; max-width: var(--measure); color: var(--ink-soft); font-size: 0.96rem; }
+  .headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.75rem; }
+  .tier-tag {
+    font-family: var(--sans); font-size: 0.6rem; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .step[data-tier="bronze"] .tier-tag { color: var(--bronze); }
+  .step[data-tier="silver"] .tier-tag { color: var(--silver); }
+  .step[data-tier="gold"]   .tier-tag { color: var(--gold); }
+  .step[data-tier="gate"]   .tier-tag { color: var(--ink); }
+  .where {
+    font-family: var(--mono); font-size: 0.68rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .where[data-run="pg"] { border-color: var(--silver); color: var(--silver); }
+  .outcome {
+    display: inline-flex; align-items: baseline; gap: 0.5rem;
+    margin-top: 0.7rem; padding: 0.3rem 0.65rem;
+    background: var(--sunken);
+    border-left: 2px solid var(--rule);
+    font-family: var(--mono); font-size: 0.79rem;
+  }
+  .outcome b { font-weight: 600; }
+
+  /* ═══ Thác nước ═══ */
+  .flow-row {
+    display: grid; grid-template-columns: 8.5rem 1fr;
+    gap: 1.1rem; align-items: center; margin-bottom: 0.55rem;
+  }
+  .flow-row .cap { text-align: right; font-family: var(--mono); font-size: 0.78rem; color: var(--muted); }
+  .bar { display: flex; height: 2.6rem; background: var(--sunken); }
+  .seg {
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 0.74rem; font-weight: 600;
+    color: var(--surface); overflow: hidden; white-space: nowrap;
+  }
+  .seg[data-kind="valid"]  { background: var(--pass); }
+  .seg[data-kind="queue"]  { background: var(--queue); }
+  .seg[data-kind="struct"] { background: var(--silver); }
+  .seg[data-kind="defect"] { background: var(--reject); }
+  .seg[data-kind="dup"]    { background: var(--muted); }
+
+  .zoom {
+    margin-top: 1.75rem;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--reject);
+    background: var(--surface);
+    padding: 1.1rem 1.35rem 1.35rem;
+  }
+  .zoom > .label { display: block; margin-bottom: 0.9rem; }
+  .defect-grid { display: grid; gap: 0.55rem; }
+  .defect {
+    display: grid; grid-template-columns: 3rem 1fr;
+    gap: 0.9rem; align-items: baseline;
+    padding-bottom: 0.55rem; border-bottom: 1px solid var(--rule-soft);
+  }
+  .defect:last-child { border-bottom: 0; padding-bottom: 0; }
+  .defect .count {
+    font-family: var(--mono); font-weight: 700; font-size: 1.05rem;
+    text-align: right; color: var(--reject);
+  }
+  .defect[data-kind="queue"] .count  { color: var(--queue); }
+  .defect[data-kind="struct"] .count { color: var(--silver); }
+  .defect[data-kind="dup"] .count    { color: var(--muted); }
+  .defect .what { font-family: var(--mono); font-size: 0.82rem; }
+  .defect .why  { color: var(--ink-soft); font-size: 0.93rem; display: block; margin-top: 0.1rem; }
+
+  /* ═══ Ba tình huống đổi hạt ═══ */
+  .cases { display: grid; gap: 1.5rem; margin-top: 0.5rem; }
+  .case {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: minmax(17rem, 1fr) minmax(15rem, 0.85fr);
+  }
+  .case > div { padding: 1.2rem 1.4rem; }
+  .case .out { border-left: 1px solid var(--rule); background: var(--sunken); }
+  .case h4 { margin: 0.5rem 0 0.85rem; font-size: 1.06rem; font-weight: 600; }
+  .points { display: grid; gap: 0.3rem; font-family: var(--mono); font-size: 0.8rem; }
+  .pt { display: grid; grid-template-columns: 7.5rem 1fr auto; gap: 0.75rem; align-items: baseline; }
+  .pt .price { text-align: right; font-variant-numeric: tabular-nums; }
+  .pt .mark { font-size: 0.72rem; }
+  .pt.kept .mark   { color: var(--pass); }
+  .pt.dropped      { color: var(--reject); }
+  .pt.dropped .mark { color: var(--reject); font-weight: 700; }
+  .result { font-family: var(--mono); }
+  .result .big {
+    font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em;
+    display: block; margin: 0.35rem 0 0.2rem;
+  }
+  .result .big.void { color: var(--reject); font-size: 1.2rem; }
+  .result .meta { font-size: 0.78rem; color: var(--muted); display: block; }
+  .case .out p { margin: 0.85rem 0 0; font-size: 0.92rem; color: var(--ink-soft); font-family: var(--serif); }
+
+  /* ═══ Hai chỉ số ═══ */
+  .scores {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 2.25rem; margin-top: 0.5rem;
+  }
+  .score { border-top: 2px solid var(--ink); padding-top: 1rem; }
+  .score h4 { margin: 0.4rem 0 0.15rem; font-family: var(--mono); font-size: 0.98rem; font-weight: 600; }
+  .score .val {
+    font-family: var(--mono); font-size: 2.5rem; font-weight: 600;
+    letter-spacing: -0.03em; line-height: 1.1; margin: 0.5rem 0 0.15rem;
+  }
+  .score .frac { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+  .gauge { position: relative; height: 0.65rem; background: var(--sunken); margin: 1.1rem 0 0.5rem; }
+  .gauge .fill { height: 100%; }
+  .gauge .mark { position: absolute; top: -0.3rem; bottom: -0.3rem; width: 2px; background: var(--ink); }
+  .gauge-note { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+  .score p { margin: 0.9rem 0 0; font-size: 0.95rem; color: var(--ink-soft); }
+
+  /* ═══ Bảng trọng số ═══ */
+  .grid-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
+  table.matrix { border-collapse: collapse; font-family: var(--mono); font-size: 0.79rem; }
+  table.matrix th, table.matrix td {
+    border: 1px solid var(--rule-soft); padding: 0.42rem 0.7rem;
+    text-align: right; font-weight: 400; font-variant-numeric: tabular-nums;
+  }
+  table.matrix th { color: var(--muted); font-size: 0.7rem; white-space: nowrap; text-align: right; }
+  table.matrix th.row-head, table.matrix td.row-head { text-align: left; }
+  table.matrix tr.thin td { color: var(--reject); }
+  table.matrix tfoot td { border-top: 2px solid var(--ink); font-weight: 700; }
+  table.matrix tfoot td.wrong { color: var(--reject); }
+  table.matrix tfoot td.right { color: var(--pass); }
+
+  /* ═══ Khái niệm Airflow ═══ */
+  .concepts { display: grid; gap: 0; border-top: 1px solid var(--rule); margin-top: 0.5rem; }
+  .concept {
+    display: grid; grid-template-columns: minmax(13rem, 0.8fr) 2fr;
+    gap: 2rem; padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .concept h4 { margin: 0.3rem 0 0.3rem; font-size: 1.06rem; font-weight: 600; }
+  .concept h4 code { display: block; font-size: 0.76em; color: var(--muted); font-weight: 400; margin-top: 0.15rem; }
+  .concept p { margin: 0 0 0.7rem; font-size: 0.96rem; color: var(--ink-soft); }
+  .concept p:last-child { margin-bottom: 0; }
+  .here {
+    border-left: 2px solid var(--bronze);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    font-size: 0.93rem;
+  }
+  .here b { font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.13em;
+            text-transform: uppercase; color: var(--bronze); display: block; margin-bottom: 0.2rem; }
+
+  /* ═══ Chuỗi truy vết ═══ */
+  .chain { display: grid; gap: 0; margin-top: 0.5rem; }
+  .link { border: 1px solid var(--rule); background: var(--surface); padding: 1rem 1.25rem; overflow-x: auto; }
+  .link + .link { border-top: 0; }
+  .link .label { display: block; margin-bottom: 0.5rem; }
+  .link .payload { font-family: var(--mono); font-size: 0.82rem; white-space: pre; line-height: 1.75; }
+  .link[data-tier="gold"]   { border-left: 3px solid var(--gold); }
+  .link[data-tier="path"]   { border-left: 3px solid var(--silver); }
+  .link[data-tier="bronze"] { border-left: 3px solid var(--bronze); }
+  .arrow { font-family: var(--mono); color: var(--muted); font-size: 0.9rem; padding: 0.35rem 0 0.35rem 1.25rem; }
+
+  /* ═══ Còn nợ ═══ */
+  .debts { display: grid; gap: 1.25rem; margin-top: 0.5rem; }
+  .debt { border-left: 2px solid var(--reject); padding-left: 1.1rem; }
+  .debt h4 { margin: 0 0 0.3rem; font-size: 1.02rem; font-weight: 600; }
+  .debt p { margin: 0; font-size: 0.95rem; color: var(--ink-soft); max-width: var(--measure); }
+
+  footer {
+    margin-top: 5rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem; color: var(--muted); max-width: var(--measure);
+  }
+
+  @media (max-width: 46rem) {
+    body { font-size: 16px; }
+    .step { grid-template-columns: 2.75rem 1fr; gap: 1rem; }
+    .flow-row { grid-template-columns: 1fr; gap: 0.35rem; }
+    .flow-row .cap { text-align: left; }
+    .case { grid-template-columns: 1fr; }
+    .case .out { border-left: 0; border-top: 1px solid var(--rule); }
+    .concept { grid-template-columns: 1fr; gap: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <span class="label">Kho dữ liệu Tài chính Hưng Yên · lát cắt dọc 1</span>
+  <h1>Một lô dữ liệu đi từ nguồn tới báo cáo</h1>
+  <p>DAG <code>ingest_qlgia</code> kéo giá mặt hàng từ hệ Quản lý Giá, cất bản gốc, làm sạch,
+     gộp lại, chấm điểm, rồi công bố. Trang này theo chân đúng lô đã chạy thật —
+     mọi con số bên dưới đọc thẳng từ cơ sở dữ liệu, không phải ví dụ.</p>
+
+  <div class="stamp">
+    <div><span class="label">Nguồn cấp</span><b class="num">2.382 điểm</b></div>
+    <div><span class="label">Vào Gold</span><b class="num">489 nhóm</b></div>
+    <div><span class="label">Điểm chất lượng</span><b class="num">98,12 %</b></div>
+    <div><span class="label">Độ phủ ánh xạ</span><b class="num">83,1 %</b></div>
+    <div><span class="label">Cả 8 bước</span><b class="num">18 giây</b></div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Nguồn trả về nhiều dòng, báo cáo cần một số</h2>
+  <p class="lede">Cán bộ khảo sát ra chợ hỏi giá gạo tẻ ở Văn Lâm. Họ hỏi <strong>năm nơi bán</strong>,
+     nên nguồn có năm dòng. Báo cáo chỉ cần một con số. Gộp năm thành một là việc của kho —
+     và nó chỉ lộ ra vì nguồn từ chối làm hộ.</p>
+
+  <div class="record"><span class="v">// GET /api/prices  — gạo tẻ · Văn Lâm · kỳ 2026-05-K1</span>
+<span class="k">VLAM-CHO-01</span>  chợ trung tâm        <span class="v">    18.000</span>
+<span class="k">VLAM-ST-02</span>   siêu thị            <span class="bad">18.700.000</span>  ← gõ nhầm đơn vị
+<span class="k">VLAM-DL-03</span>   đại lý               <span class="v">    17.300</span>
+<span class="k">VLAM-CH-04</span>   cửa hàng tạp hoá     <span class="v">    18.200</span>
+<span class="k">VLAM-HTX-05</span>  hợp tác xã           <span class="v">    17.200</span></div>
+
+  <div class="annot">
+    <div>
+      <span class="label">Tên trường là của nguồn</span>
+      <p>Nguồn gửi <code>itemCode</code>, kho dùng <code>commodity_code</code>.
+         Đổi tên là việc thật, và chỉ được làm ở đúng một chỗ.</p>
+    </div>
+    <div>
+      <span class="label">Mã là của nguồn</span>
+      <p><code>QLG-VLAM</code> không có nghĩa gì với kho. Phải tra bảng mới ra
+         <code>LOC02</code>. Không tra được thì đó là câu hỏi nghiệp vụ, không phải rác.</p>
+    </div>
+    <div>
+      <span class="label">Có con trỏ thời gian</span>
+      <p><code>lastModified</code> cho phép hỏi “có gì mới sau mốc này” thay vì
+         kéo lại cả kho mỗi lần chạy.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Airflow không xử lý dữ liệu — nó chỉ điều phối</h2>
+  <p class="lede">Đây là chỗ hay bị hiểu nhầm nhất. Dữ liệu chỉ chui qua Airflow <strong>hai
+     chặng đầu</strong>. Từ bước 5 trở đi, worker chỉ gửi một câu lệnh SQL rồi ngồi chờ —
+     dữ liệu nằm yên trong Postgres và không đi đâu cả.</p>
+
+  <figure>
+    <div class="diagram">
+      <svg viewBox="0 0 960 430" role="img"
+           aria-label="Sơ đồ luồng: dữ liệu đi từ nguồn qua Airflow worker vào SeaweedFS rồi vào PostgreSQL ở bước 3 và 4; từ bước 5 đến 8 worker chỉ gửi câu lệnh SQL còn dữ liệu biến đổi tại chỗ trong PostgreSQL">
+        <defs>
+          <marker id="ah-data" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <polygon points="0,1 10,5 0,9" fill="var(--bronze)"/>
+          </marker>
+          <marker id="ah-ctrl" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <polygon points="0,2 10,5 0,8" fill="var(--muted)"/>
+          </marker>
+        </defs>
+
+        <!-- SeaweedFS -->
+        <rect class="dg-node" x="300" y="24" width="180" height="72" rx="2"/>
+        <text class="dg-title" x="390" y="54" text-anchor="middle">SeaweedFS</text>
+        <text class="dg-sub"   x="390" y="74" text-anchor="middle">bronze/ — bản gốc bất biến</text>
+
+        <!-- Nguồn -->
+        <rect class="dg-node" x="24" y="176" width="170" height="72" rx="2"/>
+        <text class="dg-title" x="109" y="206" text-anchor="middle">mock-qlgia</text>
+        <text class="dg-sub"   x="109" y="226" text-anchor="middle">REST, phân trang</text>
+
+        <!-- Worker -->
+        <rect class="dg-node" x="300" y="176" width="180" height="72" rx="2"/>
+        <text class="dg-title" x="390" y="206" text-anchor="middle">Airflow worker</text>
+        <text class="dg-sub"   x="390" y="226" text-anchor="middle">Python: HTTP · S3 · nạp</text>
+
+        <!-- Postgres -->
+        <rect class="dg-node" x="640" y="160" width="200" height="104" rx="2"/>
+        <text class="dg-title" x="740" y="196" text-anchor="middle">PostgreSQL</text>
+        <text class="dg-sub"   x="740" y="216" text-anchor="middle">stc_dwh</text>
+        <text class="dg-sub"   x="740" y="236" text-anchor="middle">staging → curated</text>
+
+        <!-- Scheduler -->
+        <rect class="dg-node" x="300" y="330" width="180" height="62" rx="2"/>
+        <text class="dg-title" x="390" y="356" text-anchor="middle">scheduler</text>
+        <text class="dg-sub"   x="390" y="375" text-anchor="middle">quyết định chạy gì, khi nào</text>
+
+        <!-- nguồn -> worker -->
+        <line class="dg-data" x1="194" y1="205" x2="294" y2="205" marker-end="url(#ah-data)"/>
+        <text class="dg-step" x="244" y="196" text-anchor="middle">bước 3</text>
+        <text class="dg-anno" x="244" y="224" text-anchor="middle">2.382 dòng</text>
+
+        <!-- worker -> seaweedfs -->
+        <line class="dg-data" x1="348" y1="176" x2="348" y2="102" marker-end="url(#ah-data)"/>
+        <text class="dg-anno" x="340" y="132" text-anchor="end">ghi</text>
+        <text class="dg-anno" x="340" y="148" text-anchor="end">nguyên văn</text>
+
+        <!-- seaweedfs -> worker -->
+        <line class="dg-data" x1="432" y1="96" x2="432" y2="170" marker-end="url(#ah-data)"/>
+        <text class="dg-step" x="442" y="132" text-anchor="start">bước 4</text>
+        <text class="dg-anno" x="442" y="148" text-anchor="start">đọc lại</text>
+
+        <!-- worker -> postgres, dữ liệu -->
+        <line class="dg-data" x1="480" y1="192" x2="634" y2="192" marker-end="url(#ah-data)"/>
+        <text class="dg-anno" x="557" y="183" text-anchor="middle">nạp 2.382 dòng</text>
+
+        <!-- worker -> postgres, chỉ lệnh -->
+        <line class="dg-ctrl" x1="480" y1="234" x2="634" y2="234" marker-end="url(#ah-ctrl)"/>
+        <text class="dg-step"   x="557" y="253" text-anchor="middle">bước 5–8</text>
+        <text class="dg-anno-q" x="557" y="269" text-anchor="middle">chỉ câu lệnh SQL</text>
+
+        <!-- postgres tự biến đổi -->
+        <path class="dg-thin" d="M840 184 C 900 184, 900 240, 846 240" marker-end="url(#ah-ctrl)"/>
+        <text class="dg-anno" x="740" y="296" text-anchor="middle">biến đổi tại chỗ</text>
+        <text class="dg-anno-q" x="740" y="312" text-anchor="middle">dữ liệu không di chuyển</text>
+
+        <!-- scheduler -> worker -->
+        <line class="dg-thin" x1="390" y1="330" x2="390" y2="254" marker-end="url(#ah-ctrl)"/>
+        <text class="dg-anno-q" x="400" y="296" text-anchor="start">giao việc qua Redis</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i class="data"></i> dữ liệu thật sự di chuyển</span>
+      <span><i class="ctrl"></i> chỉ mệnh lệnh, không có dữ liệu</span>
+    </div>
+    <figcaption>
+      Bỏ Airflow đi thì pipeline vẫn chạy được bằng một script và <code>cron</code>.
+      Cái nó thêm vào nằm ở mũi tên đứt nét: thứ tự, chạy lại, không cho hai lô chồng nhau.
+    </figcaption>
+  </figure>
+
+  <p class="note" style="margin-top: 2rem;">
+    <strong>Vì sao cố tình làm thế.</strong> Kéo 2.382 dòng về Python rồi gộp bằng
+    <code>pandas</code> thì hôm nay vẫn chạy. Nhưng TABMIS mỗi kỳ vài trăm nghìn dòng, mà pod
+    worker bị đặt trần 2 GB. Còn <code>GROUP BY</code> trong Postgres thì dữ liệu không nhúc
+    nhích khỏi đĩa. Nguyên tắc: <em>đưa phép tính về chỗ có dữ liệu, đừng kéo dữ liệu về chỗ tính.</em>
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Tám bước</h2>
+  <p class="lede">Mỗi bước đẩy <code>ingestion.runs.status</code> sang một trạng thái mới.
+     Lô dừng giữa chừng thì giữ nguyên trạng thái nó dừng — đó là thứ khiến sổ nhật ký
+     đáng đọc, thay vì chỉ có “xong” hoặc “lỗi”.</p>
+
+  <div class="spine">
+
+    <div class="step" data-tier="gate">
+      <div class="rail"><div class="dot">1</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Vé phiên</span><span class="where">worker</span></div>
+        <h3>Mở vé <code>open_run</code></h3>
+        <p>Sinh <code>run_id</code>, ghi một dòng vào sổ, đọc con trỏ lần trước.
+           <code>run_id</code> suy từ mã lần chạy của Airflow chứ không sinh ngẫu nhiên —
+           nên chạy lại dùng lại đúng vé cũ, thay vì rải vé dở dang khắp sổ.</p>
+        <span class="outcome">status → <b>received</b></span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="gate">
+      <div class="rail"><div class="dot">2</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Cổng chặn</span><span class="where">worker → nguồn</span></div>
+        <h3>Kiểm hợp đồng lược đồ <code>check_schema_contract</code></h3>
+        <p>Lấy mẫu 25 dòng, đối chiếu kiểu từng trường. Thiếu trường hoặc đổi kiểu thì
+           <strong>dừng ngay, chưa ghi một byte nào</strong>. Trường lạ xuất hiện thì ghi nhận rồi cho qua.</p>
+        <p><em>Vì sao phải phân biệt:</em> nguồn thêm cột mới là chuyện thường, kho không nên gãy vì thế.
+           Nhưng nguồn đổi giá từ số <code>18700000</code> sang chuỗi <code>"18.700.000"</code>
+           thì Python vẫn đọc được — và ra <strong>18,7</strong>, sai một triệu lần mà không báo lỗi.</p>
+        <span class="outcome">nếu vỡ → <b>schema_blocked</b></span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="bronze">
+      <div class="rail"><div class="dot">3</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Bronze</span><span class="where">worker → S3</span></div>
+        <h3>Cất bản gốc <code>land_in_bronze</code></h3>
+        <p>Phân trang, ghi <strong>nguyên văn</strong> từng phản hồi lên S3. Không đổi tên,
+           không ép kiểu, không lọc. Kèm <code>_manifest.json</code> có checksum, số dòng,
+           mốc con trỏ từ–đến, nên cầm mỗi bucket cũng biết thư mục này là lô nào.</p>
+        <span class="outcome">5 tệp · <b class="num">2.382</b> điểm · sha256</span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="silver">
+      <div class="rail"><div class="dot">4</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Silver-1</span><span class="where">S3 → worker → Postgres</span></div>
+        <h3>Đọc <em>ngược</em> từ Bronze <code>load_silver_one</code></h3>
+        <p>DAG <strong>không</strong> dùng lại phản hồi HTTP còn trong bộ nhớ — nó đọc lại từ S3.
+           Tốn thêm một lượt đọc, đổi lại: tháng sau thêm quy tắc ánh xạ thì dựng lại đúng lô cũ
+           từ byte đã lưu, không phải xin nguồn cấp lại số mà có khi nguồn không còn tái tạo được.
+           Và chứng minh byte lưu ra dùng được thật, chứ không chỉ nằm đó.</p>
+        <p>Đây cũng là chỗ đổi tên, và là chỗ <em>duy nhất</em>. Giá trị vẫn để text hết — tầng
+           này không được phép làm mất dữ liệu bằng ép kiểu.</p>
+        <span class="outcome">status → <b>parsed</b></span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="silver">
+      <div class="rail"><div class="dot">5</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Silver-2</span><span class="where" data-run="pg">Postgres tự làm</span></div>
+        <h3>Ép kiểu, khử trùng, tra mã, phán từng điểm <code>build_silver_two</code></h3>
+        <p>Một câu SQL làm bốn việc theo thứ tự: ép kiểu an toàn (không ép được thì thành
+           <code>NULL</code> để bị phán ở dưới, chứ không làm gãy cả lô) → khử trùng, giữ bản mới
+           nhất → tra bảng ánh xạ → gán lý do loại cho từng điểm.</p>
+        <p><strong>Phán quyết ở mức từng điểm</strong>, không phải cả nhóm. Một giá gõ nhầm không
+           được kéo theo bốn giá lành bên cạnh.</p>
+        <span class="outcome">status → <b>mapped</b> · <b class="num">2.382 → 2.372</b> sau khử trùng</span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="gate">
+      <div class="rail"><div class="dot">6</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Cổng chất lượng</span><span class="where" data-run="pg">Postgres tự làm</span></div>
+        <h3>Chấm điểm và quyết định <code>quality_gate</code></h3>
+        <p>Tính <strong>hai</strong> chỉ số chứ không phải một, rồi so với ngưỡng.
+           37 điểm hỏng được chép nguyên văn sang bảng cách ly.</p>
+        <span class="outcome">status → <b>quality_passed</b> · <b class="num">98,12 %</b></span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="silver">
+      <div class="rail"><div class="dot">7</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Silver-3</span><span class="where" data-run="pg">Postgres tự làm</span></div>
+        <h3>Đổi hạt <code>build_grain</code></h3>
+        <p>Nhiều điểm khảo sát gộp thành một dòng cho mỗi mặt hàng × huyện × kỳ.
+           Đây là <strong>chỗ duy nhất</strong> hạt thay đổi, và nó đổ vào bảng riêng chứ không
+           giấu trong câu lệnh ghi — để soi được trước khi Gold nhìn thấy.</p>
+        <span class="outcome"><b class="num">1.931</b> điểm → <b class="num">490</b> nhóm · trung bình <b class="num">3,95</b> điểm/nhóm</span>
+      </div>
+    </div>
+
+    <div class="step" data-tier="gold">
+      <div class="rail"><div class="dot">8</div></div>
+      <div class="body">
+        <div class="headline"><span class="tier-tag">Gold</span><span class="where" data-run="pg">Postgres tự làm</span></div>
+        <h3>Công bố rồi mới tiến con trỏ <code>publish</code></h3>
+        <p>Ghi đè theo khoá nghiệp vụ — chạy lại bao nhiêu lần cũng hội tụ về một kết quả, không
+           cộng dồn. Con trỏ <strong>chỉ tiến sau khi công bố xong</strong>: lô hỏng được chạy
+           lại, không bị bỏ qua.</p>
+        <span class="outcome">status → <b>published</b> · <b class="num">489</b> nhóm vào <b>fact_price</b></span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>2.382 điểm rơi rụng ở đâu</h2>
+  <p class="lede">Nguồn được cài sẵn lỗi có chủ đích. Con số ở đây khớp từng lỗi một —
+     đó là cách biết cổng chất lượng thật sự đang gác, chứ không phải chỉ cho qua rồi báo xanh.</p>
+
+  <div class="flow-row">
+    <span class="cap">nguồn cấp<br>2.382 điểm</span>
+    <div class="bar">
+      <div class="seg" data-kind="valid" style="flex: 2372">2.372 sau khử trùng</div>
+      <div class="seg" data-kind="dup"   style="flex: 10"></div>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <span class="cap">sau khử trùng<br>2.372 điểm</span>
+    <div class="bar">
+      <div class="seg" data-kind="valid"  style="flex: 1931">1.931 hợp lệ</div>
+      <div class="seg" data-kind="queue"  style="flex: 399">399 chưa ánh xạ</div>
+      <div class="seg" data-kind="defect" style="flex: 37"></div>
+      <div class="seg" data-kind="struct" style="flex: 5"></div>
+    </div>
+  </div>
+
+  <div class="zoom">
+    <span class="label">Phóng to phần đuôi — mấy nhóm nhỏ quá không nhìn thấy trên thanh trên</span>
+    <div class="defect-grid">
+      <div class="defect" data-kind="dup">
+        <span class="count num">10</span>
+        <span>
+          <span class="what">điểm trùng khoá</span>
+          <span class="why">Cùng một cửa hàng được báo hai lần, bản đính chính đến sau. Giữ bản mới nhất.</span>
+        </span>
+      </div>
+      <div class="defect" data-kind="queue">
+        <span class="count num">399</span>
+        <span>
+          <span class="what">commodity_unmapped</span>
+          <span class="why">Hai mặt hàng chưa có quy tắc ánh xạ. Gộp thành <strong>2 câu hỏi nghiệp vụ</strong>
+            giao Phòng Giá, hạn 7 ngày — không phải 399 dòng log không ai đọc.</span>
+        </span>
+      </div>
+      <div class="defect">
+        <span class="count num">17</span>
+        <span>
+          <span class="what">locality_missing</span>
+          <span class="why">Khuyết địa bàn — không biết con số này thuộc về huyện nào.</span>
+        </span>
+      </div>
+      <div class="defect">
+        <span class="count num">11</span>
+        <span>
+          <span class="what">price_not_positive</span>
+          <span class="why">Giá âm.</span>
+        </span>
+      </div>
+      <div class="defect">
+        <span class="count num">9</span>
+        <span>
+          <span class="what">price_out_of_range</span>
+          <span class="why">Lớn hơn 20 lần trung vị của chính mặt hàng đó. Đây là lưới bắt vụ
+            ghi nhầm đơn vị, sai 1 000 lần.</span>
+        </span>
+      </div>
+      <div class="defect" data-kind="struct">
+        <span class="count num">5</span>
+        <span>
+          <span class="what">subtotal_row</span>
+          <span class="why">Dòng TỔNG toàn tỉnh lẫn trong chi tiết, một dòng mỗi kỳ.
+            Không lọc thì <code>SUM</code> ra gấp đôi.</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Đổi hạt: nhiều điểm thành một số</h2>
+  <p class="lede">Ba tình huống được cài vào nguồn ở toạ độ cố định, nên kết quả khẳng định
+     được chứ không phải quan sát may rủi.</p>
+
+  <div class="cases">
+
+    <div class="case">
+      <div>
+        <span class="label">Tình huống 1 · gõ nhầm đơn vị</span>
+        <h4>Gạo tẻ · Văn Lâm · kỳ 2026-05-K1</h4>
+        <div class="points">
+          <div class="pt kept"><span>VLAM-CHO-01</span><span class="price">18.000</span><span class="mark">giữ</span></div>
+          <div class="pt dropped"><span>VLAM-ST-02</span><span class="price">18.700.000</span><span class="mark">loại</span></div>
+          <div class="pt kept"><span>VLAM-DL-03</span><span class="price">17.300</span><span class="mark">giữ</span></div>
+          <div class="pt kept"><span>VLAM-CH-04</span><span class="price">18.200</span><span class="mark">giữ</span></div>
+          <div class="pt kept"><span>VLAM-HTX-05</span><span class="price">17.200</span><span class="mark">giữ</span></div>
+        </div>
+      </div>
+      <div class="out">
+        <span class="label">Vào Gold</span>
+        <div class="result">
+          <b class="big num">17.675</b>
+          <span class="meta">từ 4 điểm · đã loại 1 · dải 17.200 – 18.200</span>
+        </div>
+        <p>Nhóm vẫn sống. Điểm hỏng bị loại, bốn điểm còn lại cho một con số lành —
+           và số điểm đã loại đi theo con số đó.</p>
+      </div>
+    </div>
+
+    <div class="case">
+      <div>
+        <span class="label">Tình huống 2 · hỏng sạch</span>
+        <h4>Đường kính · Tiên Lữ · kỳ 2026-06-K1</h4>
+        <div class="points">
+          <div class="pt dropped"><span>TLU-CHO-01</span><span class="price">−21.000</span><span class="mark">loại</span></div>
+          <div class="pt dropped"><span>TLU-ST-02</span><span class="price">−22.100</span><span class="mark">loại</span></div>
+          <div class="pt dropped"><span>TLU-DL-03</span><span class="price">−20.400</span><span class="mark">loại</span></div>
+          <div class="pt dropped"><span>TLU-CH-04</span><span class="price">−21.600</span><span class="mark">loại</span></div>
+        </div>
+      </div>
+      <div class="out">
+        <span class="label">Vào Gold</span>
+        <div class="result">
+          <b class="big void">không có dòng nào</b>
+          <span class="meta">nhóm bị giữ lại · ghi vào quality_exceptions</span>
+        </div>
+        <p>Nếu điền số 0 thì báo cáo sẽ hiện “giá đường ở Tiên Lữ = 0”. Thừa nhận thiếu số
+           tốt hơn nhiều so với bịa ra một con số không ai giải thích được.</p>
+      </div>
+    </div>
+
+    <div class="case">
+      <div>
+        <span class="label">Tình huống 3 · khảo sát mỏng</span>
+        <h4>Cát vàng · Mỹ Hào · kỳ 2026-07-K1</h4>
+        <div class="points">
+          <div class="pt kept"><span>MHAO-CHO-01</span><span class="price">437.700</span><span class="mark">giữ</span></div>
+        </div>
+      </div>
+      <div class="out">
+        <span class="label">Vào Gold</span>
+        <div class="result">
+          <b class="big num">437.700</b>
+          <span class="meta">từ 1 điểm · min = max = bình quân</span>
+        </div>
+        <p>Vẫn công bố, nhưng bị gắn cờ <code>grain_thin_survey_coverage</code>.
+           Bình quân của một quan sát là giá của một cửa hàng đội lốt thống kê.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Vì sao phải lưu “số điểm khảo sát”</h2>
+  <p class="lede">Giá cát vàng toàn tỉnh kỳ 2026-07-K1. Mười huyện, nhưng Mỹ Hào chỉ khảo sát
+     được một nơi trong khi Yên Mỹ khảo sát bốn.</p>
+
+  <div class="grid-scroll">
+    <table class="matrix">
+      <thead>
+        <tr><th class="row-head">Huyện</th><th>Giá bình quân</th><th>Số điểm</th></tr>
+      </thead>
+      <tbody>
+        <tr class="thin"><td class="row-head">Thị xã Mỹ Hào</td><td>437.700</td><td>1</td></tr>
+        <tr><td class="row-head">Huyện An Thi</td><td>422.467</td><td>3</td></tr>
+        <tr><td class="row-head">Huyện Văn Giang</td><td>442.533</td><td>3</td></tr>
+        <tr><td class="row-head">Huyện Văn Lâm</td><td>445.100</td><td>3</td></tr>
+        <tr><td class="row-head">TP Hưng Yên</td><td>445.433</td><td>3</td></tr>
+        <tr><td class="row-head">Huyện Khoái Châu</td><td>446.175</td><td>4</td></tr>
+        <tr><td class="row-head">Huyện Kim Động</td><td>424.075</td><td>4</td></tr>
+        <tr><td class="row-head">Huyện Phù Cừ</td><td>443.725</td><td>4</td></tr>
+        <tr><td class="row-head">Huyện Tiên Lữ</td><td>437.875</td><td>4</td></tr>
+        <tr><td class="row-head">Huyện Yên Mỹ</td><td>454.050</td><td>4</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td class="row-head">Cộng 10 số rồi chia 10</td><td class="wrong">439.913</td><td>✗</td></tr>
+        <tr><td class="row-head">Tính theo số điểm</td><td class="right">440.239</td><td>33</td></tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="note" style="margin-top: 1.5rem;">
+    Lệch 326 đ/m³ — không lớn, vì độ phủ ở đây tương đối đều. Nói cho sòng phẳng thì hôm nay
+    con số nào cũng tạm dùng được. Vấn đề không phải sai bao nhiêu, mà là
+    <strong>không có cột “số điểm” thì không ai tính đúng được</strong>, kể cả khi độ phủ lệch hẳn.
+    Mỹ Hào một điểm đang được tính ngang với Yên Mỹ bốn điểm.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Các chỗ cần biết ở Airflow</h2>
+  <p class="lede">Bảy khái niệm, giải thích bằng chính pipeline này chứ không bằng tài liệu chung.</p>
+
+  <div class="concepts">
+
+    <div class="concept">
+      <div>
+        <h4>DAG là bản vẽ<code>không phải lần chạy</code></h4>
+      </div>
+      <div>
+        <p>Tệp <code>ingest_qlgia.py</code> mô tả <em>sẽ chạy gì, theo thứ tự nào</em>. Nó không
+           chạy. Mỗi lần thực thi là một <strong>DAG run</strong> riêng, có mã riêng.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           lô theo lịch có mã <code>scheduled__2026-08-12T03:00</code>, lô em bấm tay có mã
+           <code>points01</code>. Hai lô, cùng một bản vẽ.</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div>
+        <h4>Mỗi bước là một tiến trình riêng<code>không dùng chung bộ nhớ</code></h4>
+      </div>
+      <div>
+        <p>Tám bước là tám lần khởi động Python, có thể ở tám thời điểm khác nhau, thậm chí
+           trên máy khác nhau. Biến gán ở bước này <strong>không</strong> tự có ở bước sau.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           bước 3 mở kết nối S3, bước 4 phải mở lại. Đó không phải thừa — đó là hệ quả của việc
+           mỗi bước độc lập, và cũng chính là thứ cho phép chạy lại riêng một bước.</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div>
+        <h4>XCom — đường truyền kết quả<code>chỉ dành cho cái nhỏ</code></h4>
+      </div>
+      <div>
+        <p>Giá trị một bước trả về được cất vào cơ sở dữ liệu quản trị của Airflow, bước sau lấy
+           ra. Vì nó nằm trong DB, <strong>tuyệt đối không truyền dữ liệu lớn qua đây</strong> —
+           truyền cái <em>chỉ đường tới</em> dữ liệu.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           bước 3 trả về danh sách 5 đường dẫn tệp và một checksum, chứ không trả về 2.382 dòng.
+           Bước 4 cầm danh sách đó tự đi đọc S3.</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div>
+        <h4>Executor — ai thực sự chạy bước<code>CeleryExecutor</code></h4>
+      </div>
+      <div>
+        <p>Scheduler không tự chạy việc; nó đẩy việc vào hàng đợi. Ở đây là Redis, và một
+           <strong>worker thường trú</strong> nhặt việc ra làm.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           KubernetesExecutor sẽ sạch hơn — mỗi bước một pod riêng, xong thì biến mất. Nhưng nó
+           cần quyền tạo pod, mà quyền hiện tại là <code>project-member</code> nên không tạo được.
+           Đây là ràng buộc hạ tầng, không phải lựa chọn thiết kế.</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div>
+        <h4>Chạy lại từng bước<code>retries = 2</code></h4>
+      </div>
+      <div>
+        <p>Bước 5 hỏng thì Airflow chạy lại <strong>bước 5</strong>, không chạy lại từ bước 1.
+           Hệ quả bắt buộc: <strong>mọi bước phải chạy lại được mà không hỏng thêm</strong>.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           đó là lý do <code>open_run</code> xoá sạch dữ liệu của lần thử trước, và
+           <code>publish</code> dùng ghi đè theo khoá thay vì thêm mới. Không có hai thứ đó thì
+           chạy lại một lần là số nhân đôi.</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div>
+        <h4>Không cho hai lô chồng nhau<code>max_active_runs = 1</code></h4>
+      </div>
+      <div>
+        <p>Lô hôm nay chưa xong mà lô mai đến hạn thì lô mai phải xếp hàng.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           hai lô cùng ghi vào <code>fact_price</code> và cùng tiến con trỏ sẽ cho ra kết quả
+           phụ thuộc vào lô nào về đích trước — loại lỗi tái hiện được một lần rồi biến mất.</div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <div>
+        <h4>Lịch chạy và chạy bù<code>schedule + catchup</code></h4>
+      </div>
+      <div>
+        <p><code>schedule="0 3 * * *"</code> là 3 giờ sáng mỗi ngày.
+           <code>catchup=False</code> nghĩa là <strong>không chạy bù quá khứ</strong>.</p>
+        <div class="here"><b>Trong pipeline này</b>
+           bỏ tạm dừng lúc chiều thì Airflow chạy đúng <em>một</em> lô 03:00 gần nhất, không chạy
+           bù từ 01/08. Chính lô đó đã kéo hết dữ liệu và tiến con trỏ, nên lô em bấm tay ngay
+           sau thấy “không có gì mới” rồi bỏ qua — nạp tăng dần làm đúng việc, không phải lỗi.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Truy vết: từ ô số trên báo cáo về byte gốc</h2>
+  <p class="lede">Trỏ vào một ô bất kỳ trên Gold, nó dẫn ngược về đúng những quan sát đã sinh ra nó
+     — kể cả quan sát đã bị loại.</p>
+
+  <div class="chain">
+    <div class="link" data-tier="gold">
+      <span class="label">1 · Ô số trên Gold — curated.fact_price</span>
+      <div class="payload">CMD001 · LOC02 · 2026-05-K1 = <strong>17.675</strong>   (4 điểm, loại 1)</div>
+    </div>
+    <div class="arrow">↓&nbsp;&nbsp;run_id + khoá nhóm</div>
+    <div class="link" data-tier="path">
+      <span class="label">2 · Silver-2 — từng điểm khảo sát và phán quyết của nó</span>
+      <div class="payload">VLAM-CHO-01  18.000      giữ
+VLAM-ST-02   18.700.000  loại · price_out_of_range
+VLAM-DL-03   17.300      giữ
+VLAM-CH-04   18.200      giữ
+VLAM-HTX-05  17.200      giữ</div>
+    </div>
+    <div class="arrow">↓&nbsp;&nbsp;cột raw_path của từng điểm</div>
+    <div class="link" data-tier="bronze">
+      <span class="label">3 · Bronze — dòng gốc, còn nguyên từ vựng của nguồn</span>
+      <div class="payload">bronze/qlgia/2026-08-12/r_points01/page-00001.json
+
+{"id": 5, "itemCode": "QLG-GAO-TE", "areaCode": "QLG-VLAM",
+ "outletCode": "VLAM-ST-02", "unitPrice": 18700000.0, …}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Còn nợ, nói cho sòng phẳng</h2>
+
+  <div class="debts">
+    <div class="debt">
+      <h4>SQL đang là chuỗi ký tự nằm trong tệp Python</h4>
+      <p>Câu lệnh dựng Silver-2 dài 90 dòng, nằm trong <code>ingest_qlgia.py</code>. Chạy được,
+         nhưng không test được từng mô hình riêng, không vẽ được sơ đồ phụ thuộc giữa các bảng,
+         và sửa một chỗ phải đọc cả tệp Python. Đó đúng là việc của <strong>dbt</strong> —
+         dự kiến đưa vào ở lát cắt 2.</p>
+    </div>
+    <div class="debt">
+      <h4>Log chỉ lưu trên máy chạy</h4>
+      <p>Trong log worker có dòng <code>remote_log_handler_unavailable — logs will be available
+         locally only</code>. Pod bị xoá là mất log của lô đó. Cần trỏ log về S3 —
+         SeaweedFS đã có sẵn, chỉ là chưa nối.</p>
+    </div>
+    <div class="debt">
+      <h4>Chưa có kích hoạt theo sự kiện</h4>
+      <p>Hiện chỉ chạy theo giờ. Nhưng TABMIS phải chạy <em>khi có người nộp tệp</em> —
+         tài liệu ghi rõ “theo thao tác nộp (sự kiện), không có lịch”. Cái đó cần thêm cơ chế khác.</p>
+    </div>
+    <div class="debt">
+      <h4>Mới có một nguồn, và là nguồn dễ nhất</h4>
+      <p>QL Giá gửi qua mạng và có sẵn dấu thời gian. Năm nguồn còn lại khó theo năm kiểu khác:
+         TABMIS là tệp Excel gửi tay, MISA là chứng từ cha–con, MSTT không có dấu thời gian đáng
+         tin, KBNN để đối chiếu, DMS kèm tệp PDF.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Số liệu đọc từ <code>stc_dwh</code> trên cụm <code>jmix-ha</code>, lô <code>r_points01</code>.
+  Nguồn là dịch vụ giả lập chạy trong cụm; cấu trúc, mã danh mục và công thức là thật,
+  chỉ con số là mô phỏng. Mã nguồn ở <code>platform/</code> trong repo.
+</footer>
+
+</div>
+
+</body>
+</html>
