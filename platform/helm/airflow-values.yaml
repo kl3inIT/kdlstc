@@ -197,6 +197,15 @@ triggerer:
     limits: {cpu: 1, memory: 512Mi}
 
 workers:
+  # openpyxl để đọc tệp .xlsx của TABMIS. Chỉ worker cần — task chạy ở đây, và
+  # DAG import openpyxl BÊN TRONG hàm task chứ không ở đầu tệp, nên dag-processor
+  # phân tích được DAG mà không cần thư viện này.
+  #
+  # Cách này chạy `pip install` mỗi lần pod khởi động: pod lên chậm thêm ~30s và
+  # phụ thuộc PyPI lúc đó có sống không. Đúng bài là nướng sẵn vào image, nhưng
+  # phải build và đẩy registry — món nợ đã ghi ở README.
+  extraPipPackages:
+    - "openpyxl==3.1.5"
   extraVolumes:
     - name: dags-cm
       configMap: {name: airflow-dags}
