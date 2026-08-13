@@ -44,13 +44,38 @@ PERIODS = [f"{FISCAL_YEAR}-{m:02d}" for m in range(1, 9)]  # Jan..Aug
 # 1-2-3's bug of treating 1900 as a leap year.
 EXCEL_EPOCH = date(1899, 12, 30)
 
-HEADERS = [
+# Two workbook layouts from one system. They share the identifying columns and
+# the budget classification, then diverge: expenditure is broken down by
+# funding source and spending sector, revenue by tax type and revenue source.
+# There is no "tam ung" on the revenue side — nobody advances a tax receipt.
+EXPENSE_HEADERS = [
     "Ky", "Ma DVQHNS", "Ten don vi", "Ma dia ban",
     "Chuong", "Loai", "Khoan", "Muc", "Tieu muc",
     "Ma nguon KP", "Ma linh vuc chi",
     "Du toan giao", "Dieu chinh", "Thuc chi", "Tam ung", "Luy ke",
     "Ngay cap nhat",
 ]
+
+REVENUE_HEADERS = [
+    "Ky", "Ma DVQHNS", "Ten don vi", "Ma dia ban",
+    "Chuong", "Loai", "Khoan", "Muc", "Tieu muc",
+    "Ma sac thue", "Ma nguon thu",
+    "Du toan giao", "Dieu chinh", "Thuc thu", "Luy ke",
+    "Ngay cap nhat",
+]
+
+# Tax type follows from the revenue line: the chart of accounts already encodes
+# which tax a receipt belongs to, so the submitter is not asked to restate it.
+TAX_BY_LINE = {
+    "1001": "TX01", "1002": "TX01", "1004": "TX01",
+    "1052": "TX02", "1053": "TX02",
+    "1151": "TX03", "1154": "TX03", "1156": "TX03",
+    "1301": "TX04", "1401": "TX05", "1551": "TX06",
+    "1601": "TX07", "1602": "TX07", "1701": "TX08",
+    "2801": "TX09", "2803": "TX09",
+    "2001": "TX10", "2011": "TX10",
+    "4902": "TX11", "4949": "TX11",
+}
 
 # Unit codes that were never in the reference data — a department that was
 # dissolved, and a typo that survived into the export.
@@ -69,11 +94,25 @@ def load_reference():
     )
     try:
         cur = conn.cursor()
+        # Collecting agencies (10543xx) appear on revenue rows only; spending
+        # units on expenditure rows only. Same table, two populations — a tax
+        # office does not have a spending budget in this export, and a school
+        # does not collect tax.
         cur.execute("""
             SELECT u.unit_code, u.unit_name, u.locality_code, u.unit_level, u.parent_code
-            FROM refdata.budget_unit u ORDER BY u.unit_code
+            FROM refdata.budget_unit u
+            WHERE u.unit_code NOT LIKE '10543%%'
+            ORDER BY u.unit_code
         """)
         units = cur.fetchall()
+
+        cur.execute("""
+            SELECT u.unit_code, u.unit_name, u.locality_code, u.unit_level, u.parent_code
+            FROM refdata.budget_unit u
+            WHERE u.unit_code LIKE '10543%%'
+            ORDER BY u.unit_code
+        """)
+        agencies = cur.fetchall()
 
         cur.execute("""
             SELECT line_code, category_code, subcategory_code, item_code
@@ -83,12 +122,26 @@ def load_reference():
         """, (FISCAL_YEAR,))
         lines = cur.fetchall()
 
-        cur.execute("SELECT funding_code FROM refdata.funding_source ORDER BY funding_code")
+        cur.execute("""
+            SELECT line_code, category_code, subcategory_code, item_code
+            FROM refdata.budget_line
+            WHERE fiscal_year = %s AND flow_type = 'revenue'
+            ORDER BY line_code
+        """, (FISCAL_YEAR,))
+        rev_lines = cur.fetchall()
+
+        # The "not applicable" members exist so the warehouse can key a
+        # revenue row against a dimension it does not use. A real expenditure
+        # row must never be assigned one, so they are kept out of the pool the
+        # generator draws from.
+        cur.execute("""SELECT funding_code FROM refdata.funding_source
+                       WHERE funding_group <> 'n/a' ORDER BY funding_code""")
         fundings = [r[0] for r in cur.fetchall()]
 
-        cur.execute("SELECT sector_code FROM refdata.expense_sector ORDER BY sector_code")
+        cur.execute("""SELECT sector_code FROM refdata.expense_sector
+                       WHERE sector_code <> 'LV00' ORDER BY sector_code""")
         sectors = [r[0] for r in cur.fetchall()]
-        return units, lines, fundings, sectors
+        return units, agencies, lines, rev_lines, fundings, sectors
     finally:
         conn.close()
 
@@ -154,7 +207,10 @@ def unit_plan(unit_code, unit_level, lines, fundings):
 
     plan = []
     for line_code, cat, subcat, item in r.sample(lines, min(n_lines, len(lines))):
-        funding = r.choices(fundings, weights=[70, 14, 4, 4, 6, 2], k=1)[0]
+        # Weight the common sources heavily, then flat for whatever else the
+        # reference data carries — so adding a funding source never breaks this.
+        weights = ([70, 14, 4, 4, 6, 2] + [1] * len(fundings))[:len(fundings)]
+        funding = r.choices(fundings, weights=weights, k=1)[0]
         base = BASE_ALLOCATION.get(line_code, 60_000_000)
         allocated = int(base * scale * r.uniform(0.85, 1.15) / 1000) * 1000
         adjusted = 0
@@ -277,17 +333,116 @@ def build_rows(period, units, lines, fundings, sectors, rnd, restated=False):
     return rows
 
 
-def write_workbook(period, rows, rnd, restated=False):
+def build_revenue_rows(period, agencies, rev_lines, rnd):
+    """
+    A month of revenue collection.
+
+    The grain is wider than expenditure: a district tax office collects several
+    taxes, and the locality varies per row rather than being a property of the
+    agency. That is why locality had to join the fact's key.
+
+    Customs and the treasury collect a narrow, different set — modelled because
+    a revenue report broken down by agency that shows every agency collecting
+    everything is obviously synthetic at a glance.
+    """
+    month = int(period.split("-")[1])
+    rows = []
+
+    for unit_code, unit_name, locality_code, unit_level, parent_code in agencies:
+        if "Hai quan" in unit_name:
+            allowed = [l for l in rev_lines if l[0] in ("1002", "1301")]
+            source = "NT02"
+        elif "Kho bac" in unit_name:
+            allowed = [l for l in rev_lines if l[0] in ("2801", "2803", "4902")]
+            source = "NT01"
+        else:
+            allowed = [l for l in rev_lines if l[0] not in ("1002",)]
+            source = "NT01"
+        if not allowed:
+            continue
+
+        chapter = "400"
+        r = random.Random("rev|" + unit_code)
+        n_lines = 16 if unit_level == "department" else 11
+        chosen = r.sample(allowed, min(n_lines, len(allowed)))
+        scale = 26.0 if unit_level == "department" else 4.0
+
+        unit_rows = []
+        for line_code, cat, subcat, item in chosen:
+            base = {
+                "1001": 3_200_000_000, "1052": 2_400_000_000,
+                "1151": 1_600_000_000, "2001": 5_800_000_000,
+                "1601": 700_000_000,   "1602": 520_000_000,
+            }.get(line_code, 400_000_000)
+
+            allocated = int(base * scale * r.uniform(0.85, 1.15) / 1000) * 1000
+            adjusted = 0
+            if r.random() < 0.10:
+                adjusted = int(allocated * r.uniform(-0.10, 0.20) / 1000) * 1000
+            factors = [r.uniform(0.6, 1.4) for _ in range(12)]
+
+            def collect(m):
+                return int((allocated + adjusted) / 12 * factors[m - 1] / 1000) * 1000
+
+            executed = collect(month)
+            ytd = sum(collect(m) for m in range(1, month + 1))
+
+            unit_rows.append({
+                "kind": "detail", "period": period,
+                "unit_code": unit_code, "unit_name": unit_name,
+                "locality_code": locality_code,
+                "chapter": chapter, "cat": cat, "subcat": subcat, "item": item,
+                "line_code": line_code,
+                "tax_type": TAX_BY_LINE.get(line_code, "TX11"),
+                "revenue_source": source,
+                "allocated": allocated, "adjusted": adjusted,
+                "executed": executed, "advance": 0, "ytd": ytd,
+            })
+
+        rows.extend(unit_rows)
+        rows.append({
+            "kind": "subtotal", "period": period,
+            "unit_code": unit_code, "unit_name": f"Cong: {unit_name}",
+            "locality_code": locality_code,
+            "chapter": chapter, "cat": "", "subcat": "", "item": "",
+            "line_code": "", "tax_type": "", "revenue_source": "",
+            "allocated": sum(x["allocated"] for x in unit_rows),
+            "adjusted": sum(x["adjusted"] for x in unit_rows),
+            "executed": sum(x["executed"] for x in unit_rows),
+            "advance": 0,
+            "ytd": sum(x["ytd"] for x in unit_rows),
+        })
+        rows.append({"kind": "blank"})
+
+    detail_all = [x for x in rows if x["kind"] == "detail"]
+    rows.append({
+        "kind": "grand_total", "period": period,
+        "unit_code": "", "unit_name": "TONG CONG THU NSNN TOAN TINH",
+        "locality_code": "", "chapter": "", "cat": "", "subcat": "", "item": "",
+        "line_code": "", "tax_type": "", "revenue_source": "",
+        "allocated": sum(x["allocated"] for x in detail_all),
+        "adjusted": sum(x["adjusted"] for x in detail_all),
+        "executed": sum(x["executed"] for x in detail_all),
+        "advance": 0,
+        "ytd": sum(x["ytd"] for x in detail_all),
+    })
+    return rows
+
+
+def write_workbook(period, rows, rnd, restated=False, flow="expense"):
+    revenue = flow == "revenue"
+    headers = REVENUE_HEADERS if revenue else EXPENSE_HEADERS
+
     wb = Workbook()
     ws = wb.active
-    ws.title = "Chi NSNN"
+    ws.title = "Thu NSNN" if revenue else "Chi NSNN"
 
     bold = Font(bold=True)
     centre = Alignment(horizontal="center", vertical="center")
     thin = Side(style="thin", color="BFBFBF")
     box = Border(left=thin, right=thin, top=thin, bottom=thin)
     head_fill = PatternFill("solid", fgColor="DCE6F1")
-    last_col = get_column_letter(len(HEADERS))
+    last_col = get_column_letter(len(headers))
 
     # ── title block: merged cells above the header, exactly what makes a
     #    naive "header is row 1" reader produce nonsense ────────────────────
@@ -297,7 +452,8 @@ def write_workbook(period, rows, rnd, restated=False):
     ws["A1"].alignment = centre
 
     ws.merge_cells(f"A2:{last_col}2")
-    ws["A2"] = "BAO CAO CHI NGAN SACH NHA NUOC"
+    ws["A2"] = ("BAO CAO THU NGAN SACH NHA NUOC" if revenue
+                else "BAO CAO CHI NGAN SACH NHA NUOC")
     ws["A2"].font = Font(bold=True, size=14)
     ws["A2"].alignment = centre
 
@@ -316,8 +472,8 @@ def write_workbook(period, rows, rnd, restated=False):
     ws.append([])  # row 5 spacer
 
     # ── header row (row 6) ───────────────────────────────────────────────
-    ws.append(HEADERS)
-    for c in range(1, len(HEADERS) + 1):
+    ws.append(headers)
+    for c in range(1, len(headers) + 1):
         cell = ws.cell(row=6, column=c)
         cell.font = bold
         cell.alignment = centre
@@ -349,15 +505,25 @@ def write_workbook(period, rows, rnd, restated=False):
 
         updated = excel_serial(date(FISCAL_YEAR, int(period.split("-")[1]), 28))
 
-        ws.append([
+        common = [
             r["period"], r["unit_code"], r["unit_name"], r["locality_code"],
             r["chapter"], r["cat"], r["subcat"], r["item"], r["line_code"],
-            r["funding"], r["sector"],
-            amount(r["allocated"]), amount(r["adjusted"]),
-            amount(r["executed"]), amount(r["advance"]), amount(ytd),
-            updated,
-        ])
-        ws.cell(row=ws.max_row, column=len(HEADERS)).number_format = "dd/mm/yyyy"
+        ]
+        if revenue:
+            ws.append(common + [
+                r["tax_type"], r["revenue_source"],
+                amount(r["allocated"]), amount(r["adjusted"]),
+                amount(r["executed"]), amount(ytd),
+                updated,
+            ])
+        else:
+            ws.append(common + [
+                r["funding"], r["sector"],
+                amount(r["allocated"]), amount(r["adjusted"]),
+                amount(r["executed"]), amount(r["advance"]), amount(ytd),
+                updated,
+            ])
+        ws.cell(row=ws.max_row, column=len(headers)).number_format = "dd/mm/yyyy"
 
     widths = [9, 11, 34, 10, 8, 7, 8, 7, 9, 12, 13, 16, 14, 16, 14, 16, 13]
     for i, w in enumerate(widths, start=1):
@@ -371,9 +537,10 @@ def write_workbook(period, rows, rnd, restated=False):
 
 def main():
     wanted = sys.argv[1:] or PERIODS
-    units, lines, fundings, sectors = load_reference()
-    print(f"reference: {len(units)} units, {len(lines)} lines, "
-          f"{len(fundings)} funding sources", flush=True)
+    units, agencies, lines, rev_lines, fundings, sectors = load_reference()
+    print(f"reference: {len(units)} spending units, {len(agencies)} collecting "
+          f"agencies, {len(lines)} expense lines, {len(rev_lines)} revenue lines",
+          flush=True)
 
     s3 = boto3.client(
         "s3", endpoint_url=S3_ENDPOINT,
@@ -413,6 +580,18 @@ def main():
             print(f"  {key2:44} {len(blob2)//1024:5d} KB  "
                   f"{sum(1 for r in rows2 if r['kind'] == 'detail'):6d} dong chi tiet  "
                   f"(BAN BO SUNG)", flush=True)
+
+        # The revenue workbook for the same month. Same source, same submitter,
+        # same intake folder — a different sheet out of the same system.
+        rev_rows = build_revenue_rows(period, agencies, rev_lines, rnd)
+        rev_blob = write_workbook(period, rev_rows, rnd, flow="revenue")
+        rev_detail = sum(1 for r in rev_rows if r["kind"] == "detail")
+        total_rows += rev_detail
+
+        rev_key = f"tabmis/{period}/thu-nsnn-{period}.xlsx"
+        s3.put_object(Bucket=INTAKE_BUCKET, Key=rev_key, Body=rev_blob)
+        print(f"  {rev_key:44} {len(rev_blob)//1024:5d} KB  {rev_detail:6d} dong thu     "
+              f"sha256={hashlib.sha256(rev_blob).hexdigest()[:12]}", flush=True)
 
     print(f"\ntong cong {total_rows} dong chi tiet qua {len(wanted)} ky", flush=True)
 

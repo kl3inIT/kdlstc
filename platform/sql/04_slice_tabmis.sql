@@ -15,6 +15,8 @@ DROP TABLE IF EXISTS refdata.budget_line;
 DROP TABLE IF EXISTS refdata.budget_chapter;
 DROP TABLE IF EXISTS refdata.funding_source;
 DROP TABLE IF EXISTS refdata.expense_sector;
+DROP TABLE IF EXISTS refdata.tax_type;
+DROP TABLE IF EXISTS refdata.revenue_source;
 DROP TABLE IF EXISTS refdata.budget_unit;
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -92,6 +94,23 @@ CREATE TABLE refdata.expense_sector (
     sort_order      int
 );
 
+-- ── Revenue-only dimensions ──────────────────────────────────────────────
+-- Revenue and expenditure share one fact, so each side carries dimensions the
+-- other has no use for. Rather than allow NULLs on a foreign key, every
+-- dimension gets a "not applicable" row and the unused slot points at it —
+-- the rule B5.0 sets out, and the reason a report can GROUP BY any dimension
+-- without silently dropping half the rows.
+CREATE TABLE refdata.tax_type (
+    tax_type_code   text PRIMARY KEY,       -- ma sac thue
+    tax_type_name   text NOT NULL,
+    sort_order      int
+);
+
+CREATE TABLE refdata.revenue_source (
+    revenue_source_code text PRIMARY KEY,   -- ma nguon thu
+    revenue_source_name text NOT NULL
+);
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- ingestion.intake_files — the human half of this source.
 --
@@ -105,6 +124,7 @@ CREATE TABLE ingestion.intake_files (
     source_code     text NOT NULL REFERENCES ingestion.sources(source_code),
     object_key      text NOT NULL,          -- where it landed in the bucket
     original_name   text NOT NULL,
+    flow_type       text,                   -- revenue | expense, from the filename
     period          text,                   -- declared inside the workbook
     checksum_sha256 text NOT NULL,
     size_bytes      bigint,
@@ -118,7 +138,8 @@ CREATE TABLE ingestion.intake_files (
     report_key      text,                   -- the .ketqua.txt written back
     processed_at    timestamptz
 );
-CREATE INDEX ix_intake_files_period ON ingestion.intake_files (source_code, period);
+CREATE INDEX ix_intake_files_period
+    ON ingestion.intake_files (source_code, period, flow_type);
 CREATE UNIQUE INDEX ux_intake_files_checksum ON ingestion.intake_files (checksum_sha256);
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -146,6 +167,9 @@ CREATE TABLE staging.stg_tabmis__budget (
     line_code         text,
     funding_code      text,
     sector_code       text,
+    -- revenue workbooks carry these two, expenditure workbooks leave them blank
+    tax_type_code     text,
+    revenue_source_code text,
     allocated_amount  text,
     adjusted_amount   text,
     executed_amount   text,
@@ -163,6 +187,7 @@ CREATE TABLE staging.stg_tabmis__budget_typed (
     run_id            text NOT NULL,
     file_id           text NOT NULL,
     row_number        int  NOT NULL,
+    flow_type         text,
     period            text,
     fiscal_year       int,
     unit_code         text,
@@ -170,6 +195,8 @@ CREATE TABLE staging.stg_tabmis__budget_typed (
     line_code         text,
     funding_code      text,
     sector_code       text,
+    tax_type_code     text,
+    revenue_source_code text,
     allocated_amount  numeric(20,0),
     adjusted_amount   numeric(20,0),
     executed_amount   numeric(20,0),
@@ -185,51 +212,70 @@ CREATE INDEX ix_stg_tabmis_typed_run   ON staging.stg_tabmis__budget_typed (run_
 CREATE INDEX ix_stg_tabmis_typed_valid ON staging.stg_tabmis__budget_typed (run_id, is_valid);
 
 -- ─────────────────────────────────────────────────────────────────────────
--- Gold — fact_budget, periodic snapshot.
+-- Gold — fact_budget, periodic snapshot. REVENUE AND EXPENDITURE TOGETHER.
 --
--- Grain: one unit x one budget line x one funding source x one month.
+-- Grain: one flow x one unit x one budget line x one funding source x one tax
+--        type x one revenue source x one locality x one month.
 --
--- Loaded by REPLACE-BY-PERIOD, not upsert. A resubmission is the whole truth
--- for that month, so the period is deleted and rewritten. Upserting instead
--- would leave rows the corrected file no longer contains — the classic way a
--- restated month keeps a ghost.
+-- One fact rather than two, because the reports that matter join across the
+-- two flows. DHTC_CHI_04 carries `can_doi = thu_dia_ban - luy_ke_chi`; with
+-- separate tables that is a join across two grains done by hand in every
+-- report, and it is where the numbers start to disagree.
 --
--- All five measures are additive across every dimension, so any roll-up is a
--- plain SUM. executed_ytd is the exception in spirit: it is additive across
--- units and lines but NOT across months, because each month already contains
--- the previous ones.
+-- The measure names are flow-neutral on purpose — B5.3 chose them that way:
+--   allocated/adjusted  budget assigned      (expense: du toan chi,  revenue: du toan thu)
+--   executed            realised in month    (expense: thuc chi,    revenue: thuc thu)
+--   executed_ytd        cumulative in year
+--   advance_amount      expenditure only; revenue rows carry 0
+--
+-- Each side uses dimensions the other does not. Instead of nullable foreign
+-- keys, the unused slot points at a "not applicable" row (B5.0). That keeps
+-- every GROUP BY total-preserving: a report grouped by tax type still shows
+-- expenditure, under an explicit "not applicable" bucket, rather than dropping
+-- it silently.
+--
+-- Loaded by REPLACE-BY-PERIOD-AND-FLOW. Scoping the delete to the flow matters:
+-- a period has two files, and a delete scoped only to the period would make
+-- the expenditure submission erase the revenue already loaded for that month.
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE curated.fact_budget (
-    unit_code         text NOT NULL REFERENCES refdata.budget_unit(unit_code),
-    line_code         text NOT NULL,
-    fiscal_year       int  NOT NULL,
-    funding_code      text NOT NULL REFERENCES refdata.funding_source(funding_code),
-    period            text NOT NULL,        -- YYYY-MM
-    chapter_code      text,                 -- degenerate: managing body, per row
-    locality_code     text REFERENCES refdata.locality(locality_code),
-    sector_code       text,
+    flow_type           text NOT NULL,      -- revenue | expense
+    unit_code           text NOT NULL REFERENCES refdata.budget_unit(unit_code),
+    line_code           text NOT NULL,
+    fiscal_year         int  NOT NULL,
+    funding_code        text NOT NULL REFERENCES refdata.funding_source(funding_code),
+    tax_type_code       text NOT NULL REFERENCES refdata.tax_type(tax_type_code),
+    revenue_source_code text NOT NULL REFERENCES refdata.revenue_source(revenue_source_code),
+    locality_code       text NOT NULL REFERENCES refdata.locality(locality_code),
+    period              text NOT NULL,      -- YYYY-MM
+    chapter_code        text,               -- degenerate: managing body, per row
+    sector_code         text,
 
-    allocated_amount  numeric(20,0) NOT NULL DEFAULT 0,
-    adjusted_amount   numeric(20,0) NOT NULL DEFAULT 0,
-    executed_amount   numeric(20,0) NOT NULL DEFAULT 0,
-    advance_amount    numeric(20,0) NOT NULL DEFAULT 0,
-    executed_ytd      numeric(20,0) NOT NULL DEFAULT 0,
+    allocated_amount    numeric(20,0) NOT NULL DEFAULT 0,
+    adjusted_amount     numeric(20,0) NOT NULL DEFAULT 0,
+    executed_amount     numeric(20,0) NOT NULL DEFAULT 0,
+    advance_amount      numeric(20,0) NOT NULL DEFAULT 0,
+    executed_ytd        numeric(20,0) NOT NULL DEFAULT 0,
 
-    run_id            text NOT NULL,
-    batch_id          text NOT NULL,
-    file_id           text NOT NULL,
-    updated_at        timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (unit_code, line_code, funding_code, period),
+    run_id              text NOT NULL,
+    batch_id            text NOT NULL,
+    file_id             text NOT NULL,
+    updated_at          timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (period, flow_type, unit_code, line_code,
+                 funding_code, tax_type_code, revenue_source_code, locality_code),
     FOREIGN KEY (line_code, fiscal_year)
         REFERENCES refdata.budget_line(line_code, fiscal_year)
 );
-CREATE INDEX ix_fact_budget_period ON curated.fact_budget (period);
-CREATE INDEX ix_fact_budget_unit   ON curated.fact_budget (unit_code, period);
+CREATE INDEX ix_fact_budget_period   ON curated.fact_budget (period, flow_type);
+CREATE INDEX ix_fact_budget_unit     ON curated.fact_budget (unit_code, period);
+CREATE INDEX ix_fact_budget_locality ON curated.fact_budget (locality_code, period, flow_type);
 
 COMMENT ON COLUMN curated.fact_budget.executed_ytd IS
   'Cumulative within the fiscal year. Additive across units and lines, NEVER across periods.';
+COMMENT ON COLUMN curated.fact_budget.flow_type IS
+  'revenue | expense. Never aggregate across flows without splitting by this.';
 COMMENT ON TABLE curated.fact_budget IS
-  'Replace-by-period: a resubmission deletes and rewrites the whole month.';
+  'Replace-by-period-AND-flow: a resubmission rewrites one month of one flow.';
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Register the source

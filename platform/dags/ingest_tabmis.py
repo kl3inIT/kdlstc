@@ -53,8 +53,10 @@ MIN_MAPPING_COVERAGE = 0.50
 # title block above it. The header is found by looking for this column.
 HEADER_ANCHOR = "ma dvqhns"
 
-# Worksheet column heading -> staging column.
-COLUMN_MAP = {
+# Worksheet column heading -> staging column. One system, two layouts: the
+# identifying columns and the budget classification are shared, then each flow
+# brings the breakdown the other has no use for.
+_COMMON_COLUMNS = {
     "ky": "period",
     "ma dvqhns": "unit_code",
     "ten don vi": "unit_name",
@@ -64,17 +66,41 @@ COLUMN_MAP = {
     "khoan": "subcategory_code",
     "muc": "item_code",
     "tieu muc": "line_code",
-    "ma nguon kp": "funding_code",
-    "ma linh vuc chi": "sector_code",
     "du toan giao": "allocated_amount",
     "dieu chinh": "adjusted_amount",
-    "thuc chi": "executed_amount",
-    "tam ung": "advance_amount",
     "luy ke": "executed_ytd",
 }
 
+COLUMN_MAP = {
+    "expense": {**_COMMON_COLUMNS,
+                "ma nguon kp": "funding_code",
+                "ma linh vuc chi": "sector_code",
+                "thuc chi": "executed_amount",
+                "tam ung": "advance_amount"},
+    "revenue": {**_COMMON_COLUMNS,
+                "ma sac thue": "tax_type_code",
+                "ma nguon thu": "revenue_source_code",
+                "thuc thu": "executed_amount"},
+}
+
+# Which flow a workbook carries is declared by its filename. That declaration
+# is not trusted: build_silver_two checks it against the flow_type of the
+# budget lines actually used, and refuses a file whose name and contents
+# disagree. A revenue export filed as expenditure would otherwise wipe a month
+# of the wrong flow.
+FLOW_BY_PREFIX = {"thu-": "revenue", "chi-": "expense"}
+
+# Sentinel members standing in for "this dimension does not apply to this flow".
+NOT_APPLICABLE = {
+    "funding_code": "NKP00",
+    "sector_code": "LV00",
+    "tax_type_code": "TX00",
+    "revenue_source_code": "NT00",
+}
+
 STRUCTURAL_REASONS = ("subtotal_row",)
-MAPPING_REASONS = ("unit_unknown", "line_unknown", "funding_unknown")
+MAPPING_REASONS = ("unit_unknown", "line_unknown", "funding_unknown",
+                   "tax_type_unknown", "revenue_source_unknown")
 
 
 def _norm(text):
@@ -89,8 +115,9 @@ def _norm(text):
 # =========================================================================
 BUILD_TYPED_SQL = r"""
 INSERT INTO staging.stg_tabmis__budget_typed (
-    run_id, file_id, row_number, period, fiscal_year,
+    run_id, file_id, row_number, flow_type, period, fiscal_year,
     unit_code, locality_code, line_code, funding_code, sector_code,
+    tax_type_code, revenue_source_code,
     allocated_amount, adjusted_amount, executed_amount, advance_amount,
     executed_ytd, raw_path, is_valid, reject_reason, reject_detail
 )
@@ -136,25 +163,47 @@ WITH money AS (
 resolved AS (
     SELECT
         m.*,
-        u.unit_code IS NOT NULL AS unit_ok,
-        b.line_code IS NOT NULL AS line_ok,
-        f.funding_code IS NOT NULL AS funding_ok,
+        -- A dimension the other flow uses is filled with its sentinel rather
+        -- than left NULL, so every foreign key resolves and no GROUP BY
+        -- silently drops half the fact.
+        CASE WHEN %(flow)s = 'revenue' THEN 'NKP00'
+             ELSE COALESCE(NULLIF(btrim(m.funding_code), ''), 'NKP00') END AS d_funding,
+        CASE WHEN %(flow)s = 'revenue' THEN 'LV00'
+             ELSE COALESCE(NULLIF(btrim(m.sector_code), ''), 'LV00') END   AS d_sector,
+        CASE WHEN %(flow)s = 'expense' THEN 'TX00'
+             ELSE COALESCE(NULLIF(btrim(m.tax_type_code), ''), 'TX00') END AS d_tax,
+        CASE WHEN %(flow)s = 'expense' THEN 'NT00'
+             ELSE COALESCE(NULLIF(btrim(m.revenue_source_code), ''), 'NT00') END AS d_revsrc,
+        u.unit_code    IS NOT NULL AS unit_ok,
+        b.line_code    IS NOT NULL AS line_ok,
+        b.flow_type                AS line_flow,
+        l.locality_code IS NOT NULL AS locality_ok,
         prev.executed_ytd AS prev_ytd
     FROM money m
-    LEFT JOIN refdata.budget_unit u    ON u.unit_code = m.unit_code
-    LEFT JOIN refdata.budget_line b    ON b.line_code = m.line_code
-                                      AND b.fiscal_year = %(fiscal_year)s
-    LEFT JOIN refdata.funding_source f ON f.funding_code = m.funding_code
+    LEFT JOIN refdata.budget_unit u ON u.unit_code = m.unit_code
+    LEFT JOIN refdata.budget_line b ON b.line_code = m.line_code
+                                   AND b.fiscal_year = %(fiscal_year)s
+    LEFT JOIN refdata.locality l    ON l.locality_code = m.locality_code
     LEFT JOIN LATERAL (
         SELECT fb.executed_ytd
         FROM curated.fact_budget fb
-        WHERE fb.unit_code   = m.unit_code
-          AND fb.line_code   = m.line_code
-          AND fb.funding_code = m.funding_code
+        WHERE fb.unit_code = m.unit_code
+          AND fb.line_code = m.line_code
+          AND fb.flow_type = %(flow)s
           AND fb.period < m.period
         ORDER BY fb.period DESC
         LIMIT 1
     ) prev ON TRUE
+),
+checked AS (
+    SELECT r.*,
+           fs.funding_code IS NOT NULL AS funding_ok,
+           tt.tax_type_code IS NOT NULL AS tax_ok,
+           rs.revenue_source_code IS NOT NULL AS revsrc_ok
+    FROM resolved r
+    LEFT JOIN refdata.funding_source  fs ON fs.funding_code = r.d_funding
+    LEFT JOIN refdata.tax_type        tt ON tt.tax_type_code = r.d_tax
+    LEFT JOIN refdata.revenue_source  rs ON rs.revenue_source_code = r.d_revsrc
 ),
 judged AS (
     SELECT
@@ -175,15 +224,22 @@ judged AS (
             WHEN r.m_allocated < 0                       THEN 'amount_negative'
             WHEN NOT r.unit_ok                           THEN 'unit_unknown'
             WHEN NOT r.line_ok                           THEN 'line_unknown'
+            -- The filename said one flow, the chart of accounts says the other.
+            -- Refusing here is what stops a mislabelled workbook from wiping a
+            -- month of the flow it was never meant to touch.
+            WHEN r.line_flow IS DISTINCT FROM %(flow)s   THEN 'flow_mismatch'
+            WHEN NOT r.locality_ok                       THEN 'locality_unknown'
             WHEN NOT r.funding_ok                        THEN 'funding_unknown'
+            WHEN NOT r.tax_ok                            THEN 'tax_type_unknown'
+            WHEN NOT r.revsrc_ok                         THEN 'revenue_source_unknown'
             WHEN r.prev_ytd IS NOT NULL
              AND r.m_ytd < r.prev_ytd                    THEN 'ytd_regression'
         END AS reason
-    FROM resolved r
+    FROM checked r
 )
 SELECT
-    run_id, file_id, row_number, period, %(fiscal_year)s,
-    unit_code, locality_code, line_code, funding_code, sector_code,
+    run_id, file_id, row_number, %(flow)s, period, %(fiscal_year)s,
+    unit_code, locality_code, line_code, d_funding, d_sector, d_tax, d_revsrc,
     m_allocated, m_adjusted, m_executed, m_advance, m_ytd,
     raw_path,
     reason IS NULL,
@@ -196,7 +252,12 @@ SELECT
             '", luy ke="' || coalesce(executed_ytd,'') || '"'
         WHEN 'unit_unknown'    THEN 'ma DVQHNS "' || coalesce(unit_code,'') || '" khong co trong danh muc don vi'
         WHEN 'line_unknown'    THEN 'ma tieu muc "' || coalesce(line_code,'') || '" khong co trong muc luc NSNN nam ' || %(fiscal_year)s
-        WHEN 'funding_unknown' THEN 'ma nguon kinh phi "' || coalesce(funding_code,'') || '" khong co trong danh muc'
+        WHEN 'flow_mismatch'   THEN 'tep khai la ' || %(flow)s || ' nhung tieu muc "' || coalesce(line_code,'')
+                                    || '" thuoc ve ' || coalesce(line_flow,'?') || ' — kiem tra lai ten tep'
+        WHEN 'locality_unknown' THEN 'ma dia ban "' || coalesce(locality_code,'') || '" khong co trong danh muc'
+        WHEN 'funding_unknown' THEN 'ma nguon kinh phi "' || coalesce(d_funding,'') || '" khong co trong danh muc'
+        WHEN 'tax_type_unknown' THEN 'ma sac thue "' || coalesce(d_tax,'') || '" khong co trong danh muc'
+        WHEN 'revenue_source_unknown' THEN 'ma nguon thu "' || coalesce(d_revsrc,'') || '" khong co trong danh muc'
         WHEN 'amount_negative' THEN 'du toan giao am: ' || m_allocated::text
         WHEN 'period_mismatch' THEN 'ky trong dong ("' || coalesce(period,'') || '") khac ky cua tep (' || %(period)s || ')'
         WHEN 'ytd_regression'  THEN 'luy ke ' || m_ytd::text || ' nho hon ky truoc ' || prev_ytd::text
@@ -279,6 +340,26 @@ def ingest_tabmis():
         key, size, checksum = chosen
         period = key.split("/")[1] if len(key.split("/")) > 2 else None
         file_id = "f_" + checksum[:16]
+
+        name = key.split("/")[-1]
+        flow = next((v for prefix, v in FLOW_BY_PREFIX.items()
+                     if name.startswith(prefix)), None)
+        if flow is None:
+            # Refuse rather than guess. Guessing wrong here does not produce a
+            # wrong number in one row — it replaces a month of the wrong flow.
+            with warehouse_cursor(autocommit=True) as cur:
+                cur.execute(
+                    "INSERT INTO ingestion.intake_files "
+                    "(file_id, source_code, object_key, original_name, period, "
+                    " checksum_sha256, size_bytes, status, error_count) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,'rejected',0) "
+                    "ON CONFLICT (checksum_sha256) DO UPDATE SET status='rejected'",
+                    (file_id, SOURCE_CODE, key, name, period, checksum, size),
+                )
+            raise AirflowException(
+                f"Ten tep '{name}' khong cho biet la thu hay chi. "
+                f"Tep phai bat dau bang 'thu-' hoac 'chi-'."
+            )
         raw_prefix = f"{BRONZE_BUCKET}/{SOURCE_CODE}/{period}/{run_id}/"
 
         with warehouse_cursor() as cur:
@@ -297,13 +378,13 @@ def ingest_tabmis():
             cur.execute(
                 """
                 INSERT INTO ingestion.intake_files
-                    (file_id, source_code, object_key, original_name, period,
-                     checksum_sha256, size_bytes, run_id, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'received')
+                    (file_id, source_code, object_key, original_name, flow_type,
+                     period, checksum_sha256, size_bytes, run_id, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'received')
                 ON CONFLICT (checksum_sha256) DO UPDATE
                    SET run_id = EXCLUDED.run_id, status = 'received'
                 """,
-                (file_id, SOURCE_CODE, key, key.split("/")[-1], period,
+                (file_id, SOURCE_CODE, key, name, flow, period,
                  checksum, size, run_id),
             )
             for stmt in (
@@ -316,10 +397,11 @@ def ingest_tabmis():
                 cur.execute(stmt, (run_id,))
 
         write_audit("airflow", "file_claimed", run_id,
-                    {"key": key, "checksum": checksum, "period": period})
+                    {"key": key, "checksum": checksum, "period": period,
+                     "flow": flow})
         return {"run_id": run_id, "file_id": file_id, "key": key,
-                "period": period, "checksum": checksum, "size": size,
-                "raw_prefix": raw_prefix}
+                "period": period, "flow": flow, "checksum": checksum,
+                "size": size, "raw_prefix": raw_prefix}
 
     # ---------------------------------------------------------------------
     @task
@@ -395,26 +477,29 @@ def ingest_tabmis():
                 "Khong nhan ra bang: thieu cot 'Ma DVQHNS' trong 30 dong dau."
             )
 
+        column_map = COLUMN_MAP[ticket["flow"]]
         position = {}
         for col_idx, name in enumerate(headers):
-            target = COLUMN_MAP.get(name)
+            target = column_map.get(name)
             if target and target not in position:
                 position[target] = col_idx
 
-        missing = sorted(set(COLUMN_MAP.values()) - set(position))
+        missing = sorted(set(column_map.values()) - set(position))
         if missing:
             set_run_status(run_id, "schema_blocked",
                            message="thieu cot: " + ", ".join(missing))
-            raise AirflowException("Bieu thieu cot bat buoc: " + ", ".join(missing))
+            raise AirflowException(
+                f"Bieu {ticket['flow']} thieu cot bat buoc: " + ", ".join(missing)
+            )
 
-        columns = ["run_id", "file_id", "row_number"] + list(COLUMN_MAP.values()) + ["raw_path"]
+        columns = ["run_id", "file_id", "row_number"] + list(column_map.values()) + ["raw_path"]
         rows = []
         for offset, values in enumerate(
                 ws.iter_rows(min_row=header_row + 1, values_only=True), start=1):
             if values is None or all(v is None or str(v).strip() == "" for v in values):
                 continue                      # spacer rows between groups
             record = [run_id, ticket["file_id"], header_row + offset]
-            for target in COLUMN_MAP.values():
+            for target in column_map.values():
                 idx = position[target]
                 cell = values[idx] if idx < len(values) else None
                 if isinstance(cell, datetime):
@@ -450,6 +535,7 @@ def ingest_tabmis():
                 "run_id": run_id,
                 "fiscal_year": FISCAL_YEAR,
                 "period": ticket["period"],
+                "flow": ticket["flow"],
             })
             cur.execute(
                 """
@@ -466,19 +552,27 @@ def ingest_tabmis():
                     (run_id, source_code, code_type, source_value,
                      row_count, reason, assignee, due_date)
                 SELECT %(run_id)s, %(source_code)s,
-                       CASE reject_reason WHEN 'unit_unknown' THEN 'budget_unit'
-                                          WHEN 'line_unknown' THEN 'budget_line'
-                                          ELSE 'funding_source' END,
-                       CASE reject_reason WHEN 'unit_unknown' THEN unit_code
-                                          WHEN 'line_unknown' THEN line_code
-                                          ELSE funding_code END,
+                       CASE reject_reason
+                            WHEN 'unit_unknown'           THEN 'budget_unit'
+                            WHEN 'line_unknown'           THEN 'budget_line'
+                            WHEN 'tax_type_unknown'       THEN 'tax_type'
+                            WHEN 'revenue_source_unknown' THEN 'revenue_source'
+                            ELSE 'funding_source' END,
+                       CASE reject_reason
+                            WHEN 'unit_unknown'           THEN unit_code
+                            WHEN 'line_unknown'           THEN line_code
+                            WHEN 'tax_type_unknown'       THEN tax_type_code
+                            WHEN 'revenue_source_unknown' THEN revenue_source_code
+                            ELSE funding_code END,
                        COUNT(*),
                        'ma khong co trong danh muc',
                        'Phong QLNS',
                        CURRENT_DATE + 7
                 FROM staging.stg_tabmis__budget_typed
                 WHERE run_id = %(run_id)s
-                  AND reject_reason IN ('unit_unknown','line_unknown','funding_unknown')
+                  AND reject_reason IN ('unit_unknown','line_unknown',
+                                        'funding_unknown','tax_type_unknown',
+                                        'revenue_source_unknown')
                 GROUP BY 2, 3, 4
                 """,
                 {"run_id": run_id, "source_code": SOURCE_CODE},
@@ -590,21 +684,29 @@ def ingest_tabmis():
         batch_id = "b_" + run_id[2:]
 
         with warehouse_cursor() as cur:
-            cur.execute("DELETE FROM curated.fact_budget WHERE period = %s", (period,))
+            # Scoped to period AND flow. A month holds two submissions; a delete
+            # scoped only to the period would make the expenditure file erase
+            # the revenue already loaded for that month.
+            cur.execute(
+                "DELETE FROM curated.fact_budget WHERE period = %s AND flow_type = %s",
+                (period, ticket["flow"]),
+            )
             replaced = cur.rowcount
 
             cur.execute(
                 """
                 INSERT INTO curated.fact_budget (
-                    unit_code, line_code, fiscal_year, funding_code, period,
-                    chapter_code, locality_code, sector_code,
+                    flow_type, unit_code, line_code, fiscal_year, funding_code,
+                    tax_type_code, revenue_source_code, locality_code, period,
+                    chapter_code, sector_code,
                     allocated_amount, adjusted_amount, executed_amount,
                     advance_amount, executed_ytd,
                     run_id, batch_id, file_id
                 )
-                SELECT t.unit_code, t.line_code, t.fiscal_year, t.funding_code,
-                       t.period,
-                       max(s.chapter_code), max(t.locality_code), max(t.sector_code),
+                SELECT t.flow_type, t.unit_code, t.line_code, t.fiscal_year,
+                       t.funding_code, t.tax_type_code, t.revenue_source_code,
+                       t.locality_code, t.period,
+                       max(s.chapter_code), max(t.sector_code),
                        sum(t.allocated_amount), sum(t.adjusted_amount),
                        sum(t.executed_amount), sum(t.advance_amount),
                        sum(t.executed_ytd),
@@ -613,8 +715,9 @@ def ingest_tabmis():
                 JOIN staging.stg_tabmis__budget s
                   ON s.run_id = t.run_id AND s.row_number = t.row_number
                 WHERE t.run_id = %(run_id)s AND t.is_valid
-                GROUP BY t.unit_code, t.line_code, t.fiscal_year,
-                         t.funding_code, t.period
+                GROUP BY t.flow_type, t.unit_code, t.line_code, t.fiscal_year,
+                         t.funding_code, t.tax_type_code, t.revenue_source_code,
+                         t.locality_code, t.period
                 """,
                 {"run_id": run_id, "batch_id": batch_id, "file_id": ticket["file_id"]},
             )
@@ -641,12 +744,15 @@ def ingest_tabmis():
                 (verdict["defective_rows"] + verdict["unmapped_rows"],
                  ticket["file_id"]),
             )
-            # An earlier file for the same period is now history, not truth.
+            # An earlier file for the same period AND FLOW is now history. Without
+            # the flow in the predicate, accepting the expenditure workbook would
+            # retire the revenue workbook for that month as though it had been
+            # replaced by it.
             cur.execute(
                 "UPDATE ingestion.intake_files SET status='superseded' "
-                "WHERE source_code=%s AND period=%s AND file_id<>%s "
-                "AND status='accepted'",
-                (SOURCE_CODE, period, ticket["file_id"]),
+                "WHERE source_code=%s AND period=%s AND flow_type=%s "
+                "AND file_id<>%s AND status='accepted'",
+                (SOURCE_CODE, period, ticket["flow"], ticket["file_id"]),
             )
 
         set_run_status(run_id, "published", row_count=published)
