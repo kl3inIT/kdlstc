@@ -98,19 +98,26 @@ def load_reference():
         # units on expenditure rows only. Same table, two populations — a tax
         # office does not have a spending budget in this export, and a school
         # does not collect tax.
+        # budget_unit is versioned now, so take the newest version of each unit.
+        # The export therefore carries today's names even for old months —
+        # which is what a real export generated today would do, and exactly why
+        # the warehouse resolves units by CODE and never trusts the name in the
+        # file.
         cur.execute("""
-            SELECT u.unit_code, u.unit_name, u.locality_code, u.unit_level, u.parent_code
+            SELECT DISTINCT ON (u.unit_code)
+                   u.unit_code, u.unit_name, u.locality_code, u.unit_level, u.parent_code
             FROM refdata.budget_unit u
             WHERE u.unit_code NOT LIKE '10543%%'
-            ORDER BY u.unit_code
+            ORDER BY u.unit_code, u.valid_from DESC
         """)
         units = cur.fetchall()
 
         cur.execute("""
-            SELECT u.unit_code, u.unit_name, u.locality_code, u.unit_level, u.parent_code
+            SELECT DISTINCT ON (u.unit_code)
+                   u.unit_code, u.unit_name, u.locality_code, u.unit_level, u.parent_code
             FROM refdata.budget_unit u
             WHERE u.unit_code LIKE '10543%%'
-            ORDER BY u.unit_code
+            ORDER BY u.unit_code, u.valid_from DESC
         """)
         agencies = cur.fetchall()
 

@@ -86,7 +86,7 @@ VALUES
   ('1054301','Cuc Thue tinh Hung Yen',        'CT tinh','department','1054001','LOC00','state_admin'),
   ('1054320','Chi cuc Hai quan Hung Yen',     'CCHQ',   'department','1054001','LOC00','state_admin'),
   ('1054330','Kho bac Nha nuoc tinh Hung Yen','KBNN',   'department','1054001','LOC00','state_admin')
-ON CONFLICT (unit_code) DO NOTHING;
+ON CONFLICT (unit_code, valid_from) DO NOTHING;
 
 -- One district tax office per district, mirroring the finance offices.
 INSERT INTO refdata.budget_unit
@@ -101,4 +101,4 @@ SELECT
   'state_admin'
 FROM refdata.locality l
 WHERE l.admin_level = 'district'
-ON CONFLICT (unit_code) DO NOTHING;
+ON CONFLICT (unit_code, valid_from) DO NOTHING;

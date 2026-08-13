@@ -26,7 +26,7 @@ import hashlib
 import io
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 try:                                    # Airflow 3
     from airflow.sdk import dag, task
@@ -108,6 +108,19 @@ def _norm(text):
     return re.sub(r"\s+", " ", str(text or "").strip().lower())
 
 
+def _period_end(period):
+    """
+    Last calendar day of a YYYY-MM period.
+
+    This is the date a monthly figure is attached to, and therefore the date
+    that decides WHICH VERSION of a unit the figure belongs to. Using today's
+    date instead would quietly re-attribute every historical row to whatever
+    the org chart looks like now.
+    """
+    year, month = (int(x) for x in period.split("-"))
+    return (date(year + month // 12, month % 12 + 1, 1) - timedelta(days=1)).isoformat()
+
+
 # =========================================================================
 # Silver-2. Amount parsing is the interesting part: a cell that reads
 # "1.234.567" to a human is a string to a database, and casting it naively
@@ -180,7 +193,12 @@ resolved AS (
         l.locality_code IS NOT NULL AS locality_ok,
         prev.executed_ytd AS prev_ytd
     FROM money m
-    LEFT JOIN refdata.budget_unit u ON u.unit_code = m.unit_code
+    -- budget_unit is versioned, so this join MUST be constrained to the version
+    -- in effect at the end of the period. Without the date predicate a renamed
+    -- unit matches two rows and every one of its figures is silently doubled.
+    LEFT JOIN refdata.budget_unit u
+           ON u.unit_code = m.unit_code
+          AND %(period_end)s::date BETWEEN u.valid_from AND u.valid_to
     LEFT JOIN refdata.budget_line b ON b.line_code = m.line_code
                                    AND b.fiscal_year = %(fiscal_year)s
     LEFT JOIN refdata.locality l    ON l.locality_code = m.locality_code
@@ -535,6 +553,7 @@ def ingest_tabmis():
                 "run_id": run_id,
                 "fiscal_year": FISCAL_YEAR,
                 "period": ticket["period"],
+                "period_end": _period_end(ticket["period"]),
                 "flow": ticket["flow"],
             })
             cur.execute(
@@ -696,14 +715,18 @@ def ingest_tabmis():
             cur.execute(
                 """
                 INSERT INTO curated.fact_budget (
-                    flow_type, unit_code, line_code, fiscal_year, funding_code,
-                    tax_type_code, revenue_source_code, locality_code, period,
-                    chapter_code, sector_code,
+                    flow_type, unit_key, unit_code, line_code, fiscal_year,
+                    funding_code, tax_type_code, revenue_source_code,
+                    locality_code, period, chapter_code, sector_code,
                     allocated_amount, adjusted_amount, executed_amount,
                     advance_amount, executed_ytd,
                     run_id, batch_id, file_id
                 )
-                SELECT t.flow_type, t.unit_code, t.line_code, t.fiscal_year,
+                SELECT t.flow_type,
+                       -- the version of the unit in effect at period end, so
+                       -- the figure stays attached to the unit as it was then
+                       COALESCE(d.unit_key, -1),
+                       t.unit_code, t.line_code, t.fiscal_year,
                        t.funding_code, t.tax_type_code, t.revenue_source_code,
                        t.locality_code, t.period,
                        max(s.chapter_code), max(t.sector_code),
@@ -714,12 +737,18 @@ def ingest_tabmis():
                 FROM staging.stg_tabmis__budget_typed t
                 JOIN staging.stg_tabmis__budget s
                   ON s.run_id = t.run_id AND s.row_number = t.row_number
+                LEFT JOIN curated.dim_unit d
+                  ON d.unit_code = t.unit_code
+                 AND %(period_end)s::date BETWEEN d.effective_from AND d.effective_to
                 WHERE t.run_id = %(run_id)s AND t.is_valid
-                GROUP BY t.flow_type, t.unit_code, t.line_code, t.fiscal_year,
-                         t.funding_code, t.tax_type_code, t.revenue_source_code,
+                GROUP BY t.flow_type, COALESCE(d.unit_key, -1), t.unit_code,
+                         t.line_code, t.fiscal_year, t.funding_code,
+                         t.tax_type_code, t.revenue_source_code,
                          t.locality_code, t.period
                 """,
-                {"run_id": run_id, "batch_id": batch_id, "file_id": ticket["file_id"]},
+                {"run_id": run_id, "batch_id": batch_id,
+                 "file_id": ticket["file_id"],
+                 "period_end": _period_end(period)},
             )
             published = cur.rowcount
 

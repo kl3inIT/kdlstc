@@ -8,6 +8,7 @@
 -- =========================================================================
 
 DROP TABLE IF EXISTS curated.fact_budget;
+DROP TABLE IF EXISTS curated.dim_unit;
 DROP TABLE IF EXISTS staging.stg_tabmis__budget_typed;
 DROP TABLE IF EXISTS staging.stg_tabmis__budget;
 DROP TABLE IF EXISTS ingestion.intake_files;
@@ -27,22 +28,69 @@ DROP TABLE IF EXISTS refdata.budget_unit;
 -- as the org chart stood at the time, or rolled up into today's org chart.
 -- Losing that distinction is how last year's numbers stop reconciling.
 -- ─────────────────────────────────────────────────────────────────────────
+-- Versioned, not overwritten. The primary key carries valid_from because a
+-- unit that is renamed, re-parented or reclassified must keep its old row —
+-- overwriting it rewrites history, and every report for an earlier month
+-- silently starts showing today's name.
 CREATE TABLE refdata.budget_unit (
-    unit_code       text PRIMARY KEY,       -- ma DVQHNS, 7 digits
+    unit_code       text NOT NULL,          -- ma DVQHNS, 7 digits — natural key
+    valid_from      date NOT NULL DEFAULT '2020-01-01',
+    valid_to        date NOT NULL DEFAULT '9999-12-31',
     unit_name       text NOT NULL,
     short_name      text,
     unit_level      text NOT NULL,          -- province | department | district | commune | public_service
     parent_code     text,
     locality_code   text REFERENCES refdata.locality(locality_code),
     org_type        text,                   -- state_admin | public_service | other
-    valid_from      date NOT NULL DEFAULT '2020-01-01',
-    valid_to        date NOT NULL DEFAULT '9999-12-31',
     superseded_by   text,                   -- who inherited this unit's budget
+    change_reason   text,                   -- why this version exists
     version         int  NOT NULL DEFAULT 1,
     created_by      text NOT NULL DEFAULT 'seed',
-    created_at      timestamptz NOT NULL DEFAULT now()
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (unit_code, valid_from)
 );
-CREATE INDEX ix_budget_unit_parent ON refdata.budget_unit (parent_code);
+CREATE INDEX ix_budget_unit_parent  ON refdata.budget_unit (parent_code);
+CREATE INDEX ix_budget_unit_current ON refdata.budget_unit (unit_code, valid_to);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- curated.dim_unit — the SCD-2 dimension the facts actually point at.
+--
+-- One row per VERSION of a unit, with a surrogate key. Facts carry that key,
+-- so a figure booked in March stays attached to the March version of the unit
+-- forever, whatever happens to the unit afterwards.
+--
+-- succeeded_by_key is what makes the second reading possible. A report can be
+-- run two ways and both are correct answers to different questions:
+--
+--   as it stood   group by unit_key            — what the org chart was then;
+--                                                this is what reconciles with
+--                                                the treasury for that month
+--   as it stands  follow succeeded_by_key to   — roll a dissolved unit into
+--                 the current version            whoever inherited it, so this
+--                                                year compares with next year
+--
+-- unit_key = -1 is the "unknown" member (B5.0): facts never carry a NULL key,
+-- so a row whose unit could not be resolved still appears in every total under
+-- an explicit bucket instead of vanishing from the report.
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE curated.dim_unit (
+    unit_key        bigint PRIMARY KEY,
+    unit_code       text NOT NULL,
+    unit_name       text NOT NULL,
+    short_name      text,
+    unit_level      text,
+    parent_code     text,
+    locality_code   text,
+    org_type        text,
+    effective_from  date NOT NULL,
+    effective_to    date NOT NULL,
+    is_current      boolean NOT NULL,
+    change_reason   text,
+    succeeded_by_key bigint,                -- current version that inherited it
+    UNIQUE (unit_code, effective_from)
+);
+CREATE INDEX ix_dim_unit_code    ON curated.dim_unit (unit_code, effective_from, effective_to);
+CREATE INDEX ix_dim_unit_current ON curated.dim_unit (is_current);
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- refdata.budget_line — the state budget chart of accounts, FLAT.
@@ -240,7 +288,11 @@ CREATE INDEX ix_stg_tabmis_typed_valid ON staging.stg_tabmis__budget_typed (run_
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE curated.fact_budget (
     flow_type           text NOT NULL,      -- revenue | expense
-    unit_code           text NOT NULL REFERENCES refdata.budget_unit(unit_code),
+    -- The surrogate key of the unit version in effect when the money moved.
+    -- unit_code stays alongside as a degenerate attribute: it is what a person
+    -- types into a search box, while unit_key is what the join uses.
+    unit_key            bigint NOT NULL REFERENCES curated.dim_unit(unit_key),
+    unit_code           text NOT NULL,
     line_code           text NOT NULL,
     fiscal_year         int  NOT NULL,
     funding_code        text NOT NULL REFERENCES refdata.funding_source(funding_code),
@@ -268,6 +320,7 @@ CREATE TABLE curated.fact_budget (
 );
 CREATE INDEX ix_fact_budget_period   ON curated.fact_budget (period, flow_type);
 CREATE INDEX ix_fact_budget_unit     ON curated.fact_budget (unit_code, period);
+CREATE INDEX ix_fact_budget_unitkey  ON curated.fact_budget (unit_key);
 CREATE INDEX ix_fact_budget_locality ON curated.fact_budget (locality_code, period, flow_type);
 
 COMMENT ON COLUMN curated.fact_budget.executed_ytd IS

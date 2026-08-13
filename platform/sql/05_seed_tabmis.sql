@@ -128,7 +128,7 @@ VALUES
   ('1054025','Van phong Uy ban nhan dan tinh',   'VP UBND','department','1054001','LOC00','state_admin'),
   ('1054026','Cong an tinh Hung Yen',            'CA tinh','department','1054001','LOC00','state_admin'),
   ('1054027','Bo Chi huy Quan su tinh',          'BCHQS', 'department','1054001','LOC00','state_admin')
-ON CONFLICT (unit_code) DO NOTHING;
+ON CONFLICT (unit_code, valid_from) DO NOTHING;
 
 -- ── Budget units — one finance office per district ───────────────────────
 INSERT INTO refdata.budget_unit
@@ -143,7 +143,7 @@ SELECT
   'state_admin'
 FROM refdata.locality l
 WHERE l.admin_level = 'district'
-ON CONFLICT (unit_code) DO NOTHING;
+ON CONFLICT (unit_code, valid_from) DO NOTHING;
 
 -- ── Budget units — the long tail of public service providers ─────────────
 -- Generated rather than typed out: the point is realistic VOLUME and a
@@ -177,7 +177,7 @@ CROSS JOIN LATERAL (
   ORDER BY locality_code
   OFFSET ((n - 1) % 10) LIMIT 1
 ) AS d
-ON CONFLICT (unit_code) DO NOTHING;
+ON CONFLICT (unit_code, valid_from) DO NOTHING;
 
 -- ── A mid-year merger, planted on purpose ────────────────────────────────
 -- Two lower-secondary schools merge from 2026-07. The old unit stops being
@@ -186,5 +186,6 @@ ON CONFLICT (unit_code) DO NOTHING;
 -- into its successor. This is the case that breaks any dimension without SCD-2.
 UPDATE refdata.budget_unit
    SET valid_to      = DATE '2026-06-30',
-       superseded_by = '10542' || lpad('32', 2, '0')
- WHERE unit_code = '10542' || lpad('31', 2, '0');
+       superseded_by = '1054232',
+       change_reason = 'sap nhap vao 1054232 tu 01/07/2026'
+ WHERE unit_code = '1054231';
