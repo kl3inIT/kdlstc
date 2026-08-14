@@ -1,0 +1,4 @@
+# Dependencies executed inside Airflow tasks.  Keep exact pins so every pod
+# runs the same ingestion code.
+dlt==1.21.0
+openpyxl==3.1.5

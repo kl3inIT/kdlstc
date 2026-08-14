@@ -1,0 +1,73 @@
+# Keycloak 26.6.4 · chart codecentric/keycloakx 7.2.2 · namespace stc-hy
+# Các hostname là placeholder public; override bằng values local khi deploy.
+# DB: PostgreSQL 18, nằm trong danh sách hỗ trợ chính thức của Keycloak
+
+replicas: 1
+
+# Chart KHÔNG tự đặt command — README yêu cầu khai tường minh
+command:
+  - "/opt/keycloak/bin/kc.sh"
+  - "start"
+  - "--http-port=8080"
+
+http:
+  # mặc định chart là "/auth" (tương thích ngược Keycloak cũ).
+  # Keycloak 26 dùng root, đặt "/" để URL đúng chuẩn:
+  #   /realms/khodl/.well-known/openid-configuration
+  relativePath: "/"
+
+database:
+  vendor: postgres
+  hostname: "postgres.example.com"
+  port: 5432
+  database: stc_keycloak
+  username: stc_keycloak
+  existingSecret: keycloak-db
+  existingSecretKey: password
+
+# init container chờ DB sẵn sàng rồi mới khởi động Keycloak
+dbchecker:
+  enabled: true
+
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: "https://sso.example.com"
+  # Backchannel dùng Service nội bộ, còn authorize/logout của trình duyệt dùng
+  # hostname công khai ở KC_HOSTNAME.
+  - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+    value: "true"
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin
+        key: username
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin
+        key: password
+  - name: JAVA_OPTS_APPEND
+    value: "-XX:MaxRAMPercentage=70 -Djgroups.dns.query=keycloak-headless"
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  rules:
+    - host: "sso.example.com"
+      paths:
+        - path: /
+          pathType: Prefix
+
+# JVM: khởi động ngốn CPU — rút kinh nghiệm api-server Airflow, cho hẳn 1 core
+resources:
+  requests:
+    cpu: 300m
+    memory: 768Mi
+  limits:
+    cpu: 1
+    memory: 1536Mi
+
+# startupProbe: giữ mặc định của chart — 60 lần × 5s = 300s để khởi động, đã dư
+
+serviceMonitor:
+  enabled: false

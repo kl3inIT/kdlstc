@@ -1,0 +1,13 @@
+# Shell scripts must stay LF. A CRLF line ending turns the shebang into
+# "/usr/bin/env bash\r", which Linux reports as "no such file or directory" —
+# a confusing error that points at bash rather than at the line endings.
+*.sh text eol=lf
+
+# SQL and YAML are read by containers on Linux; keep them LF for the same
+# reason, and so diffs stay clean between the laptop and the server.
+*.sql  text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+
+# Helm chart archives are binary.
+*.tgz binary

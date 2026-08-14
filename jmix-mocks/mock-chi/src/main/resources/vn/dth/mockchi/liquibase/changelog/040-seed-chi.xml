@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Seed deterministic. Tổng kiểm H1/2026:
+         - thuc_chi = 1.900.000.000đ; du_tam_ung = 850.000.000đ; tổng chi = 2.750.000.000đ
+         - Theo địa bàn: HY01=900tr, HY02=600tr, HY03=750tr, HY04=300tr, HY05=200tr
+         - Demo DHTC_CHI_04: HY03 thu 600tr < chi 750tr → can_doi = -150tr (điểm nhấn)
+         - Dự toán 2026 mỗi chiều = 5.000tr đầu năm (+100tr điều chỉnh cho HY03/DV003/LV04) -->
+
+    <changeSet id="1" author="mock-chi">
+        <sql>
+            INSERT INTO DANH_MUC (ID, VERSION, LOAI, MA, TEN, MA_CHA) VALUES
+            (1,1,'DIA_BAN','HY01','Thanh pho Hung Yen',NULL),
+            (2,1,'DIA_BAN','HY02','Huyen Van Lam',NULL),
+            (3,1,'DIA_BAN','HY03','Huyen My Hao',NULL),
+            (4,1,'DIA_BAN','HY04','Huyen Khoai Chau',NULL),
+            (5,1,'DIA_BAN','HY05','Huyen Kim Dong',NULL),
+            (11,1,'DON_VI','DV001','Van phong UBND TP Hung Yen',NULL),
+            (12,1,'DON_VI','DV002','Phong GD-DT huyen Van Lam',NULL),
+            (13,1,'DON_VI','DV003','BQL du an dau tu XD huyen My Hao',NULL),
+            (14,1,'DON_VI','DV004','Phong Kinh te huyen Khoai Chau',NULL),
+            (15,1,'DON_VI','DV005','Van phong UBND huyen Kim Dong',NULL),
+            (21,1,'LINH_VUC','LV01','Giao duc - dao tao',NULL),
+            (22,1,'LINH_VUC','LV02','Y te',NULL),
+            (23,1,'LINH_VUC','LV03','Quan ly nha nuoc',NULL),
+            (24,1,'LINH_VUC','LV04','Dau tu XDCB',NULL),
+            (31,1,'NGUON_KP','NKP01','Kinh phi tu chu',NULL),
+            (32,1,'NGUON_KP','NKP02','Kinh phi khong tu chu',NULL),
+            (33,1,'NGUON_KP','NKP03','Von dau tu cong',NULL),
+            (41,1,'TIEU_MUC','6001','Luong theo ngach bac',NULL),
+            (42,1,'TIEU_MUC','6501','Thanh toan dich vu cong cong',NULL),
+            (43,1,'TIEU_MUC','6551','Vat tu van phong',NULL),
+            (44,1,'TIEU_MUC','9201','Chi dau tu XDCB',NULL);
+        </sql>
+    </changeSet>
+
+    <changeSet id="2" author="mock-chi">
+        <sql>
+            INSERT INTO CHI_GIAO_DICH (ID, VERSION, NGAY, MA_DVQHNS, MA_DIA_BAN, MA_LINH_VUC_CHI, MA_NGUON_KP, MA_CHUONG, MA_TIEU_MUC, LA_TAM_UNG, SO_TIEN) VALUES
+            (1,1,'2026-01-20','DV001','HY01','LV03','NKP01','560','6001',FALSE,300000000),
+            (2,1,'2026-03-15','DV001','HY01','LV03','NKP02','560','6551',FALSE,250000000),
+            (3,1,'2026-05-10','DV001','HY01','LV04','NKP03','560','9201',TRUE,350000000),
+            (4,1,'2026-02-18','DV002','HY02','LV01','NKP01','622','6001',FALSE,400000000),
+            (5,1,'2026-04-22','DV002','HY02','LV01','NKP02','622','6501',FALSE,200000000),
+            (6,1,'2026-01-30','DV003','HY03','LV04','NKP03','560','9201',TRUE,500000000),
+            (7,1,'2026-06-12','DV003','HY03','LV04','NKP03','560','9201',FALSE,250000000),
+            (8,1,'2026-03-05','DV004','HY04','LV03','NKP01','560','6001',FALSE,300000000),
+            (9,1,'2026-05-25','DV005','HY05','LV02','NKP01','623','6001',FALSE,200000000),
+            (10,1,'2025-02-12','DV001','HY01','LV03','NKP01','560','6001',FALSE,400000000),
+            (11,1,'2025-05-08','DV002','HY02','LV01','NKP01','622','6001',FALSE,300000000);
+        </sql>
+    </changeSet>
+
+    <changeSet id="3" author="mock-chi">
+        <sql>
+            INSERT INTO CHI_DU_TOAN (ID, VERSION, NAM, LOAI_CHIEU, KHOA, DU_TOAN_DAU_NAM, DIEU_CHINH_TRONG_NAM) VALUES
+            (1,1,2026,'DIA_BAN','HY01',1800000000,0),
+            (2,1,2026,'DIA_BAN','HY02',1200000000,0),
+            (3,1,2026,'DIA_BAN','HY03',900000000,100000000),
+            (4,1,2026,'DIA_BAN','HY04',700000000,0),
+            (5,1,2026,'DIA_BAN','HY05',400000000,0),
+            (11,1,2026,'DON_VI','DV001',1800000000,0),
+            (12,1,2026,'DON_VI','DV002',1200000000,0),
+            (13,1,2026,'DON_VI','DV003',900000000,100000000),
+            (14,1,2026,'DON_VI','DV004',700000000,0),
+            (15,1,2026,'DON_VI','DV005',400000000,0),
+            (21,1,2026,'LINH_VUC','LV01',1500000000,0),
+            (22,1,2026,'LINH_VUC','LV02',600000000,0),
+            (23,1,2026,'LINH_VUC','LV03',1400000000,0),
+            (24,1,2026,'LINH_VUC','LV04',1500000000,100000000);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,67 @@
+# oauth2-proxy 7.15.3 — cầu nối SSO cho ứng dụng KHÔNG có OIDC sẵn
+# Bảo vệ: SeaweedFS Admin UI; hostname public chỉ là placeholder.
+# Dùng lại được cho mọi UI khác sau này (pgAdmin, Filer UI…)
+
+replicaCount: 1
+
+# image: giữ mặc định của chart (quay.io/oauth2-proxy/oauth2-proxy) —
+# chart tự ghép registry, override repository sẽ thành quay.io/quay.io/...
+
+# Lấy client-id / client-secret / cookie-secret từ Secret có sẵn
+config:
+  existingSecret: oauth2-proxy-sw
+
+extraArgs:
+  provider: oidc
+  provider-display-name: "Keycloak"
+
+  # ── SPLIT-HORIZON ────────────────────────────────────────────────────────
+  # URL trình duyệt đi = hostname công khai; URL pod đi = Service nội bộ.
+  skip-oidc-discovery: "true"
+  oidc-issuer-url: "https://sso.example.com/realms/khodl"
+  login-url: "https://sso.example.com/realms/khodl/protocol/openid-connect/auth"
+  redeem-url: "http://keycloak-service/realms/khodl/protocol/openid-connect/token"
+  oidc-jwks-url: "http://keycloak-service/realms/khodl/protocol/openid-connect/certs"
+  profile-url: "http://keycloak-service/realms/khodl/protocol/openid-connect/userinfo"
+
+  redirect-url: "https://storage.example.com/oauth2/callback"
+
+  email-domain: "*"          # Keycloak đã lọc ai được vào realm
+  scope: "openid email profile"
+
+  # Chế độ auth-request: nginx hỏi /oauth2/auth, trả 202 (cho qua) hoặc 401
+  upstream: "static://202"
+  reverse-proxy: "true"
+  set-xauthrequest: "true"
+  pass-access-token: "true"
+  skip-provider-button: "true"   # bấm 1 lần là sang thẳng Keycloak
+
+  cookie-secure: "true"
+  cookie-refresh: "1h"
+  cookie-expire: "8h"
+
+service:
+  portNumber: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# Ingress cho chính oauth2-proxy: chỉ nhận đường /oauth2 trên cùng hostname
+ingress:
+  enabled: true
+  className: nginx
+  path: /oauth2
+  pathType: Prefix
+  hosts:
+    - storage.example.com
+
+serviceAccount:
+  enabled: true
+
+metrics:
+  enabled: false

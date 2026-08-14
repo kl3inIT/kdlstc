@@ -1,0 +1,6 @@
+.env
+config/
+dags/
+logs/
+plugins/
+docker-compose.official.yaml

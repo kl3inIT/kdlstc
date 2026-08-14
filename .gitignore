@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+Thumbs.db
+
+# dbt runtime artifacts
+platform/dbt/target/
+platform/dbt/logs/
+platform/dbt/dbt_packages/
+
+# Deployment-specific values stay outside the public repository
+platform/helm/*-values.local.yaml
+platform/k8s/*.local.yaml

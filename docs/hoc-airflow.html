@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Học Airflow 3.x — Kho dữ liệu Sở Tài chính Hưng Yên</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330;
+    --fg:#e6edf3; --muted:#9aa7b4; --border:#2b3444;
+    --accent:#2dd4bf; --accent2:#7c9cff; --warn:#f5a623; --ok:#3fb950;
+    --code-bg:#11161f; --kw:#ff7b72; --str:#a5d6ff; --com:#7d8590; --fn:#d2a8ff; --num:#79c0ff;
+    --radius:14px; --mono:"JetBrains Mono","SF Mono",Consolas,ui-monospace,monospace;
+    --sans:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.65;font-size:16px}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .layout{display:grid;grid-template-columns:280px 1fr;max-width:1300px;margin:0 auto}
+  /* Sidebar */
+  aside{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:28px 20px;border-right:1px solid var(--border);background:var(--bg2)}
+  aside .brand{font-weight:700;font-size:15px;letter-spacing:.3px;margin-bottom:4px}
+  aside .sub{color:var(--muted);font-size:12px;margin-bottom:22px}
+  nav a{display:block;color:var(--muted);padding:7px 12px;border-radius:8px;font-size:14px;border-left:2px solid transparent}
+  nav a:hover{background:var(--bg3);color:var(--fg);text-decoration:none}
+  nav a.head{margin-top:14px;color:var(--accent);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.8px;padding-left:12px}
+  /* Content */
+  main{padding:48px 56px;min-width:0}
+  .hero{background:linear-gradient(135deg,#12313a,#141b2c);border:1px solid var(--border);border-radius:var(--radius);padding:32px 34px;margin-bottom:40px}
+  .hero h1{margin:0 0 8px;font-size:30px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{margin:0;color:var(--muted)}
+  .pill{display:inline-block;font-size:12px;font-family:var(--mono);color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 10px;margin-bottom:16px}
+  h2{font-size:23px;margin:52px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  h2 .n{color:var(--accent);font-family:var(--mono);margin-right:10px}
+  h3{font-size:18px;margin:28px 0 10px;color:#fff}
+  p,li{color:#cdd7e1}
+  code.inl{font-family:var(--mono);background:var(--bg3);padding:2px 7px;border-radius:6px;font-size:13.5px;color:var(--accent)}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14.5px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  tr:hover td{background:var(--bg2)}
+  /* Code blocks */
+  .code{position:relative;background:var(--code-bg);border:1px solid var(--border);border-radius:12px;margin:16px 0;overflow:hidden}
+  .code .bar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .code pre{margin:0;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.7}
+  .copy{cursor:pointer;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 10px;font-size:11px;font-family:var(--sans)}
+  .copy:hover{color:var(--fg);border-color:var(--accent)}
+  .kw{color:var(--kw)} .str{color:var(--str)} .com{color:var(--com);font-style:italic} .fn{color:var(--fn)} .num{color:var(--num)} .dec{color:var(--warn)}
+  /* Callouts */
+  .box{border-radius:12px;padding:16px 20px;margin:18px 0;border:1px solid var(--border);background:var(--bg2)}
+  .box.tip{border-left:4px solid var(--accent)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.obs{border-left:4px solid var(--accent2)}
+  .box b{color:#fff}
+  /* Architecture flow */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:24px 0}
+  .node{flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;font-size:13px}
+  .node .t{font-weight:700;color:var(--accent);display:block;margin-bottom:3px}
+  .node .d{color:var(--muted);font-size:11.5px}
+  .arrow{display:flex;align-items:center;color:var(--accent);font-size:22px;padding:0 6px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+  .card h3{margin-top:0}
+  ol.steps{counter-reset:s;list-style:none;padding-left:0}
+  ol.steps li{counter-increment:s;position:relative;padding:8px 0 8px 42px;border-bottom:1px dashed var(--border)}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:8px;width:28px;height:28px;background:var(--accent);color:#04211d;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px}
+  footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}aside{display:none}main{padding:28px 20px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside>
+  <div class="brand">🌀 Học Apache Airflow 3.x</div>
+  <div class="sub">Dự án Kho dữ liệu — Sở Tài chính Hưng Yên</div>
+  <nav>
+    <a class="head">Nền tảng</a>
+    <a href="#airflow">Airflow là gì</a>
+    <a href="#kientruc">Kiến trúc & luồng chạy</a>
+    <a href="#khainiem">Khái niệm cốt lõi</a>
+    <a class="head">Bài tập</a>
+    <a href="#bai1">Bài 1 — Hello Airflow</a>
+    <a href="#bai2">Bài 2 — TaskFlow / ETL</a>
+    <a href="#bai3">Bài 3 — Rẽ nhánh & Retry</a>
+    <a class="head">Vận hành</a>
+    <a href="#deploy">Đưa DAG lên server</a>
+    <a href="#lotrinh">Lộ trình tiếp theo</a>
+  </nav>
+</aside>
+
+<main>
+  <div class="hero">
+    <span class="pill">Apache Airflow 3.3.0 · CeleryExecutor</span>
+    <h1>Học Airflow qua thực hành</h1>
+    <p>Trang này đi kèm 3 file DAG trong thư mục <code class="inl">dags/</code>. Đọc khái niệm → chạy trên server → quan sát → sửa và chạy lại.</p>
+  </div>
+
+  <!-- ============ AIRFLOW LÀ GÌ ============ -->
+  <h2 id="airflow"><span class="n">01</span>Airflow là gì</h2>
+  <p><b>Apache Airflow</b> là nền tảng <b>điều phối (orchestration)</b> workflow: bạn khai báo pipeline bằng <b>code Python</b>, Airflow lo lịch chạy, thứ tự, thử lại khi lỗi, và cho bạn UI để theo dõi.</p>
+  <p>Trong dự án kho dữ liệu, Airflow là "nhạc trưởng" điều phối các bước <b>lấy dữ liệu từ nguồn → biến đổi → nạp vào kho</b> theo lịch, đảm bảo chạy đúng thứ tự và có thể chạy lại an toàn.</p>
+  <div class="box tip"><b>Airflow KHÔNG phải</b> là nơi xử lý dữ liệu lớn (không phải Spark). Nó <b>ra lệnh</b> cho các hệ thống khác chạy, rồi theo dõi kết quả. Việc nặng nên đẩy xuống DB/Spark/warehouse.</div>
+
+  <!-- ============ KIẾN TRÚC ============ -->
+  <h2 id="kientruc"><span class="n">02</span>Kiến trúc & luồng chạy một task</h2>
+  <p>Bản deploy của bạn dùng <b>CeleryExecutor</b> — task được đẩy qua hàng đợi Redis cho các worker chạy song song:</p>
+  <div class="flow">
+    <div class="node"><span class="t">DAG file</span><span class="d">.py trong dags/</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><span class="t">DAG Processor</span><span class="d">parse file thành DAG</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><span class="t">Scheduler</span><span class="d">chọn task tới lượt</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><span class="t">Redis</span><span class="d">hàng đợi</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><span class="t">Worker</span><span class="d">chạy task thật</span></div>
+  </div>
+  <p style="text-align:center;color:var(--muted);font-size:13px">↑ Trạng thái mọi task + XCom được lưu vào <b>PostgreSQL</b> (metadata DB). <b>Triggerer</b> lo các task chờ (deferrable). <b>API server</b> phục vụ UI.</p>
+
+  <!-- ============ KHÁI NIỆM ============ -->
+  <h2 id="khainiem"><span class="n">03</span>Khái niệm cốt lõi</h2>
+  <table>
+    <tr><th>Khái niệm</th><th>Ý nghĩa</th></tr>
+    <tr><td><code class="inl">DAG</code></td><td>Một pipeline = đồ thị task có hướng, không vòng lặp. Khai báo bằng <code class="inl">@dag</code>.</td></tr>
+    <tr><td><code class="inl">Task</code></td><td>Một bước công việc trong DAG. Khai báo bằng <code class="inl">@task</code> hoặc một Operator.</td></tr>
+    <tr><td><code class="inl">Operator</code></td><td>Khuôn mẫu task dựng sẵn: BashOperator, PythonOperator, EmptyOperator, PostgresOperator…</td></tr>
+    <tr><td><code class="inl">Executor</code></td><td>Cách chạy task. Bạn dùng <b>CeleryExecutor</b> → task chạy trên worker qua Redis.</td></tr>
+    <tr><td><code class="inl">Scheduler</code></td><td>"Bộ não": đọc lịch, biết task nào đủ điều kiện, phát cho worker.</td></tr>
+    <tr><td><code class="inl">XCom</code></td><td>Kênh truyền dữ liệu <b>nhỏ</b> giữa task. Với TaskFlow, <code class="inl">return</code> tự đi qua XCom.</td></tr>
+    <tr><td><code class="inl">schedule</code></td><td>Lịch chạy: cron (<code class="inl">"@daily"</code>), <code class="inl">timedelta</code>, <code class="inl">None</code> (chỉ chạy tay), hoặc Asset.</td></tr>
+    <tr><td><code class="inl">logical date</code></td><td>"Thời điểm dữ liệu" của lần chạy (<code class="inl">{{ ds }}</code>) — khác thời điểm chạy thực. Gốc của tính idempotent.</td></tr>
+    <tr><td><code class="inl">catchup</code></td><td>Có chạy bù các kỳ quá khứ không. Airflow 3.x mặc định <code class="inl">False</code>.</td></tr>
+  </table>
+  <div class="box warn"><b>Lưu ý phiên bản 3.x:</b> import từ <code class="inl">airflow.sdk</code> (không phải <code class="inl">airflow.models</code>/<code class="inl">airflow.decorators</code> như tài liệu 2.x cũ), và các operator chuẩn nằm trong provider <code class="inl">apache-airflow-providers-standard</code>. Nhiều hướng dẫn trên mạng vẫn theo 2.x — sẽ báo lỗi import trên hệ của bạn.</div>
+
+  <!-- ============ BÀI 1 ============ -->
+  <h2 id="bai1"><span class="n">04</span>Bài 1 — Hello Airflow</h2>
+  <p><b>Mục tiêu:</b> thấy DAG lên UI, unpause, trigger, đọc log; hiểu <code class="inl">DAG → Task → Operator</code> và toán tử phụ thuộc <code class="inl">&gt;&gt;</code>.</p>
+  <div class="code"><div class="bar"><span>dags/bai01_hello_airflow.py</span><button class="copy">Copy</button></div><pre>
+<span class="kw">from</span> __future__ <span class="kw">import</span> annotations
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">from</span> airflow.sdk <span class="kw">import</span> dag, task
+<span class="kw">from</span> airflow.providers.standard.operators.bash <span class="kw">import</span> BashOperator
+
+
+<span class="dec">@dag</span>(
+    dag_id=<span class="str">"bai01_hello_airflow"</span>,
+    start_date=<span class="fn">datetime</span>(<span class="num">2026</span>, <span class="num">1</span>, <span class="num">1</span>),
+    schedule=<span class="str">"@daily"</span>,   <span class="com"># cron rút gọn. Đổi thành None để chỉ chạy tay.</span>
+    catchup=<span class="kw">False</span>,       <span class="com"># 3.x mặc định False -> không chạy bù quá khứ.</span>
+    tags=[<span class="str">"hoc-airflow"</span>],
+)
+<span class="kw">def</span> <span class="fn">hello_airflow</span>():
+    <span class="com"># Task Bash: chạy 1 lệnh shell trong worker. {{ ds }} = logical date.</span>
+    say_hello = <span class="fn">BashOperator</span>(
+        task_id=<span class="str">"say_hello"</span>,
+        bash_command=<span class="str">"echo 'Xin chao — logical date = {{ ds }}'"</span>,
+    )
+
+    <span class="dec">@task</span>
+    <span class="kw">def</span> <span class="fn">print_context</span>():
+        <span class="fn">print</span>(<span class="str">"Task Python dang chay trong worker."</span>)
+        <span class="kw">return</span> <span class="num">42</span>   <span class="com"># giá trị này được lưu vào XCom</span>
+
+    <span class="com"># say_hello chạy XONG rồi mới tới print_context</span>
+    say_hello &gt;&gt; <span class="fn">print_context</span>()
+
+
+<span class="fn">hello_airflow</span>()   <span class="com"># gọi ở top-level để Airflow đăng ký DAG</span>
+</pre></div>
+  <div class="box obs"><b>Quan sát:</b> Vào <b>Grid</b> → click ô <code class="inl">say_hello</code> → <b>Logs</b> xem dòng echo. Sau đó thử đổi <code class="inl">schedule="@daily"</code> thành <code class="inl">None</code>, lưu, và xem DAG không còn tự lên lịch nữa.</div>
+
+  <!-- ============ BÀI 2 ============ -->
+  <h2 id="bai2"><span class="n">05</span>Bài 2 — TaskFlow API & truyền dữ liệu (XCom)</h2>
+  <p><b>Mục tiêu:</b> mô hình <b>extract → transform → load</b>; giá trị <code class="inl">return</code> tự đi qua XCom sang task sau, không cần <code class="inl">xcom_pull()</code> thủ công. Đây là "hình dạng" của gần như mọi pipeline kho dữ liệu.</p>
+  <div class="code"><div class="bar"><span>dags/bai02_taskflow_etl.py</span><button class="copy">Copy</button></div><pre>
+<span class="kw">from</span> __future__ <span class="kw">import</span> annotations
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="kw">from</span> airflow.sdk <span class="kw">import</span> dag, task
+
+
+<span class="dec">@dag</span>(
+    dag_id=<span class="str">"bai02_taskflow_etl"</span>,
+    start_date=<span class="fn">datetime</span>(<span class="num">2026</span>, <span class="num">1</span>, <span class="num">1</span>),
+    schedule=<span class="kw">None</span>,   <span class="com"># chỉ chạy khi bấm Trigger</span>
+    catchup=<span class="kw">False</span>,
+    tags=[<span class="str">"hoc-airflow"</span>],
+)
+<span class="kw">def</span> <span class="fn">taskflow_etl</span>():
+    <span class="dec">@task</span>
+    <span class="kw">def</span> <span class="fn">extract</span>() -&gt; dict:
+        <span class="com"># Giả lập lấy dữ liệu nguồn. Sau này thay bằng API/DB thật.</span>
+        <span class="kw">return</span> {<span class="str">"HD001"</span>: <span class="num">301.27</span>, <span class="str">"HD002"</span>: <span class="num">433.21</span>, <span class="str">"HD003"</span>: <span class="num">502.22</span>}
+
+    <span class="dec">@task</span>
+    <span class="kw">def</span> <span class="fn">transform</span>(orders: dict) -&gt; dict:
+        total = <span class="fn">sum</span>(orders.<span class="fn">values</span>())
+        <span class="kw">return</span> {<span class="str">"tong_gia_tri"</span>: <span class="fn">round</span>(total, <span class="num">2</span>), <span class="str">"so_hoa_don"</span>: <span class="fn">len</span>(orders)}
+
+    <span class="dec">@task</span>
+    <span class="kw">def</span> <span class="fn">load</span>(summary: dict) -&gt; <span class="kw">None</span>:
+        <span class="com"># Sau này: ghi vào bảng warehouse. Giờ in ra log.</span>
+        <span class="fn">print</span>(<span class="str">f"Nap vao kho: {summary}"</span>)
+
+    <span class="com"># output hàm này là input hàm kia -> Airflow tự suy ra thứ tự</span>
+    <span class="fn">load</span>(<span class="fn">transform</span>(<span class="fn">extract</span>()))
+
+
+<span class="fn">taskflow_etl</span>()
+</pre></div>
+  <div class="box obs"><b>Quan sát:</b> Sau khi trigger, click task <code class="inl">transform</code> → tab <b>XCom</b> để thấy dữ liệu <code class="inl">{tong_gia_tri, so_hoa_don}</code> được truyền sang <code class="inl">load</code>.</div>
+
+  <!-- ============ BÀI 3 ============ -->
+  <h2 id="bai3"><span class="n">06</span>Bài 3 — Phụ thuộc, Retry & Rẽ nhánh</h2>
+  <p><b>Mục tiêu:</b> <code class="inl">default_args</code> để retry; <code class="inl">@task.branch</code> để rẽ nhánh theo điều kiện; <code class="inl">trigger_rule</code> để gộp nhánh. Nền cho pipeline thật: có dữ liệu thì xử lý, không thì bỏ qua, lỗi tạm thời thì tự thử lại.</p>
+  <div class="code"><div class="bar"><span>dags/bai03_dependencies_retries.py</span><button class="copy">Copy</button></div><pre>
+<span class="kw">from</span> __future__ <span class="kw">import</span> annotations
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+
+<span class="kw">from</span> airflow.sdk <span class="kw">import</span> dag, task
+<span class="kw">from</span> airflow.providers.standard.operators.empty <span class="kw">import</span> EmptyOperator
+
+
+<span class="dec">@dag</span>(
+    dag_id=<span class="str">"bai03_dependencies_retries"</span>,
+    start_date=<span class="fn">datetime</span>(<span class="num">2026</span>, <span class="num">1</span>, <span class="num">1</span>),
+    schedule=<span class="kw">None</span>, catchup=<span class="kw">False</span>,
+    default_args={
+        <span class="str">"retries"</span>: <span class="num">2</span>,                        <span class="com"># thử lại tối đa 2 lần khi fail</span>
+        <span class="str">"retry_delay"</span>: <span class="fn">timedelta</span>(seconds=<span class="num">30</span>),
+    },
+    tags=[<span class="str">"hoc-airflow"</span>],
+)
+<span class="kw">def</span> <span class="fn">dependencies_retries</span>():
+    start = <span class="fn">EmptyOperator</span>(task_id=<span class="str">"start"</span>)
+
+    <span class="dec">@task</span>
+    <span class="kw">def</span> <span class="fn">check_source</span>() -&gt; <span class="fn">int</span>:
+        <span class="kw">return</span> <span class="num">120</span>   <span class="com"># đổi thành 0 để thử nhánh còn lại</span>
+
+    <span class="dec">@task.branch</span>
+    <span class="kw">def</span> <span class="fn">route</span>(count: <span class="fn">int</span>) -&gt; <span class="fn">str</span>:
+        <span class="com"># trả về task_id của nhánh SẼ chạy; nhánh kia bị skip</span>
+        <span class="kw">return</span> <span class="str">"process_data"</span> <span class="kw">if</span> count &gt; <span class="num">0</span> <span class="kw">else</span> <span class="str">"skip_empty"</span>
+
+    <span class="dec">@task</span>
+    <span class="kw">def</span> <span class="fn">process_data</span>() -&gt; <span class="kw">None</span>:
+        <span class="fn">print</span>(<span class="str">"Co du lieu -> xu ly"</span>)
+
+    skip_empty = <span class="fn">EmptyOperator</span>(task_id=<span class="str">"skip_empty"</span>)
+    join = <span class="fn">EmptyOperator</span>(
+        task_id=<span class="str">"join"</span>,
+        trigger_rule=<span class="str">"none_failed_min_one_success"</span>,  <span class="com"># chạy dù nhánh nào thắng</span>
+    )
+
+    count = <span class="fn">check_source</span>()
+    start &gt;&gt; count
+    <span class="fn">route</span>(count) &gt;&gt; [<span class="fn">process_data</span>(), skip_empty] &gt;&gt; join
+
+
+<span class="fn">dependencies_retries</span>()
+</pre></div>
+  <div class="box obs"><b>Quan sát:</b> Trigger với <code class="inl">return 120</code> → nhánh <code class="inl">skip_empty</code> có màu <b>hồng "skipped"</b>. Sửa thành <code class="inl">return 0</code>, trigger lại → đảo nhánh, nhưng <code class="inl">join</code> vẫn <b>chạy</b> nhờ <code class="inl">trigger_rule</code>.</div>
+
+  <!-- ============ DEPLOY ============ -->
+  <h2 id="deploy"><span class="n">07</span>Đưa DAG lên server & chạy</h2>
+  <div class="box warn"><b>Chuẩn bị kết nối tới môi trường triển khai.</b> Dùng hostname do quản trị viên cấp.</div>
+  <h3>1) Đẩy file DAG lên server</h3>
+  <div class="code"><div class="bar"><span>từ máy local (PowerShell)</span><button class="copy">Copy</button></div><pre>scp dags/*.py airflow-host:/opt/airflow/dags/</pre></div>
+  <p><code class="inl">airflow-host</code> là alias SSH ví dụ trong <code class="inl">~/.ssh/config</code>; thay bằng hostname của môi trường.</p>
+  <h3>2) Mở UI và chạy</h3>
+  <ol class="steps">
+    <li>Mở địa chỉ Airflow do quản trị viên môi trường cung cấp.</li>
+    <li>Chờ ~30s–5 phút để DAG Processor quét file mới — <b>không cần restart</b>.</li>
+    <li>Gạt nút <b>Unpause</b> (DAG mới mặc định bị pause).</li>
+    <li>Bấm <b>Trigger DAG</b> → vào <b>Grid / Graph</b> xem task đổi màu → click ô task → <b>Logs</b>.</li>
+  </ol>
+  <h3>Xử lý nhanh nếu DAG không hiện</h3>
+  <div class="code"><div class="bar"><span>trên server</span><button class="copy">Copy</button></div><pre>ssh kdlstc-dev
+cd /home/ubuntu/app/airflow
+docker compose ps                          <span class="com"># tất cả phải healthy</span>
+docker compose exec scheduler airflow dags list   <span class="com"># DAG đã được parse chưa</span>
+docker compose logs dag-processor --tail=50       <span class="com"># lỗi cú pháp sẽ hiện ở đây</span></pre></div>
+
+  <!-- ============ LỘ TRÌNH ============ -->
+  <h2 id="lotrinh"><span class="n">08</span>Lộ trình tiếp theo (bám dự án kho dữ liệu)</h2>
+  <div class="grid2">
+    <div class="card"><h3>4 · Connections &amp; Hooks</h3><p>Kết nối PostgreSQL thật, ghi vào bảng warehouse. Bài đầu tiên "chạm" kho dữ liệu.</p></div>
+    <div class="card"><h3>5 · Sensors</h3><p>Chờ file/nguồn sẵn sàng rồi mới ingest, thay vì chạy mù theo giờ.</p></div>
+    <div class="card"><h3>6 · Idempotency &amp; Backfill</h3><p>Chạy lại một ngày không nhân đôi dữ liệu (<code class="inl">{{ ds }}</code> + DELETE/MERGE). <b>Cốt lõi cho milestone reconciliation.</b></p></div>
+    <div class="card"><h3>7 · Dynamic Task Mapping</h3><p>Một DAG ingest N nguồn / N bảng song song mà không lặp code.</p></div>
+    <div class="card"><h3>8 · Assets (Datasets)</h3><p>DAG B tự chạy khi DAG A cập nhật xong dữ liệu — pipeline hướng dữ liệu.</p></div>
+    <div class="card"><h3>9 · Alerting &amp; SLA</h3><p>Cảnh báo khi pipeline fail/chậm; retention log; backup metadata DB.</p></div>
+  </div>
+
+  <footer>
+    Tài liệu học nội bộ · Apache Airflow 3.3.0 · Dự án Kho dữ liệu Sở Tài chính Hưng Yên (DTH).<br>
+    Tham chiếu chính thức: airflow.apache.org/docs — mục <i>Core Concepts</i>, <i>TaskFlow</i>, <i>Docker Compose</i>.
+  </footer>
+</main>
+</div>
+
+<script>
+  // Copy buttons
+  document.querySelectorAll('.code').forEach(block=>{
+    const btn=block.querySelector('.copy');
+    if(!btn)return;
+    btn.addEventListener('click',()=>{
+      const code=block.querySelector('pre').innerText;
+      navigator.clipboard.writeText(code).then(()=>{
+        const t=btn.textContent;btn.textContent='✓ Đã copy';
+        setTimeout(()=>btn.textContent=t,1400);
+      });
+    });
+  });
+  // Highlight active nav on scroll
+  const links=[...document.querySelectorAll('nav a[href^="#"]')];
+  const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+  const obs=new IntersectionObserver(es=>{
+    es.forEach(e=>{if(e.isIntersecting){
+      links.forEach(l=>l.style.color='');
+      const a=map.get(e.target.id);if(a){a.style.color='var(--accent)';}
+    }});
+  },{rootMargin:'-20% 0px -70% 0px'});
+  document.querySelectorAll('h2[id]').forEach(h=>obs.observe(h));
+</script>
+</body>
+</html>
