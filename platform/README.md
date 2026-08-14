@@ -158,6 +158,11 @@ public nên cluster có thể pull mà không cần secret. Nếu đổi registr
 `AIRFLOW_IMAGE` và `REGISTRY_SECRET`. Các script build chỉ dùng Docker config
 tạm và không ghi credential vào repo.
 
+Checkpoint 2026-08-14: GitHub Actions đã build và attest image GHCR public với
+digest `sha256:603175f3c1f7f57fc872947ff3022b3aeb60135ba2b7e34e8810c23c83224cb8`.
+Airflow Helm revision 11 đã chạy digest này; các pod Ready, DAG import không có
+lỗi và smoke run QL Giá kết thúc `published` với 0 dòng mới sau cursor.
+
 QL Giá dùng `dlt` REST client cho HTTP, retry và pagination `nextPage`. Cursor
 đã công bố vẫn chỉ có một nguồn sự thật là `ingestion.cursors`: Airflow truyền
 `updatedSince` vào dlt và chỉ tiến cursor trong cùng transaction công bố Gold.
