@@ -1,5 +1,5 @@
 # oauth2-proxy 7.15.3 — cầu nối SSO cho ứng dụng KHÔNG có OIDC sẵn
-# Bảo vệ: SeaweedFS Admin UI (s3-stc.10.123.123.194.nip.io)
+# Bảo vệ: SeaweedFS Admin UI; hostname public chỉ là placeholder.
 # Dùng lại được cho mọi UI khác sau này (pgAdmin, Filer UI…)
 
 replicaCount: 1
@@ -16,16 +16,15 @@ extraArgs:
   provider-display-name: "Keycloak"
 
   # ── SPLIT-HORIZON ────────────────────────────────────────────────────────
-  # Pod KHÔNG tới được 10.123.123.x (ingress VIP). Nên tắt auto-discovery và
-  # chỉ định tay: URL trình duyệt đi = công khai, URL pod đi = nội bộ.
+  # URL trình duyệt đi = hostname công khai; URL pod đi = Service nội bộ.
   skip-oidc-discovery: "true"
-  oidc-issuer-url: "http://sso-stc.10.123.123.194.nip.io/realms/khodl"
-  login-url: "http://sso-stc.10.123.123.194.nip.io/realms/khodl/protocol/openid-connect/auth"
-  redeem-url: "http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl/protocol/openid-connect/token"
-  oidc-jwks-url: "http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl/protocol/openid-connect/certs"
-  profile-url: "http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl/protocol/openid-connect/userinfo"
+  oidc-issuer-url: "https://sso.example.com/realms/khodl"
+  login-url: "https://sso.example.com/realms/khodl/protocol/openid-connect/auth"
+  redeem-url: "http://keycloak-service/realms/khodl/protocol/openid-connect/token"
+  oidc-jwks-url: "http://keycloak-service/realms/khodl/protocol/openid-connect/certs"
+  profile-url: "http://keycloak-service/realms/khodl/protocol/openid-connect/userinfo"
 
-  redirect-url: "http://s3-stc.10.123.123.194.nip.io/oauth2/callback"
+  redirect-url: "https://storage.example.com/oauth2/callback"
 
   email-domain: "*"          # Keycloak đã lọc ai được vào realm
   scope: "openid email profile"
@@ -37,7 +36,7 @@ extraArgs:
   pass-access-token: "true"
   skip-provider-button: "true"   # bấm 1 lần là sang thẳng Keycloak
 
-  cookie-secure: "false"     # đang chạy HTTP; đổi true khi có TLS
+  cookie-secure: "true"
   cookie-refresh: "1h"
   cookie-expire: "8h"
 
@@ -59,7 +58,7 @@ ingress:
   path: /oauth2
   pathType: Prefix
   hosts:
-    - s3-stc.10.123.123.194.nip.io
+    - storage.example.com
 
 serviceAccount:
   enabled: true

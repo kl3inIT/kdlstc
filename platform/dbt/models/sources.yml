@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: staging
+    schema: staging
+    tables:
+      - name: stg_qlgia__price
+
+  - name: metadata
+    schema: metadata
+    tables:
+      - name: mapping_rules

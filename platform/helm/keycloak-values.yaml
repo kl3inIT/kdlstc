@@ -1,5 +1,6 @@
 # Keycloak 26.6.4 · chart codecentric/keycloakx 7.2.2 · namespace stc-hy
-# DB: jmix-ha (10.1.50.103) — PostgreSQL 18, nằm trong danh sách hỗ trợ chính thức của Keycloak
+# Các hostname là placeholder public; override bằng values local khi deploy.
+# DB: PostgreSQL 18, nằm trong danh sách hỗ trợ chính thức của Keycloak
 
 replicas: 1
 
@@ -17,7 +18,7 @@ http:
 
 database:
   vendor: postgres
-  hostname: "10.1.50.103"
+  hostname: "postgres.example.com"
   port: 5432
   database: stc_keycloak
   username: stc_keycloak
@@ -30,10 +31,9 @@ dbchecker:
 
 extraEnv: |
   - name: KC_HOSTNAME
-    value: "http://sso-stc.10.123.123.194.nip.io"
-  # Split-horizon: pod trong cluster KHÔNG tới được 10.123.123.x (ingress VIP),
-  # nên backchannel (token, userinfo, jwks) phải dùng URL nội bộ, còn frontend
-  # (authorize, logout — trình duyệt đi) vẫn giữ URL công khai ở KC_HOSTNAME.
+    value: "https://sso.example.com"
+  # Backchannel dùng Service nội bộ, còn authorize/logout của trình duyệt dùng
+  # hostname công khai ở KC_HOSTNAME.
   - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
     value: "true"
   - name: KC_BOOTSTRAP_ADMIN_USERNAME
@@ -47,13 +47,13 @@ extraEnv: |
         name: keycloak-admin
         key: password
   - name: JAVA_OPTS_APPEND
-    value: "-XX:MaxRAMPercentage=70 -Djgroups.dns.query=kc-keycloakx-headless.stc-hy.svc.cluster.local"
+    value: "-XX:MaxRAMPercentage=70 -Djgroups.dns.query=keycloak-headless"
 
 ingress:
   enabled: true
   ingressClassName: nginx
   rules:
-    - host: "sso-stc.10.123.123.194.nip.io"
+    - host: "sso.example.com"
       paths:
         - path: /
           pathType: Prefix

@@ -18,22 +18,27 @@ docker-compose đợt trước, không liên quan tới cụm này.
                     │  mock-qlgia  (REST, phân   │
                     │  trang, cursor lastModified)│
                     └──────────┬─────────────────┘
-                               │  urllib
+                               │  dlt REST client
                     ┌──────────▼─────────────────┐
    BRONZE           │ SeaweedFS S3               │  bất biến, nguyên văn
    bronze/qlgia/    │ page-00001.json            │  giữ tên trường của nguồn
    <period>/<run>/  │ _manifest.json             │  + checksum + số dòng
                     └──────────┬─────────────────┘
                                │  đọc NGƯỢC từ S3, không dùng lại HTTP response
-                    ┌──────────▼─────────────────┐
+                     ┌──────────▼─────────────────┐
    SILVER-1         │ staging.stg_qlgia__price   │  1-1 với nguồn, toàn text
-                    │                            │  đổi tên camelCase → cột kho
-                    └──────────┬─────────────────┘
-                    ┌──────────▼─────────────────┐
+                     │                            │  đổi tên camelCase → cột kho
+                     └──────────┬─────────────────┘
+                               │  Airflow tạo 1 dbt pod cho lô, xong tự xóa
+                     ┌──────────▼─────────────────┐
    SILVER-2         │ stg_qlgia__price_typed     │  ép kiểu, khử trùng,
-                    │                            │  ánh xạ mã, gắn cờ is_valid
-                    └──────────┬─────────────────┘
-                               │  cổng chất lượng
+                     │                            │  ánh xạ mã, gắn cờ is_valid
+                     └──────────┬─────────────────┘
+                     ┌──────────▼─────────────────┐
+   INTERMEDIATE     │ stg_qlgia__price_grain     │  tổng hợp theo mặt hàng ×
+                     │                            │  địa bàn × kỳ khảo sát
+                     └──────────┬─────────────────┘
+                               │  Airflow kiểm tra chất lượng rồi công bố
                     ┌──────────▼─────────────────┐
    GOLD             │ curated.fact_price         │  merge-upsert theo khóa
                     │ curated.batch_summary      │  nghiệp vụ
@@ -57,32 +62,36 @@ Cừ" phải có câu trả lời chỉ được vào một dòng cụ thể.
 
 | Namespace | Thành phần |
 |---|---|
-| `stc-hy` | Keycloak · oauth2-proxy · SeaweedFS (master/volume/filer/s3/admin) · mock-qlgia · pgAdmin |
+| `stc-hy` | Keycloak · oauth2-proxy · SeaweedFS (master/volume/filer/s3/admin) · mock-qlgia · pgweb |
 | `stc-hy-airflow` | Airflow 3.2.2 (api-server, scheduler, dag-processor, triggerer, worker) + PostgreSQL + Redis |
-| `jmix-ha` (ngoài cụm, `10.1.50.103`) | `stc_dwh` — kho dữ liệu · `stc_keycloak` |
+| PostgreSQL ngoài cụm | `stc_dwh` — kho dữ liệu · `stc_keycloak` |
 
 | Dịch vụ | Địa chỉ |
 |---|---|
-| Airflow | http://airflow-stc.10.123.123.194.nip.io |
-| Keycloak | http://sso-stc.10.123.123.194.nip.io |
-| SeaweedFS Admin | http://s3-stc.10.123.123.194.nip.io |
+| Airflow | `https://airflow.example.com` |
+| Keycloak | `https://sso.example.com` |
+| SeaweedFS Admin | `https://storage.example.com` |
+| PostgreSQL inspector (pgweb) | `https://storage.example.com/db/` |
 
-Cần VPN. Đăng nhập bằng Keycloak realm `khodl`.
-
-`nip.io` tự phân giải `<gì đó>.10.123.123.194.nip.io` về chính IP đó, nên chưa
-cần cấu hình DNS. Khi có tên miền thật thì sửa `host` trong `helm/` và
-`k8s/`.
+Các hostname trên là placeholder public. Trước khi deploy, thay bằng hostname
+của môi trường trong file values/manifests local đã được Git bỏ qua. Đăng nhập
+bằng Keycloak realm `khodl`.
 
 ---
 
 ## 3. Dựng lại từ đầu
 
 ```bash
-export DWH_HOST=10.1.50.103 DWH_DBNAME=stc_dwh DWH_USER=stc_dwh
+export DWH_HOST=postgres.example.com DWH_DBNAME=stc_dwh DWH_USER=stc_dwh
 export DWH_PASSWORD=...           # xem mục 6
 export KC_DB_PASSWORD=... KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=...
 export KC_AIRFLOW_CLIENT_SECRET=... KC_SW_CLIENT_SECRET=...
 export O2P_COOKIE_SECRET="$(openssl rand -base64 32 | tr -- '+/' '-_' | tr -d '=')"
+
+# Tuỳ chọn: values thật nằm ngoài Git và ghi đè các placeholder public
+export KEYCLOAK_VALUES_LOCAL="$PWD/helm/keycloak-values.local.yaml"
+export OAUTH2_PROXY_VALUES_LOCAL="$PWD/helm/oauth2-proxy-values.local.yaml"
+export AIRFLOW_VALUES_LOCAL="$PWD/helm/airflow-values.local.yaml"
 
 ./scripts/create-secrets.sh     # bắt buộc chạy trước
 ./scripts/deploy.sh             # helm cho toàn bộ, hoặc: ./deploy.sh airflow
@@ -99,9 +108,28 @@ lặng lẽ biến thành một cụm khác cũng đang chạy.
 | Việc | Lệnh | Bao lâu thì có hiệu lực |
 |---|---|---|
 | Sửa DAG | `./scripts/sync-dags.sh` | ~3 phút (kubelet ~60s + `min_file_process_interval` 120s) |
+| Sửa dbt model | `bash ./scripts/sync-dbt.sh` | job dbt kế tiếp |
+| Sửa dependency Airflow | Linux: `bash ./scripts/build-airflow-image.sh`; Windows: `.\scripts\build-airflow-image.ps1` — sau đó deploy Airflow | sau rollout |
 | Sửa nguồn giả lập | `./scripts/sync-source.sh` | ngay, có restart pod |
 | Sửa schema kho | `./scripts/apply-sql.sh [file.sql]` | ngay |
 | Sửa cấu hình helm | `./scripts/deploy.sh <component>` | theo rollout |
+| Deploy database inspector | `./scripts/deploy.sh database-ui` | theo rollout |
+
+`pgweb` là giao diện xem PostgreSQL nhẹ, chạy ở chế độ `read-only`, không cần
+PVC và không chứa mật khẩu kho trong manifest. Các connection đã duyệt được
+lưu thành bookmark TOML trong Secret `stc-hy/pgweb-bookmarks`; sau khi đăng
+nhập Keycloak, người dùng chọn connection trong danh sách, không phải nhập lại.
+Có thể lưu nhiều connection bằng nhiều key `*.toml` trong cùng Secret. pgweb
+không tự lưu connection nhập từ UI như pgAdmin; danh sách này do platform quản
+lý. `bookmarks-only` chặn kết nối tới host nội bộ ngoài danh sách đã duyệt.
+Đường `/db/` dùng chung hostname với SeaweedFS để tái sử dụng oauth2-proxy và
+callback Keycloak hiện có.
+
+Hiện `read-only` được thực thi ở lớp pgweb. Tài khoản vận hành `stc_dwh` không
+có `CREATEROLE`, nên chưa tạo được role PostgreSQL riêng cho inspector. DBA cần
+tạo `stc_dwh_inspector` chỉ có `CONNECT`, `USAGE`, `SELECT` và đặt
+`default_transaction_read_only=on`, sau đó xoay Secret `pgweb-database` sang
+role đó để có lớp bảo vệ ở chính database.
 
 DAG đi vào cụm bằng ConfigMap chứ không phải PVC hay gitSync. Lý do: chart
 không mount gì cho DAG khi tắt cả `persistence` lẫn `gitSync`, mà namespace chỉ
@@ -109,11 +137,38 @@ còn đúng 1 khe PVC trong quota. ConfigMap không tốn quota và không cần
 server — đổi lại trần 1MiB và không có lịch sử phiên bản. `sync-dags.sh` tự
 chặn khi sắp chạm trần.
 
+dbt Core không có Deployment chạy thường trực và không nằm trong image
+Airflow. Task `dbt_transform` dùng `KubernetesPodOperator` tạo một pod từ
+`ghcr.io/dbt-labs/dbt-postgres:1.9.0`, mount project từ hai ConfigMap
+`airflow-dbt-project`/`airflow-dbt-models`, lấy kết nối kho từ Secret `dwh-db`,
+chạy toàn bộ model gắn tag `qlgia`, rồi tự xóa pod. Image đã có trên node thì
+chi phí khởi động quan sát được khoảng 10 giây; SQL vẫn chạy trong PostgreSQL.
+
+Service account của worker tạo/đọc/log/xóa pod được nhưng không được list
+Kubernetes Events. Provider KPO 10.17 luôn mở event watcher dù chỉ để chẩn đoán,
+nên DAG dùng `ProjectMemberKubernetesPodOperator`: giữ nguyên vòng đời KPO và
+chỉ bỏ event watcher, thay bằng polling trạng thái pod. Khi project-owner cấp
+quyền list/watch Events cho worker service account thì có thể trở lại KPO gốc.
+
+Image Airflow ví dụ là
+`ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-r1`, build từ
+`Dockerfile.airflow`. Image giữ nguyên Airflow 3.2.2/Python 3.13 và nướng sẵn
+`dlt==1.21.0`, `openpyxl==3.1.5`. GitHub Actions build và publish package GHCR
+public nên cluster có thể pull mà không cần secret. Nếu đổi registry, đặt lại
+`AIRFLOW_IMAGE` và `REGISTRY_SECRET`. Các script build chỉ dùng Docker config
+tạm và không ghi credential vào repo.
+
+QL Giá dùng `dlt` REST client cho HTTP, retry và pagination `nextPage`. Cursor
+đã công bố vẫn chỉ có một nguồn sự thật là `ingestion.cursors`: Airflow truyền
+`updatedSince` vào dlt và chỉ tiến cursor trong cùng transaction công bố Gold.
+dlt không giữ checkpoint thứ hai. Response bytes của từng page được ghi nguyên
+văn vào Bronze; manifest ghi thêm `extractor` và `dlt_version` để truy vết.
+
 ---
 
 ## 5. Pipeline `ingest_qlgia`
 
-Bảy bước, mỗi bước đẩy `ingestion.runs.status` sang trạng thái mới. Lô dừng
+Chín task, các checkpoint nghiệp vụ đẩy `ingestion.runs.status` sang trạng thái mới. Lô dừng
 giữa chừng thì giữ nguyên trạng thái nó dừng — đó là thứ làm sổ nhật ký đáng
 đọc.
 
@@ -128,8 +183,10 @@ received → parsed → mapped → quality_passed → published
 | `check_schema_contract` | Lấy mẫu 25 dòng, đối chiếu kiểu. Thiếu trường hoặc đổi kiểu → **DỪNG trước khi ghi gì**. Thừa trường lạ → ghi nhận, cho qua |
 | `land_in_bronze` | Phân trang, ghi nguyên văn + `_manifest.json` + checksum |
 | `load_silver_one` | Đọc ngược từ S3, đổi tên trường, giữ text |
-| `build_silver_two` | Ép kiểu, khử trùng theo `lastModified`, ánh xạ mã, phán mỗi dòng |
+| `dbt_transform` | Tạo pod dbt riêng; dựng Silver-2 và bảng tổng hợp, chạy 10 data tests, xong tự xóa pod |
+| `summarize_silver_two` | Đếm kết quả dbt và xếp mã chưa ánh xạ vào hàng chờ xử lý |
 | `quality_gate` | Tính hai chỉ số, quyết định công bố |
+| `summarize_grain` | Kiểm tra nhóm bị mất hết điểm hoặc có quá ít nơi khảo sát |
 | `publish` | Merge-upsert vào Gold, tiến cursor |
 
 ### Hai chỉ số, không phải một
@@ -174,23 +231,37 @@ qua và ghi nhận. `mode=reset` trả về bình thường.
 
 ## 6. Ràng buộc đang phải sống chung
 
-**Quyền trên cụm là `project-member`.** Không tạo được Role, RoleBinding,
-ClusterRole hay CRD. Hệ quả:
+**Quyền hiện tại quản lý được RBAC trong namespace, không quản lý RBAC toàn
+cụm.** Vì vậy chart vẫn để `rbac.create=false`; các quyền bổ sung phải được
+khai báo hẹp và có manifest trong repo. `k8s/airflow-kpo-rbac.yaml` chỉ cấp
+`get/list/watch` cho `core/v1 Events` để `KubernetesPodOperator` theo dõi pod.
+ClusterRole và CRD vẫn nằm ngoài phạm vi dự án.
 
-- mọi chart phải `rbac.create=false`; SeaweedFS phải `createClusterRole: false`
-- Operator (Keycloak Operator, Strimzi…) bị chặn hoàn toàn — chỉ dùng được Helm
-- Airflow không đổi sang `KubernetesExecutor` được, vì executor đó cần quyền
-  tạo pod. Đang chạy `CeleryExecutor`
+**Nhưng quyền chạy pod thì ĐÃ được cấp.** Kiểm bằng cách tạo pod thật (HTTP 201),
+Kubernetes nói rõ nguồn quyền:
 
-**Pod không tới được `10.123.123.0/24`.** Đã xác minh bằng tcpdump: không có
-gói nào tới nơi, nguyên nhân là cụm nằm ở mạng khác chứ không phải firewall
-trong cụm. Hệ quả:
+```
+RBAC: allowed by RoleBinding "airflow-pod-launcher/stc-hy-airflow"
+      of ClusterRole "jmix-airflow-pod-launcher"
+      to ServiceAccount "stc-airflow-worker/stc-hy-airflow"
+```
 
-- mọi lệnh gọi server-to-server phải đi Service nội bộ, không đi ingress VIP.
+Nên `KubernetesPodOperator` dùng được (dbt đang chạy kiểu đó), và
+`KubernetesExecutor` cũng khả thi về mặt quyền. Vẫn giữ `CeleryExecutor` vì
+chưa có lý do đủ để đổi, không phải vì bị chặn.
+
+Cần phân biệt hai thứ hay bị gộp làm một: **tạo pod** thì được, **tạo đối tượng
+RBAC** thì không. Cái sau mới là thứ chặn Operator.
+
+**Pod hiện chưa tới được mạng chứa các nguồn bên ngoài cluster.** Đã xác minh
+bằng kiểm tra lưu lượng; địa chỉ và dải mạng cụ thể không được ghi trong bản
+public. Hệ quả:
+
+- mọi lệnh gọi server-to-server phải đi Service nội bộ, không đi ingress.
   Đây là lý do Keycloak bật `KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true` và
-  oauth2-proxy phải `skip-oidc-discovery` rồi chỉ tay từng endpoint
+  oauth2-proxy dùng endpoint nội bộ cho backchannel
 - **chưa nối được nguồn thật** (Oracle TMS, MISA, DMS, KBNN). Cần định tuyến từ
-  Bình trước khi rời khỏi nguồn giả lập
+  đội hạ tầng trước khi rời khỏi nguồn giả lập
 
 **Chưa có cert-manager** → toàn bộ chạy HTTP. `cookie-secure: "false"` ở
 oauth2-proxy là hệ quả, phải đổi khi có TLS.
@@ -202,8 +273,8 @@ Kubernetes, tạo bằng `create-secrets.sh`. Đọc lại:
 kubectl -n stc-hy-airflow get secret dwh-db -o jsonpath='{.data.password}' | base64 -d
 ```
 
-Mật khẩu superuser `postgres` của cụm `jmix-ha` đã từng bị dán vào chat —
-**cần đổi**.
+Credential môi trường phải được rotate ngay nếu từng xuất hiện ngoài secret
+manager; không ghi sự cố hoặc giá trị cụ thể vào repository public.
 
 ---
 
@@ -236,9 +307,10 @@ Ghi lại để không phải trả lần nữa.
 - [ ] Lát cắt 2: nguồn thu/chi ngân sách theo hợp đồng "viên gạch API"
       (`docs/API-VIEN-GACH-DRAFT.md`) — 219/350 biểu thuộc vòng đời ngân sách,
       và `DHTC_CHI_04` đã có recipe chạy được để làm đích
-- [ ] dbt cho tầng curated (PyPI thông từ trong cụm, cài được không cần build image)
+- [ ] Chuyển phần publish Gold sang dbt khi chốt cơ chế công bố nguyên tử giữa
+      Gold, `batch_summary` và cursor; hiện Airflow giữ ba cập nhật trong một transaction
 - [ ] Export realm Keycloak ra JSON, commit vào repo
 - [ ] Bật xác thực cho S3 API
 - [ ] Chuyển metadata DB của Airflow sang `jmix-ha`, bỏ `bitnamilegacy/postgresql`
       (kho archive, không còn được vá) và trả lại 1 khe PVC
-- [ ] Hỏi Bình: định tuyến tới `10.123.123.0/24`, cert-manager, quyền `project-owner`
+- [ ] Phối hợp đội hạ tầng: định tuyến mạng nguồn, cert-manager, quyền `project-owner`

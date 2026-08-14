@@ -134,7 +134,7 @@ services:
         aliases:
           - kdlstc-airflow
     ports:
-      - "10.123.123.174:${AIRFLOW_WEB_PORT:-18080}:8080"
+      - "127.0.0.1:${AIRFLOW_WEB_PORT:-18080}:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
       interval: 30s
@@ -331,7 +331,7 @@ services:
     profiles:
       - flower
     ports:
-      - "10.123.123.174:${AIRFLOW_FLOWER_PORT:-15555}:5555"
+      - "127.0.0.1:${AIRFLOW_FLOWER_PORT:-15555}:5555"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
       interval: 30s

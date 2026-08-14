@@ -1,0 +1,14 @@
+name: stc_warehouse
+version: "1.0.0"
+config-version: 2
+
+profile: stc_warehouse
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  stc_warehouse:
+    +materialized: incremental
+    +on_schema_change: fail

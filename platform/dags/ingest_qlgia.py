@@ -1,16 +1,16 @@
 """
 ingest_qlgia — first vertical slice of the finance warehouse.
 
-Source -> Bronze -> Silver-1 -> Silver-2 -> quality gate -> Silver-3 -> Gold,
-with a run ticket threaded through every step so any published number can be
-walked back to the bytes it came from.
+Source -> Bronze -> Silver-1 -> dbt (Silver-2 + grouped intermediate + tests)
+-> Airflow quality gate -> Gold, with a run ticket threaded through every step
+so any published number can be walked back to the bytes it came from.
 
 Three decisions worth knowing before reading the code:
 
   The source publishes SURVEY POINTS, the report needs one number. A surveyor
   visits three to five outlets for the same commodity in the same district, so
-  the grain has to change somewhere. It changes in exactly one place —
-  build_grain — and lands in its own table rather than hiding inside the
+  the grain has to change somewhere. It changes in exactly one dbt model and
+  lands in its own table rather than hiding inside the
   publish statement, so the collapse can be inspected before Gold sees it.
 
   Silver-1 is loaded FROM BRONZE, not from the HTTP response held in memory.
@@ -31,8 +31,7 @@ cursor and a single batch may legitimately carry rows from several periods.
 import hashlib
 import json
 import re
-import urllib.parse
-import urllib.request
+import os
 from datetime import datetime, timedelta, timezone
 
 try:                                    # Airflow 3
@@ -43,6 +42,8 @@ except ImportError:                     # Airflow 2 fallback
     from airflow.exceptions import AirflowSkipException
 
 from airflow.exceptions import AirflowException
+from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
+from kubernetes.client import models as k8s
 
 from psycopg2.extras import Json, execute_values
 
@@ -53,11 +54,15 @@ from warehouse import (
     warehouse_cursor,
     write_audit,
 )
+from qlgia_source import DLT_VERSION, iter_price_pages
 
 SOURCE_CODE = "qlgia"
-SOURCE_BASE_URL = "http://mock-qlgia.stc-hy.svc.cluster.local"
+SOURCE_BASE_URL = os.environ.get("QLGIA_SOURCE_URL", "http://mock-qlgia")
 PAGE_SIZE = 500
 HTTP_TIMEOUT = 30
+DBT_IMAGE = "ghcr.io/dbt-labs/dbt-postgres:1.9.0"
+DBT_PROJECT_DIR = "/opt/dbt"
+
 
 # Publish thresholds. Two separate numbers because they mean different things:
 # a low mapping coverage is somebody's homework, a low quality score is broken
@@ -89,159 +94,6 @@ FIELD_CONTRACT = {
 # Reject reasons grouped by what they mean for the publish decision.
 STRUCTURAL_REASONS = ("subtotal_row",)
 MAPPING_REASONS = ("commodity_unmapped", "locality_unmapped")
-
-
-def _fetch(path, **params):
-    url = f"{SOURCE_BASE_URL}{path}"
-    if params:
-        url += "?" + urllib.parse.urlencode(
-            {k: v for k, v in params.items() if v is not None}
-        )
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-        return json.loads(response.read().decode("utf-8"))
-
-
-# =========================================================================
-# Silver-2 build. One statement so the whole derivation is visible in one
-# place and runs in one transaction. Grain here is still one survey point.
-# =========================================================================
-BUILD_TYPED_SQL = """
-INSERT INTO staging.stg_qlgia__price_typed (
-    run_id, commodity_code, locality_code, survey_period, survey_date,
-    outlet_code, unit_of_measure, price, source_updated_at,
-    src_item_code, src_area_code, source_row_id, raw_path,
-    is_valid, reject_reason
-)
-WITH parsed AS (
-    -- Safe casts only: anything unconvertible becomes NULL and is judged
-    -- below, rather than aborting the whole batch with a cast error.
-    SELECT
-        s.run_id,
-        s.commodity_code AS src_item_code,
-        s.locality_code  AS src_area_code,
-        s.survey_period,
-        s.outlet_code,
-        s.source_row_id,
-        s.raw_path,
-        s.unit_of_measure,
-        CASE WHEN s.survey_date ~ '^\\d{4}-\\d{2}-\\d{2}$'
-             THEN s.survey_date::date END                  AS survey_date,
-        CASE WHEN s.price ~ '^-?\\d+(\\.\\d+)?$'
-             THEN s.price::numeric END                     AS price,
-        CASE WHEN s.source_updated_at ~ '^\\d{4}-\\d{2}-\\d{2}T'
-             THEN s.source_updated_at::timestamptz END     AS source_updated_at
-    FROM staging.stg_qlgia__price s
-    WHERE s.run_id = %(run_id)s
-),
-mapped AS (
-    SELECT
-        p.*,
-        mc.standard_value AS commodity_code,
-        ml.standard_value AS locality_code
-    FROM parsed p
-    LEFT JOIN metadata.mapping_rules mc
-           ON mc.source_code  = %(source_code)s
-          AND mc.code_type    = 'commodity'
-          AND mc.source_value = p.src_item_code
-          AND mc.valid_to     >= CURRENT_DATE
-    LEFT JOIN metadata.mapping_rules ml
-           ON ml.source_code  = %(source_code)s
-          AND ml.code_type    = 'locality'
-          AND ml.source_value = p.src_area_code
-          AND ml.valid_to     >= CURRENT_DATE
-),
-deduped AS (
-    -- The source re-sends corrected readings for the same outlet. Newest
-    -- lastModified wins; source id breaks exact ties. The key includes the
-    -- outlet, because several outlets in one district are not duplicates.
-    SELECT DISTINCT ON (
-        src_item_code,
-        COALESCE(src_area_code, '~null~'),
-        survey_period,
-        COALESCE(outlet_code, '~null~')
-    ) *
-    FROM mapped
-    ORDER BY src_item_code,
-             COALESCE(src_area_code, '~null~'),
-             survey_period,
-             COALESCE(outlet_code, '~null~'),
-             source_updated_at DESC NULLS LAST,
-             source_row_id     DESC
-),
-reference_price AS (
-    -- Median per commodity across every point in the batch, used to catch
-    -- unit-of-measure slips. Subtotal and non-positive rows would drag it.
-    SELECT src_item_code,
-           percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS median_price
-    FROM mapped
-    WHERE price > 0
-      AND src_area_code IS DISTINCT FROM 'QLG-TONG'
-    GROUP BY src_item_code
-),
-judged AS (
-    SELECT
-        d.*,
-        CASE
-            -- Structural first: a subtotal row is not a defect, it simply
-            -- does not belong at this grain. Judging it as bad data would
-            -- put a permanent false failure in the quality score.
-            WHEN d.src_area_code = 'QLG-TONG'      THEN 'subtotal_row'
-            WHEN d.src_area_code IS NULL           THEN 'locality_missing'
-            WHEN d.outlet_code IS NULL             THEN 'outlet_missing'
-            WHEN d.survey_date IS NULL             THEN 'survey_date_unparseable'
-            WHEN d.price IS NULL                   THEN 'price_unparseable'
-            WHEN d.price <= 0                      THEN 'price_not_positive'
-            WHEN d.commodity_code IS NULL          THEN 'commodity_unmapped'
-            WHEN d.locality_code  IS NULL          THEN 'locality_unmapped'
-            WHEN r.median_price IS NOT NULL
-             AND d.price > 20 * r.median_price     THEN 'price_out_of_range'
-        END AS reject_reason
-    FROM deduped d
-    LEFT JOIN reference_price r ON r.src_item_code = d.src_item_code
-)
-SELECT
-    run_id, commodity_code, locality_code, survey_period, survey_date,
-    outlet_code, unit_of_measure, price, source_updated_at,
-    src_item_code, src_area_code, source_row_id, raw_path,
-    reject_reason IS NULL AS is_valid,
-    reject_reason
-FROM judged;
-"""
-
-
-# =========================================================================
-# Silver-3 build — the grain change.
-#
-# Rows with no warehouse codes are excluded rather than counted: an unmapped
-# or district-less observation belongs to no group, so it cannot be one
-# group's rejected point.
-# =========================================================================
-BUILD_GRAIN_SQL = """
-INSERT INTO staging.stg_qlgia__price_grain (
-    run_id, commodity_code, locality_code, survey_period, survey_date,
-    unit_of_measure, avg_price, min_price, max_price,
-    survey_points, rejected_points, raw_paths
-)
-SELECT
-    run_id,
-    commodity_code,
-    locality_code,
-    survey_period,
-    MIN(survey_date)     FILTER (WHERE is_valid),
-    MIN(unit_of_measure) FILTER (WHERE is_valid),
-    ROUND(AVG(price)     FILTER (WHERE is_valid), 2),
-    MIN(price)           FILTER (WHERE is_valid),
-    MAX(price)           FILTER (WHERE is_valid),
-    COUNT(*)             FILTER (WHERE is_valid),
-    COUNT(*)             FILTER (WHERE NOT is_valid),
-    ARRAY_AGG(DISTINCT raw_path)
-FROM staging.stg_qlgia__price_typed
-WHERE run_id = %(run_id)s
-  AND commodity_code IS NOT NULL
-  AND locality_code  IS NOT NULL
-GROUP BY run_id, commodity_code, locality_code, survey_period;
-"""
 
 
 @dag(
@@ -329,8 +181,16 @@ def ingest_qlgia():
         somebody added a column, but it should not surface it unasked either.
         """
         run_id = ticket["run_id"]
-        sample = _fetch("/api/prices", page=1, pageSize=25)
-        rows = sample.get("items", [])
+        sample_page = next(
+            iter_price_pages(
+                SOURCE_BASE_URL,
+                updated_since=None,
+                page_size=25,
+                timeout=HTTP_TIMEOUT,
+            ),
+            None,
+        )
+        rows = list(sample_page) if sample_page is not None else []
 
         if not rows:
             return {"unknown_fields": [], "sampled": 0}
@@ -373,7 +233,7 @@ def ingest_qlgia():
     @task
     def land_in_bronze(ticket: dict, contract: dict) -> dict:
         """
-        Page through the source and store every response verbatim.
+        Page through the source with dlt and store every response verbatim.
 
         Bronze is immutable and keeps the source's own field names. No
         renaming, no casting, no filtering — this is the evidence layer.
@@ -383,23 +243,21 @@ def ingest_qlgia():
         s3 = object_store()
 
         digest = hashlib.sha256()
-        keys, row_count, page = [], 0, 1
+        keys, row_count = [], 0
         newest_cursor = ticket["cursor"]
 
-        while True:
-            payload = _fetch("/api/prices",
-                             updatedSince=ticket["cursor"],
-                             page=page,
-                             pageSize=PAGE_SIZE)
-            items = payload.get("items", [])
-            if not items:
-                break
-
-            body = json.dumps(payload, ensure_ascii=False,
-                              sort_keys=True).encode("utf-8")
+        pages = iter_price_pages(
+            SOURCE_BASE_URL,
+            updated_since=ticket["cursor"],
+            page_size=PAGE_SIZE,
+            timeout=HTTP_TIMEOUT,
+        )
+        for page_number, page_data in enumerate(pages, start=1):
+            items = list(page_data)
+            body = page_data.response.content
             digest.update(body)
 
-            key = f"{prefix}page-{page:05d}.json"
+            key = f"{prefix}page-{page_number:05d}.json"
             s3.put_object(Bucket=BRONZE_BUCKET, Key=key, Body=body,
                           ContentType="application/json")
             keys.append(key)
@@ -409,11 +267,6 @@ def ingest_qlgia():
                 stamp = item.get("lastModified")
                 if stamp and (newest_cursor is None or stamp > newest_cursor):
                     newest_cursor = stamp
-
-            next_page = payload.get("nextPage")
-            if not next_page:
-                break
-            page = next_page
 
         checksum = digest.hexdigest()
 
@@ -434,6 +287,8 @@ def ingest_qlgia():
             "pages": keys,
             "checksum_sha256": checksum,
             "unknown_fields": contract.get("unknown_fields", []),
+            "extractor": "dlt-rest-client",
+            "dlt_version": DLT_VERSION,
             "landed_at": datetime.now(timezone.utc).isoformat(),
         }
         s3.put_object(
@@ -446,7 +301,8 @@ def ingest_qlgia():
         set_run_status(run_id, "received", row_count=row_count,
                        checksum_sha256=checksum)
         write_audit("airflow", "bronze_landed", run_id,
-                    {"rows": row_count, "pages": len(keys), "checksum": checksum})
+                    {"rows": row_count, "pages": len(keys), "checksum": checksum,
+                     "extractor": "dlt-rest-client", "dlt_version": DLT_VERSION})
 
         return {"keys": keys, "row_count": row_count,
                 "checksum": checksum, "cursor_to": newest_cursor}
@@ -509,9 +365,9 @@ def ingest_qlgia():
 
     # ---------------------------------------------------------------------
     @task
-    def build_silver_two(ticket: dict, staged: dict) -> dict:
+    def summarize_silver_two(ticket: dict) -> dict:
         """
-        Type, deduplicate, map to warehouse codes, and judge every point.
+        Summarize the Silver-2 rows built by dbt and queue mapping questions.
 
         Source codes with no mapping rule become a queued business question
         with an owner and a due date, not a silently dropped row.
@@ -519,9 +375,6 @@ def ingest_qlgia():
         run_id = ticket["run_id"]
 
         with warehouse_cursor() as cur:
-            cur.execute(BUILD_TYPED_SQL,
-                        {"run_id": run_id, "source_code": SOURCE_CODE})
-
             cur.execute(
                 """
                 SELECT COALESCE(reject_reason, '__valid__'), COUNT(*)
@@ -666,13 +519,13 @@ def ingest_qlgia():
 
     # ---------------------------------------------------------------------
     @task
-    def build_grain(ticket: dict, verdict: dict) -> dict:
+    def summarize_grain(ticket: dict, verdict: dict) -> dict:
         """
-        Collapse survey points into the reporting grain.
+        Inspect the reporting groups already built by dbt.
 
-        This is the only place the grain changes: several observations become
-        one commodity x district x period row carrying the average, the spread,
-        and — crucially — how many observations it rests on.
+        The dbt model has collapsed several observations into one commodity x
+        district x period row. This task inspects that result before publish:
+        the average, spread, and how many observations it rests on.
 
         Two situations are surfaced rather than smoothed over:
 
@@ -686,8 +539,6 @@ def ingest_qlgia():
         run_id = ticket["run_id"]
 
         with warehouse_cursor() as cur:
-            cur.execute(BUILD_GRAIN_SQL, {"run_id": run_id})
-
             cur.execute(
                 """
                 SELECT
@@ -867,9 +718,154 @@ def ingest_qlgia():
     contract = check_schema_contract(ticket)
     bronze = land_in_bronze(ticket, contract)
     staged = load_silver_one(ticket, bronze)
-    silver_two = build_silver_two(ticket, staged)
+
+    # One dbt pod performs every SQL transformation for this source. It exists
+    # only for this task execution and is deleted on success or failure. The
+    # project and models are ConfigMaps; database credentials come from the
+    # existing dwh-db Secret and never appear in the pod spec as plain text.
+    dbt_transform = KubernetesPodOperator(
+        task_id="dbt_transform",
+        name="dbt-qlgia-transform",
+        namespace="stc-hy-airflow",
+        kubernetes_conn_id=None,
+        in_cluster=True,
+        image=DBT_IMAGE,
+        image_pull_policy="IfNotPresent",
+        cmds=["dbt"],
+        arguments=[
+            "--no-version-check",
+            "build",
+            "--project-dir", DBT_PROJECT_DIR,
+            "--profiles-dir", DBT_PROJECT_DIR,
+            "--target", "prod",
+            "--select", "tag:qlgia",
+            "--vars",
+            '{"run_id": "{{ ti.xcom_pull(task_ids=\'open_run\')[\'run_id\'] }}"}',
+        ],
+        env_vars=[
+            k8s.V1EnvVar(name="DBT_SEND_ANONYMOUS_USAGE_STATS", value="false"),
+            k8s.V1EnvVar(name="DBT_USE_COLORS", value="false"),
+            k8s.V1EnvVar(
+                name="DWH_HOST",
+                value_from=k8s.V1EnvVarSource(
+                    secret_key_ref=k8s.V1SecretKeySelector(
+                        name="dwh-db", key="host"
+                    )
+                ),
+            ),
+            k8s.V1EnvVar(
+                name="DWH_DBNAME",
+                value_from=k8s.V1EnvVarSource(
+                    secret_key_ref=k8s.V1SecretKeySelector(
+                        name="dwh-db", key="dbname"
+                    )
+                ),
+            ),
+            k8s.V1EnvVar(
+                name="DWH_USER",
+                value_from=k8s.V1EnvVarSource(
+                    secret_key_ref=k8s.V1SecretKeySelector(
+                        name="dwh-db", key="user"
+                    )
+                ),
+            ),
+            k8s.V1EnvVar(
+                name="DWH_PASSWORD",
+                value_from=k8s.V1EnvVarSource(
+                    secret_key_ref=k8s.V1SecretKeySelector(
+                        name="dwh-db", key="password"
+                    )
+                ),
+            ),
+        ],
+        volumes=[
+            k8s.V1Volume(
+                name="dbt-project-source",
+                config_map=k8s.V1ConfigMapVolumeSource(
+                    name="airflow-dbt-project"
+                ),
+            ),
+            k8s.V1Volume(
+                name="dbt-models-source",
+                config_map=k8s.V1ConfigMapVolumeSource(
+                    name="airflow-dbt-models"
+                ),
+            ),
+            k8s.V1Volume(
+                name="dbt-work",
+                empty_dir=k8s.V1EmptyDirVolumeSource(size_limit="32Mi"),
+            ),
+        ],
+        volume_mounts=[
+            k8s.V1VolumeMount(
+                name="dbt-work",
+                mount_path=DBT_PROJECT_DIR,
+            ),
+        ],
+        init_containers=[
+            k8s.V1Container(
+                name="prepare-dbt-project",
+                image=DBT_IMAGE,
+                image_pull_policy="IfNotPresent",
+                command=["/bin/sh", "-c"],
+                args=[
+                    "mkdir -p /work/models && "
+                    "cp /project/dbt_project.yml /project/profiles.yml /work/ && "
+                    "cp /model-source/*.sql /model-source/*.yml /work/models/"
+                ],
+                resources=k8s.V1ResourceRequirements(
+                    requests={"cpu": "10m", "memory": "32Mi"},
+                    limits={"cpu": "100m", "memory": "128Mi"},
+                ),
+                security_context=k8s.V1SecurityContext(
+                    allow_privilege_escalation=False,
+                    capabilities=k8s.V1Capabilities(drop=["ALL"]),
+                    seccomp_profile=k8s.V1SeccompProfile(type="RuntimeDefault"),
+                ),
+                volume_mounts=[
+                    k8s.V1VolumeMount(
+                        name="dbt-project-source",
+                        mount_path="/project",
+                        read_only=True,
+                    ),
+                    k8s.V1VolumeMount(
+                        name="dbt-models-source",
+                        mount_path="/model-source",
+                        read_only=True,
+                    ),
+                    k8s.V1VolumeMount(
+                        name="dbt-work",
+                        mount_path="/work",
+                    ),
+                ],
+            )
+        ],
+        container_resources=k8s.V1ResourceRequirements(
+            requests={"cpu": "50m", "memory": "256Mi"},
+            limits={"cpu": "1", "memory": "1Gi"},
+        ),
+        container_security_context=k8s.V1SecurityContext(
+            allow_privilege_escalation=False,
+            capabilities=k8s.V1Capabilities(drop=["ALL"]),
+            seccomp_profile=k8s.V1SeccompProfile(type="RuntimeDefault"),
+        ),
+        automount_service_account_token=False,
+        get_logs=True,
+        log_events_on_failure=False,
+        startup_timeout_seconds=180,
+        active_deadline_seconds=1800,
+        execution_timeout=timedelta(minutes=30),
+        reattach_on_restart=True,
+        on_finish_action="delete_pod",
+        do_xcom_push=False,
+        labels={"app.kubernetes.io/name": "dbt", "stc/source": SOURCE_CODE},
+    )
+
+    staged >> dbt_transform
+    silver_two = summarize_silver_two(ticket)
+    dbt_transform >> silver_two
     verdict = quality_gate(ticket, silver_two)
-    grain = build_grain(ticket, verdict)
+    grain = summarize_grain(ticket, verdict)
     publish(ticket, bronze, verdict, grain)
 
 

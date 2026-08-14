@@ -12,9 +12,7 @@ import os
 import boto3
 import psycopg2
 
-S3_ENDPOINT = os.environ.get(
-    "S3_ENDPOINT", "http://sw-seaweedfs-s3.stc-hy.svc.cluster.local:8333"
-)
+S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://seaweedfs-s3:8333")
 BRONZE_BUCKET = os.environ.get("BRONZE_BUCKET", "bronze")
 
 # Valid values for ingestion.runs.status, in the order a healthy batch walks

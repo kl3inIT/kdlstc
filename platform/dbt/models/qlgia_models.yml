@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: qlgia_price_typed
+    description: One judged QL Gia survey point, typed and mapped to warehouse codes.
+    columns:
+      - name: run_id
+        data_tests: [not_null]
+      - name: source_row_id
+        data_tests: [not_null]
+      - name: raw_path
+        data_tests: [not_null]
+      - name: is_valid
+        data_tests: [not_null]
+
+  - name: qlgia_price_grain
+    description: Pre-publish price groups by commodity, locality, and survey period.
+    columns:
+      - name: run_id
+        data_tests: [not_null]
+      - name: commodity_code
+        data_tests: [not_null]
+      - name: locality_code
+        data_tests: [not_null]
+      - name: survey_period
+        data_tests: [not_null]
+      - name: survey_points
+        data_tests: [not_null]
+      - name: rejected_points
+        data_tests: [not_null]

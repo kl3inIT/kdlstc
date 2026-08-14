@@ -33,9 +33,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-S3_ENDPOINT = os.environ.get(
-    "S3_ENDPOINT", "http://sw-seaweedfs-s3.stc-hy.svc.cluster.local:8333"
-)
+S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://seaweedfs-s3:8333")
 INTAKE_BUCKET = os.environ.get("INTAKE_BUCKET", "intake")
 FISCAL_YEAR = 2026
 PERIODS = [f"{FISCAL_YEAR}-{m:02d}" for m in range(1, 9)]  # Jan..Aug

@@ -12,6 +12,7 @@ set -euo pipefail
 
 NS="${NS:-stc-hy-airflow}"
 SECRET="${SECRET:-dwh-db}"
+S3_ENDPOINT="${S3_ENDPOINT:-http://seaweedfs-s3:8333}"
 POD="tabmis-seeder"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARGS="$*"
@@ -36,7 +37,7 @@ kubectl -n "$NS" run "$POD" --restart=Never --image=python:3.12-slim \
         {"name":"DWH_DBNAME", "valueFrom":{"secretKeyRef":{"name":"$SECRET","key":"dbname"}}},
         {"name":"DWH_USER",   "valueFrom":{"secretKeyRef":{"name":"$SECRET","key":"user"}}},
         {"name":"DWH_PASSWORD","valueFrom":{"secretKeyRef":{"name":"$SECRET","key":"password"}}},
-        {"name":"S3_ENDPOINT","value":"http://sw-seaweedfs-s3.stc-hy.svc.cluster.local:8333"},
+        {"name":"S3_ENDPOINT","value":"$S3_ENDPOINT"},
         {"name":"PYTHONUNBUFFERED","value":"1"}
       ],
       "volumeMounts": [{"name":"gen","mountPath":"/gen","readOnly":true}],

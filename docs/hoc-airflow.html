@@ -268,13 +268,13 @@
 
   <!-- ============ DEPLOY ============ -->
   <h2 id="deploy"><span class="n">07</span>Đưa DAG lên server & chạy</h2>
-  <div class="box warn"><b>Bật VPN công ty trước.</b> Mọi truy cập SSH/UI đều đi qua VPN.</div>
+  <div class="box warn"><b>Chuẩn bị kết nối tới môi trường triển khai.</b> Dùng hostname do quản trị viên cấp.</div>
   <h3>1) Đẩy file DAG lên server</h3>
-  <div class="code"><div class="bar"><span>từ máy local (PowerShell)</span><button class="copy">Copy</button></div><pre>scp dags/*.py kdlstc-dev:/home/ubuntu/app/airflow/dags/</pre></div>
-  <p><code class="inl">kdlstc-dev</code> là alias SSH đã cấu hình trong <code class="inl">~/.ssh/config</code> (server <code class="inl">ubuntu@10.123.123.174</code>).</p>
+  <div class="code"><div class="bar"><span>từ máy local (PowerShell)</span><button class="copy">Copy</button></div><pre>scp dags/*.py airflow-host:/opt/airflow/dags/</pre></div>
+  <p><code class="inl">airflow-host</code> là alias SSH ví dụ trong <code class="inl">~/.ssh/config</code>; thay bằng hostname của môi trường.</p>
   <h3>2) Mở UI và chạy</h3>
   <ol class="steps">
-    <li>Mở <a href="http://10.123.123.174:18080">http://10.123.123.174:18080</a> (qua VPN).</li>
+    <li>Mở địa chỉ Airflow do quản trị viên môi trường cung cấp.</li>
     <li>Chờ ~30s–5 phút để DAG Processor quét file mới — <b>không cần restart</b>.</li>
     <li>Gạt nút <b>Unpause</b> (DAG mới mặc định bị pause).</li>
     <li>Bấm <b>Trigger DAG</b> → vào <b>Grid / Graph</b> xem task đổi màu → click ô task → <b>Logs</b>.</li>

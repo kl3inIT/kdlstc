@@ -1,13 +1,12 @@
 # Airflow 3.2.2 / chart 1.22.0  →  namespace stc-hy-airflow (project Jmix team)
 # Quota ns: req 3 CPU / 6Gi · lim 8 CPU / 12Gi · 5 PVC · 20Gi
 
-# ── BẮT BUỘC: project-member không tạo được Role/RoleBinding ──────────────
+# RBAC của chart vẫn tắt. Quyền chạy pod đến từ RoleBinding do nền tảng cấp;
+# quyền đọc core/v1 Events riêng cho KPO nằm ở k8s/airflow-kpo-rbac.yaml.
 rbac:
   create: false
 
-# ── ingress: dùng nip.io để khỏi phải cấu hình DNS ────────────────────────
-#    airflow-stc.10.123.123.194.nip.io  ->  tự resolve về 10.123.123.194
-#    Khi có hostname thật dưới congchuc.ai thì đổi dòng name: bên dưới.
+# ── ingress: public-safe placeholder; override theo môi trường ────────────
 ingress:
   apiServer:
     enabled: true
@@ -15,7 +14,15 @@ ingress:
     path: "/"
     pathType: "Prefix"
     hosts:
-      - name: airflow-stc.10.123.123.194.nip.io
+      - name: airflow.example.com
+
+# Image được GitHub Actions build từ Dockerfile.airflow. Package GHCR public
+# nên cluster không cần imagePullSecret.
+images:
+  airflow:
+    repository: ghcr.io/kl3init/kdlstc-airflow
+    tag: 3.2.2-dlt1.21.0-r1
+    pullPolicy: Always
 
 # ── bỏ component không dùng ở dev ─────────────────────────────────────────
 statsd:
@@ -67,9 +74,9 @@ secret:
     secretKey: password
 
 # ── ĐƯỜNG NẠP DAG ─────────────────────────────────────────────────────────
-# Khi dags.persistence và dags.gitSync cùng tắt, chart KHÔNG mount gì cả — DAG
-# buộc phải nằm sẵn trong image. Ở đây chưa build được image riêng, nên mount
-# ConfigMap "airflow-dags" vào đúng AIRFLOW__CORE__DAGS_FOLDER (/opt/airflow/dags).
+# Khi dags.persistence và dags.gitSync cùng tắt, chart KHÔNG mount gì cả. DAG
+# vẫn mount từ ConfigMap "airflow-dags" vào đúng AIRFLOW__CORE__DAGS_FOLDER
+# (/opt/airflow/dags) để sửa DAG không phải build lại image dependency.
 #   ưu   không tốn PVC (quota chỉ còn 1 khe), không cần git server, sửa là áp ngay
 #   nhược ConfigMap tối đa 1MiB, kubelet đồng bộ sau ~60s, không có lịch sử phiên bản
 # Khi lên thật thì đổi sang gitSync trỏ vào repo nội bộ.
@@ -101,12 +108,13 @@ apiServer:
         FabAirflowSecurityManagerOverride,
     )
 
-    # Pod trong cluster KHONG toi duoc 10.123.123.x (ingress VIP), nen moi lenh
-    # goi server-to-server phai di duong Service noi bo. Keycloak bat
+    # Goi server-to-server phai di duong Service noi bo. Keycloak bat
     # KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true nen ban discovery lay tu ben trong se
     # tra ve: authorize_endpoint = URL CONG KHAI (trinh duyet di),
     #         token/userinfo/jwks = URL NOI BO (pod di).
-    KEYCLOAK = "http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl"
+    KEYCLOAK = os.environ.get(
+        "KEYCLOAK_ISSUER_URL", "http://keycloak-service/realms/khodl"
+    )
 
     AUTH_TYPE = AUTH_OAUTH
     AUTH_USER_REGISTRATION = True          # user chua co thi tu tao
@@ -224,21 +232,6 @@ createUserJob:
   resources:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: 500m, memory: 1Gi}
-
-# ── thư viện thêm cho các task ────────────────────────────────────────────
-# openpyxl để đọc tệp .xlsx của TABMIS.
-#
-# Chart 1.22.0 KHÔNG có khoá extraPipPackages — thử dùng thì helm nuốt im lặng,
-# không báo lỗi mà cũng không sinh ra thay đổi nào. Cơ chế đúng nằm ở
-# ENTRYPOINT CỦA IMAGE: biến _PIP_ADDITIONAL_REQUIREMENTS được pip cài lúc
-# container khởi động.
-#
-# Đánh đổi: pod lên chậm thêm ~30s và phụ thuộc PyPI lúc đó có sống không.
-# Tài liệu Airflow nói rõ đây là cơ chế cho phát triển, không cho chạy thật.
-# Đúng bài là nướng sẵn vào image — món nợ đã ghi ở README.
-env:
-  - name: _PIP_ADDITIONAL_REQUIREMENTS
-    value: "openpyxl==3.1.5"
 
 # ── chống OOM và tiết kiệm CPU ở môi trường dev ───────────────────────────
 config:

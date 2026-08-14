@@ -1,6 +1,6 @@
 # Phân tích khoảng cách: mô phỏng hiện tại vs structure THẬT
 
-Nguồn đối chiếu: repo `git.dth.com.vn/jmix-team/research/stc-hungyen-baocao`
+Nguồn đối chiếu: repository đặc tả nội bộ, không công bố địa chỉ trong bản public
 — metadata đặc tả **358 báo cáo** thật của Sở Tài chính Hưng Yên (4.844 cột, 8.407 dòng chỉ tiêu).
 
 Đọc ngày 2026-07-23. Nhóm sát pipeline nhất: **20 biểu điều hành thu/chi** (`DHTC_THU_01..10`, `DHTC_CHI_01..10`).

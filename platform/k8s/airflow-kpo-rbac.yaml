@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: airflow-kpo-events
+  namespace: stc-hy-airflow
+rules:
+  # KubernetesPodOperator watches core/v1 Events while a pod is pending. The
+  # existing project RoleBinding covers pod lifecycle operations but not this
+  # diagnostic stream.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: airflow-kpo-events
+  namespace: stc-hy-airflow
+subjects:
+  - kind: ServiceAccount
+    name: stc-airflow-worker
+    namespace: stc-hy-airflow
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: airflow-kpo-events

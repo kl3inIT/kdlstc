@@ -39,6 +39,15 @@ recreate() {  # recreate <namespace> <name> <literal>...
     --dry-run=client -o yaml | kubectl apply -f -
 }
 
+toml_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\n'/\\n}"
+  printf '%s' "$value"
+}
+
 # ── stc-hy ───────────────────────────────────────────────────────────────
 recreate "$APP_NS" keycloak-db \
   --from-literal=password="$KC_DB_PASSWORD"
@@ -62,5 +71,20 @@ recreate "$AIRFLOW_NS" dwh-db \
   --from-literal=dbname="$DWH_DBNAME" \
   --from-literal=user="$DWH_USER" \
   --from-literal=password="$DWH_PASSWORD"
+
+# pgweb reads one TOML file per approved connection. Keep the files in a
+# Secret so credentials never enter the repository; add more --from-literal
+# entries here when the platform needs to expose more warehouse databases.
+PGWEB_BOOKMARK="$(printf \
+  'host = "%s"\nport = 5432\nuser = "%s"\npassword = "%s"\ndatabase = "%s"\nsslmode = "require"\n' \
+  "$(toml_escape "$DWH_HOST")" \
+  "$(toml_escape "$DWH_USER")" \
+  "$(toml_escape "$DWH_PASSWORD")" \
+  "$(toml_escape "$DWH_DBNAME")")"
+recreate "$APP_NS" pgweb-bookmarks \
+  --from-literal=stc-dwh.toml="$PGWEB_BOOKMARK"
+kubectl -n "$APP_NS" label secret pgweb-bookmarks \
+  app.kubernetes.io/name=pgweb \
+  app.kubernetes.io/part-of=stc-warehouse --overwrite >/dev/null
 
 echo "Secrets applied to $APP_NS and $AIRFLOW_NS."

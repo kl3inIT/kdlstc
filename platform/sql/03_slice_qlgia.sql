@@ -1,6 +1,7 @@
 -- =========================================================================
 -- Vertical slice 1 — QL Gia: Silver-1, Silver-2 and Gold.
--- Run once. dbt will own the curated layer from slice 2 onward.
+-- Run once. dbt now owns the Silver-2 and grouped intermediate builds; Airflow
+-- keeps the final Gold + batch summary + cursor publish in one transaction.
 --
 -- The source publishes SURVEY POINTS: several outlets per commodity per
 -- district per period. The report needs one number per commodity per district
