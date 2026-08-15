@@ -2,6 +2,11 @@
 """
 Build the "van ban theo ngay" report in Superset via REST API.
 
+LUU Y sau khi bat SSO (AUTH_OAUTH): endpoint /api/v1/security/login voi
+provider "db" khong con hoat dong — script nay chi chay duoc truoc khi bat
+SSO, hoac sau nay qua mot service account Keycloak (direct grant) khi can
+tu dong hoa lai. Dashboard da tao van nguyen ven, khong phu thuoc script.
+
 Idempotent: looks up existing objects by name before creating.
 Steps: login -> database connection (imate_reader, read-only)
        -> virtual dataset (fact + 3 dims flattened)

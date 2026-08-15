@@ -34,6 +34,7 @@ DB_PW=$(get_or_new db-password)
 PG_ADMIN=$(get_or_new pg-admin-password)
 ADMIN_PW=$(get_or_new admin-password)
 READER_PW=$(get_or_new imate-reader-password)
+KC_CS=$(get_or_new keycloak-client-secret)
 
 kubectl -n "$NS" create secret generic superset-secrets \
   --from-literal=secret-key="$SECRET_KEY" \
@@ -41,6 +42,7 @@ kubectl -n "$NS" create secret generic superset-secrets \
   --from-literal=pg-admin-password="$PG_ADMIN" \
   --from-literal=admin-password="$ADMIN_PW" \
   --from-literal=imate-reader-password="$READER_PW" \
+  --from-literal=keycloak-client-secret="$KC_CS" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 echo "secret superset-secrets: ok"
 
@@ -85,6 +87,7 @@ helm upgrade --install "$RELEASE" superset/superset \
   --set database.password="$DB_PW" \
   --set init.adminUser.password="$ADMIN_PW" \
   --set extraSecretEnv.SUPERSET_SECRET_KEY="$SECRET_KEY" \
+  --set extraSecretEnv.KEYCLOAK_CLIENT_SECRET="$KC_CS" \
   --timeout 15m \
   --wait
 

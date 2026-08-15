@@ -21,10 +21,10 @@
 bootstrapScript: |
   #!/bin/bash
   if command -v uv >/dev/null 2>&1; then
-    uv pip install --python /app/.venv/bin/python psycopg2-binary==2.9.10
+    uv pip install --python /app/.venv/bin/python psycopg2-binary==2.9.10 authlib==1.6.5
   else
     /app/.venv/bin/python -m ensurepip 2>/dev/null || true
-    /app/.venv/bin/python -m pip install psycopg2-binary==2.9.10
+    /app/.venv/bin/python -m pip install psycopg2-binary==2.9.10 authlib==1.6.5
   fi
   if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
 
@@ -116,6 +116,68 @@ ingress:
 # Giao diện tiếng Việt có sẵn trong Superset
 extraEnv:
   BABEL_DEFAULT_LOCALE: vi
+  # Backchannel đi Service nội bộ; KC_HOSTNAME_BACKCHANNEL_DYNAMIC của Keycloak
+  # tự trả authorize = URL công khai (trình duyệt), token/userinfo = URL nội bộ
+  KEYCLOAK_ISSUER_URL: http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl
 
 config:
   ROW_LIMIT: 50000
+
+# ── SSO qua Keycloak (realm khodl) — cùng một bài với Airflow ─────────────
+# Client 'superset' do scripts/deploy-superset.sh + kcadm tạo; secret nằm
+# trong superset-secrets, truyền qua --set, không bao giờ ở đây.
+configOverrides:
+  keycloak_sso: |
+    import os
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+    from superset.security import SupersetSecurityManager
+
+    KEYCLOAK = os.environ["KEYCLOAK_ISSUER_URL"]
+
+    # Sau ingress nen redirect_uri phai dung theo X-Forwarded-* cua nginx
+    ENABLE_PROXY_FIX = True
+
+    AUTH_TYPE = AUTH_OAUTH
+    AUTH_USER_REGISTRATION = True
+    AUTH_USER_REGISTRATION_ROLE = "Gamma"   # chua khop mapping -> chi xem
+    AUTH_ROLES_SYNC_AT_LOGIN = True
+
+    # Realm role (da dung cho Airflow) -> vai Superset
+    AUTH_ROLES_MAPPING = {
+        "quan_tri":    ["Admin"],
+        "chuyen_vien": ["Alpha"],
+        "ke_toan_dv":  ["Gamma"],
+        "lanh_dao":    ["Gamma"],
+    }
+
+    OAUTH_PROVIDERS = [
+        {
+            "name": "keycloak",
+            "icon": "fa-key",
+            "token_key": "access_token",
+            "remote_app": {
+                "client_id": "superset",
+                "client_secret": os.environ.get("KEYCLOAK_CLIENT_SECRET", ""),
+                "server_metadata_url": KEYCLOAK + "/.well-known/openid-configuration",
+                "api_base_url": KEYCLOAK + "/protocol/openid-connect/",
+                "client_kwargs": {"scope": "openid email profile"},
+            },
+        }
+    ]
+
+    class KeycloakSecurityManager(SupersetSecurityManager):
+        """Realm role lay tu userinfo (mapper 'realm-roles' cua client)."""
+
+        def oauth_user_info(self, provider, response=None):
+            if provider != "keycloak":
+                return super().oauth_user_info(provider, response)
+            data = self.appbuilder.sm.oauth_remotes[provider].get("userinfo").json()
+            return {
+                "username": data.get("preferred_username"),
+                "email": data.get("email", ""),
+                "first_name": data.get("given_name", ""),
+                "last_name": data.get("family_name", ""),
+                "role_keys": data.get("roles", []),
+            }
+
+    CUSTOM_SECURITY_MANAGER = KeycloakSecurityManager
