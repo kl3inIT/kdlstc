@@ -119,10 +119,14 @@ p(f"dataset: id={ds_id}")
 DATASOURCE = {"datasource": f"{ds_id}__table"}
 
 
-def chart(name, viz, params):
+def chart(name, viz, params, dash_ids=None):
+    # "dashboards" ngay trong payload: thieu no thi layout tro toi chart
+    # nhung dashboard khong nhan chart la cua minh — man hinh hien
+    # "no chart definition associated". Da dinh bay nay mot lan.
     cid = find("chart", "slice_name", name)
     payload = {"slice_name": name, "viz_type": viz,
                "datasource_id": ds_id, "datasource_type": "table",
+               "dashboards": dash_ids or [],
                "params": json.dumps({**DATASOURCE, "viz_type": viz, **params})}
     if cid:
         r = S.put(f"{BASE}/api/v1/chart/{cid}", headers=H, timeout=60, json=payload)
