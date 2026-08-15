@@ -46,6 +46,41 @@ kubectl -n "$NS" create secret generic superset-secrets \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 echo "secret superset-secrets: ok"
 
+# ── Keycloak client 'superset' (realm khodl) ─────────────────────────────
+# Keycloak doi moi BO QUA truong "secret" trong payload create — client sinh
+# ra voi secret ngau nhien cua no va SSO chet o buoc doi token voi
+# "Invalid client credentials". Vi the: create khong secret, roi LUON update
+# secret ve gia tri cua minh sau do. Da dinh bay nay mot lan.
+KC_USER=$(kubectl -n stc-hy get secret keycloak-admin -o jsonpath='{.data.username}' | base64 -d)
+KC_PW=$(kubectl -n stc-hy get secret keycloak-admin -o jsonpath='{.data.password}' | base64 -d)
+kubectl -n stc-hy exec -i kc-keycloakx-0 -c keycloak -- bash -s <<EOF
+set -e
+K=/opt/keycloak/bin/kcadm.sh
+\$K config credentials --server http://localhost:8080 --realm master \
+  --user '$KC_USER' --password '$KC_PW' >/dev/null
+CID=\$(\$K get clients -r khodl -q clientId=superset --fields id --format csv --noquotes | head -1)
+if [ -z "\$CID" ]; then
+  \$K create clients -r khodl -b '{
+    "clientId": "superset", "enabled": true, "protocol": "openid-connect",
+    "publicClient": false, "standardFlowEnabled": true,
+    "directAccessGrantsEnabled": false,
+    "redirectUris": ["http://bi-stc.10.123.123.194.nip.io/*"],
+    "webOrigins": ["http://bi-stc.10.123.123.194.nip.io"]
+  }' >/dev/null
+  CID=\$(\$K get clients -r khodl -q clientId=superset --fields id --format csv --noquotes | head -1)
+fi
+\$K update clients/\$CID -r khodl -s secret='$KC_CS'
+HASMAP=\$(\$K get clients/\$CID/protocol-mappers/models -r khodl --fields name --format csv --noquotes 2>/dev/null | grep -c realm-roles || true)
+[ "\$HASMAP" = "0" ] && \$K create clients/\$CID/protocol-mappers/models -r khodl -b '{
+  "name": "realm-roles", "protocol": "openid-connect",
+  "protocolMapper": "oidc-usermodel-realm-role-mapper",
+  "config": {"claim.name": "roles", "jsonType.label": "String",
+             "multivalued": "true", "userinfo.token.claim": "true",
+             "access.token.claim": "true", "id.token.claim": "true"}
+}' >/dev/null
+echo "keycloak client superset: ok"
+EOF
+
 # ── imate_reader: read-only identity on the warehouse ────────────────────
 PG_ADMIN_PW=$(kubectl -n stc-hy-airflow get secret stc-airflow-postgresql \
   -o jsonpath='{.data.postgres-password}' | base64 -d)
