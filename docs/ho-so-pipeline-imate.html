@@ -353,7 +353,8 @@ updatedAt</div>
       <li><b>Vì sao DESC:</b> văn bản bị sửa giữa lúc quét nhảy về đầu → hàng chưa đọc bị đẩy RA XA → tệ nhất đọc trùng 1 dòng (dedup nuốt). ASC thì hàng chưa đọc lọt qua con trỏ → <b>mất im lặng</b>. Chọn hướng chỉ có thể sai kiểu sửa được.</li>
       <li><b>Bản sửa quay về đầu:</b> upsert đặt <code>status='discovered'</code> — văn bản đã publish vẫn được tải lại khi nguồn đổi nó.</li>
       <li><b>Chốt chặn:</b> contract 8 trường kiểm TRƯỚC khi ghi (→ <code>schema_blocked</code>); trần <code>MAX_PAGES=200</code> làm cầu chì; <code>drift</code> = tổng mình − tổng nguồn (thú nhận không thấy được xoá).</li>
-      <li><b>Kết quả về qua sổ cái</b> (<code>runs.message</code>), không qua XCom — một nguồn sự thật.</li>
+      <li><b>Kết quả về qua sổ cái</b> (<code>runs.message</code>), không qua XCom — một nguồn sự thật; kèm <code>extractor: dlt-rest-client/&lt;version&gt;</code> làm lineage.</li>
+      <li><b>Lớp vỏ HTTP là dlt RESTClient</b> (chuẩn chung với QL Giá): session retry + backoff có sẵn; thuật toán cursor, bẫy API và sổ sách vẫn là của pipeline — kho giữ cursor, dlt không giữ bản thứ hai.</li>
     </ul>
 
     <h3>DAG 02 · <code>imate_02_land_bronze</code> — giữ bằng chứng nguyên xi</h3>
@@ -583,7 +584,9 @@ AUTH_ROLES_SYNC_AT_LOGIN = True   <span class="k"># đổi role ở Keycloak, l�
     <h3>Bản đồ repo</h3>
 <div class="payload">platform/
   dags/imate_assets.py        6 Asset nối chuỗi (hợp đồng URI)
-  dags/imate_common.py        client API + imate_cursor (3 tầng resolution) + set_status
+  dags/imate_common.py        client API trên dlt RESTClient (retry sẵn, ghi dlt_version
+                              vào lineage — cùng chuẩn extractor với slice QL Giá)
+                              + imate_cursor (3 tầng resolution) + set_status
   dags/imate_fetch.py         discover + land — chạy TRONG pod hostNetwork
   dags/imate_ops.py           ticket, worklist_count, factory fetch_pod (KPO)
   dags/imate_01..07_*.py      7 DAG — lớp vỏ điều phối, logic nằm ở các module trên

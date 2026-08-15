@@ -21,6 +21,7 @@ from datetime import datetime
 from psycopg2.extras import execute_values
 
 from imate_common import (
+    DLT_VERSION,
     S3_BUCKET,
     PAGE_SIZE,
     imate_cursor,
@@ -151,6 +152,7 @@ def discover(run_id):
 
     summary = {
         "run_id": run_id,
+        "extractor": f"dlt-rest-client/{DLT_VERSION}",
         "pages_read": page,
         "rows_seen": seen,
         "new": fresh,
@@ -300,7 +302,9 @@ def land(run_id):
                 WHERE w.global_id = v.gid
             """, [(g, e) for g, _, _, e in failed])
 
-    summary = {"run_id": run_id, "pending": len(pending),
+    summary = {"run_id": run_id,
+               "extractor": f"dlt-rest-client/{DLT_VERSION}",
+               "pending": len(pending),
                "landed": len(landed), "failed": len(failed)}
     log("ket qua: " + json.dumps(summary, ensure_ascii=False))
     with imate_cursor(autocommit=True) as cur:

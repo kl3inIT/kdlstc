@@ -21,8 +21,17 @@ genuinely need the network, and never applied to the Airflow workers.
 import contextlib
 import json
 import os
+import threading
 import urllib.parse
-import urllib.request
+
+import dlt
+from dlt.sources.helpers.rest_client import RESTClient
+
+# Same extractor standard as the qlgia slice: dlt's REST client supplies the
+# retried session; the warehouse stays the only owner of cursor and state —
+# dlt persists nothing here. Version is recorded into every run summary so
+# lineage can say WHICH extractor produced a given bronze object.
+DLT_VERSION = dlt.__version__
 
 SOURCE_CODE = "imate"
 
@@ -143,6 +152,22 @@ def set_status(run_id, status, **fields):
             f"WHERE run_id = %(run_id)s", params)
 
 
+# One RESTClient per thread: land fetches details with a thread pool, and a
+# requests Session is not guaranteed thread-safe. Each client carries dlt's
+# retrying session (backoff on connection errors and 5xx), which the old
+# urllib implementation never had.
+_local = threading.local()
+
+
+def _client():
+    if getattr(_local, "client", None) is None:
+        _local.client = RESTClient(
+            base_url=API_ADDR,
+            headers={"Host": API_HOST, "Accept": "application/json"},
+        )
+    return _local.client
+
+
 def api_get(path):
     """
     One GET against the iMate API, with the two traps this API sets.
@@ -152,12 +177,12 @@ def api_get(path):
     result and quietly ingest nothing. Authentication failures, inconsistently,
     do use 401 — so both have to be handled.
 
-    Trap two: the vhost is selected by the Host header, which urllib will
-    otherwise fill in from the IP.
+    Trap two: the vhost is selected by the Host header — the client pins it,
+    because cluster DNS cannot resolve imate.local and the call goes by IP.
     """
-    request = urllib.request.Request(API_ADDR + path, headers={"Host": API_HOST})
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    response = _client().get(path, timeout=HTTP_TIMEOUT)
+    response.raise_for_status()
+    payload = response.json()
 
     if not payload.get("success"):
         raise SourceRefusedError(
