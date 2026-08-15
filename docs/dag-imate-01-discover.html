@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giải phẫu imate_01_discover</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --card: #fcfcfb;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --line: #e1e0d9; --baseline: #c3c2b7; --ring: rgba(11,11,11,.10);
+    --accent: #2a78d6; --accent-soft: rgba(42,120,214,.10);
+    --thread: #9a6a16; --thread-bg: rgba(183,130,45,.12);
+    --good: #006300; --crit: #d03b3b;
+    --mono: ui-monospace, "Cascadia Code", Consolas, "SF Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --card: #1a1a19;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --line: #2c2c2a; --baseline: #383835; --ring: rgba(255,255,255,.10);
+      --accent: #3987e5; --accent-soft: rgba(57,135,229,.14);
+      --thread: #d9a44a; --thread-bg: rgba(217,164,74,.14);
+      --good: #0ca30c; --crit: #e66767;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --card: #1a1a19;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --line: #2c2c2a; --baseline: #383835; --ring: rgba(255,255,255,.10);
+    --accent: #3987e5; --accent-soft: rgba(57,135,229,.14);
+    --thread: #d9a44a; --thread-bg: rgba(217,164,74,.14);
+    --good: #0ca30c; --crit: #e66767;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px 72px; }
+
+  .eyebrow { font: 600 11px/1 var(--mono); letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 14px; }
+  h1 { font-size: clamp(25px,4.5vw,34px); font-weight: 700; line-height: 1.15;
+    text-wrap: balance; margin: 0 0 10px; }
+  h1 code { font-family: var(--mono); font-size: .88em; color: var(--accent); }
+  .lede { color: var(--ink-2); max-width: 62ch; margin: 0 0 34px; }
+
+  section { background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 22px 24px 20px; margin: 0 0 22px;
+    box-shadow: 0 1px 2px var(--ring); }
+  section h2 { font-size: 17px; margin: 0 0 4px; }
+  section p.d { color: var(--ink-2); margin: 4px 0 14px; max-width: 64ch; }
+
+  figure { margin: 12px 0 4px; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 8px; max-width: 68ch; }
+
+  /* svg vocab */
+  .box   { fill: var(--page); stroke: var(--line); }
+  .boxC  { fill: var(--card); stroke: var(--line); }
+  .zone  { fill: none; stroke: var(--baseline); }
+  .podb  { fill: var(--accent-soft); stroke: var(--accent); }
+  .ghost { fill: none; stroke: var(--baseline); stroke-dasharray: 5 4; }
+  .amber { fill: var(--thread-bg); stroke: var(--thread); }
+  .read  { fill: var(--page); stroke: var(--baseline); }
+  .flow  { stroke: currentColor; stroke-width: 1.5; fill: none; }
+  .flowA { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .flowX { stroke: var(--crit); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
+  svg text { font: 12px var(--mono); fill: var(--ink); }
+  svg .t2  { fill: var(--ink-2); }
+  svg .sm  { font-size: 10.5px; fill: var(--muted); }
+  svg .ttl { font-weight: 700; }
+  svg .okT { fill: var(--good); font-weight: 700; }
+  svg .noT { fill: var(--crit); font-weight: 700; }
+  svg .acT { fill: var(--accent); }
+  svg .amT { fill: var(--thread); font-weight: 700; }
+
+  /* code cards */
+  .payload { font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+    background: var(--page); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 16px; overflow-x: auto; white-space: pre; margin: 0 0 10px; }
+  .payload .k { color: var(--muted); } .payload .t { color: var(--thread); }
+  .payload .ok { color: var(--good); font-weight: 700; }
+  .payload .no { color: var(--crit); font-weight: 700; }
+  .payload .hl { background: var(--accent-soft); border-radius: 3px; padding: 0 3px; }
+  .why { border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13.5px;
+    color: var(--ink-2); margin: 0 0 4px; }
+  .why b { color: var(--ink); }
+
+  /* streak + tiles */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    font-family: var(--mono); font-size: 12.5px; margin: 12px 0 4px; }
+  .chips .pg { border: 1px solid var(--line); background: var(--page);
+    border-radius: 6px; padding: 6px 10px; }
+  .chips .pg b { color: var(--accent); }
+  .chips .pg.clean b { color: var(--muted); font-weight: 400; }
+  .chips .stop { border: 1px solid var(--good); color: var(--good);
+    border-radius: 6px; padding: 6px 10px; font-weight: 700; }
+  .tiles { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+  .tile { flex: 1 1 180px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 16px; background: var(--page); }
+  .tile .n { font-size: 24px; font-weight: 700; }
+  .tile .l { font-size: 12px; color: var(--muted); }
+
+  /* decision table */
+  table.dec { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.dec th, table.dec td { border: 1px solid var(--line);
+    padding: 8px 12px; text-align: left; vertical-align: top; }
+  table.dec th { font-size: 12px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; background: var(--page); }
+  table.dec td:first-child { font-weight: 600; white-space: nowrap; }
+  table.dec td.alt { color: var(--muted); }
+  .tblwrap { overflow-x: auto; }
+
+  .pend { border: 1px dashed var(--baseline); border-radius: 10px;
+    padding: 16px 20px; color: var(--ink-2); font-size: 13.5px; }
+  .pend code { font-family: var(--mono); color: var(--thread); font-size: .93em; }
+  .foot { margin-top: 20px; font-size: 12px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Nền tảng dữ liệu STC · Slice 3 iMate · DAG 01/07</p>
+  <h1>Giải phẫu <code>imate_01_discover</code></h1>
+  <p class="lede">DAG này chỉ trả lời một câu — <b>“nguồn có gì mới?”</b> — nhưng mỗi
+  quyết định bên trong đều nhằm một kiểu hỏng cụ thể đã đo được trên API thật.
+  Trang này vẽ cơ chế và ghi rõ <b>vì sao làm thế</b> ngay cạnh từng chỗ.</p>
+
+  <!-- ═══ 1. kiến trúc lượt chạy ═══ -->
+  <section>
+    <h2>1 · Một lượt chạy — ai đứng đâu, vì sao có cái pod</h2>
+    <p class="d">Worker Airflow mang IP <code>10.42.x.x</code> — dải này bị firewall lọc
+    ở cổng 80 (đo thật: cổng 6443 cùng máy chủ vẫn thông). Pod gắn
+    <code>hostNetwork</code> mượn IP của node nên đi lọt. Đặc quyền đó được nhốt
+    vào đúng một pod sống vài chục giây, không cấp cho worker chạy mọi DAG.</p>
+
+    <figure>
+      <svg viewBox="0 0 860 440" role="img"
+           aria-label="Sơ đồ một lượt chạy: ba task trên worker, task discover bắn pod hostNetwork; đường từ worker tới iMate bị firewall chặn, đường từ pod đi lọt; cả hai phía đều ghi vào warehouse; close_run phát Asset đánh thức DAG 02.">
+        <defs>
+          <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+          <marker id="ahA" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/></marker>
+        </defs>
+
+        <!-- worker zone -->
+        <rect class="zone" x="20" y="36" width="600" height="110" rx="10"/>
+        <text class="sm" x="32" y="56">AIRFLOW WORKER · IP 10.42.x.x — dải bị lọc cổng 80</text>
+        <rect class="boxC" x="36" y="70" width="150" height="56" rx="8"/>
+        <text class="ttl" x="52" y="93">open_run</text>
+        <text class="sm" x="52" y="112">mở vé r_… trong sổ cái</text>
+        <rect class="boxC" x="246" y="70" width="170" height="56" rx="8"/>
+        <text class="ttl" x="262" y="93">discover</text>
+        <text class="sm" x="262" y="112">điều phối — không gọi API</text>
+        <rect class="boxC" x="466" y="70" width="140" height="56" rx="8"/>
+        <text class="ttl" x="482" y="93">close_run</text>
+        <text class="sm" x="482" y="112">đóng vé · Asset</text>
+        <line class="flow" x1="186" y1="98" x2="242" y2="98" marker-end="url(#ah)"/>
+        <line class="flow" x1="416" y1="98" x2="462" y2="98" marker-end="url(#ah)"/>
+
+        <!-- DAG 02 ghost + asset -->
+        <rect class="ghost" x="696" y="40" width="144" height="52" rx="8"/>
+        <text class="t2" x="710" y="61">DAG 02 — đang ngủ</text>
+        <text class="sm" x="710" y="79">schedule=[worklist]</text>
+        <polyline class="flowA" points="606,86 646,86 646,66 692,66" marker-end="url(#ahA)"/>
+        <text class="acT sm" x="608" y="56">Asset imate://worklist</text>
+
+        <!-- firewall -->
+        <line x1="660" y1="120" x2="660" y2="330" stroke="var(--baseline)"
+              stroke-width="3" stroke-dasharray="7 5"/>
+        <text class="sm" x="660" y="346" text-anchor="middle">firewall — lọc theo IP nguồn</text>
+
+        <!-- blocked path -->
+        <line class="flowX" x1="620" y1="110" x2="652" y2="110"/>
+        <text class="noT" x="658" y="114">✗</text>
+        <text class="sm" x="560" y="128">GET :80 — chặn</text>
+
+        <!-- pod -->
+        <line class="flow" x1="331" y1="126" x2="331" y2="202" marker-end="url(#ah)"/>
+        <text class="sm" x="340" y="170">bắn pod · đọc log</text>
+        <rect class="podb" x="246" y="206" width="220" height="78" rx="8"/>
+        <text class="ttl" x="262" y="229">POD hostNetwork</text>
+        <text class="sm" x="262" y="247">IP nguồn = 10.123.123.x (của node)</text>
+        <text class="sm" x="262" y="265">python imate_fetch.py discover</text>
+
+        <!-- pod -> source -->
+        <line class="flowA" x1="466" y1="244" x2="688" y2="244" marker-end="url(#ahA)"/>
+        <text class="okT" x="664" y="238">✓</text>
+        <text class="sm" x="478" y="236">GET · Host: imate.local</text>
+
+        <!-- source -->
+        <rect class="box" x="692" y="196" width="148" height="96" rx="8"/>
+        <text class="ttl" x="708" y="222">iMate API</text>
+        <text class="sm" x="708" y="242">10.123.123.199:80</text>
+        <text class="sm" x="708" y="260">6.141 văn bản</text>
+        <text class="sm" x="708" y="278">tenant doit.phuyen</text>
+
+        <!-- warehouse -->
+        <rect class="zone" x="20" y="330" width="600" height="74" rx="10"/>
+        <text class="sm" x="32" y="352">WAREHOUSE</text>
+        <text class="t2" x="32" y="378">ingestion.runs (vé) · ingestion.doc_worklist (danh sách việc)</text>
+        <line class="flow" x1="111" y1="126" x2="111" y2="326" marker-end="url(#ah)"/>
+        <text class="sm" x="118" y="240">mở vé</text>
+        <line class="flow" x1="331" y1="284" x2="331" y2="326" marker-end="url(#ah)"/>
+        <text class="sm" x="340" y="312">upsert theo trang</text>
+        <line class="flow" x1="536" y1="126" x2="536" y2="326" marker-end="url(#ah)"/>
+        <text class="sm" x="543" y="240">đọc vé</text>
+      </svg>
+      <figcaption>Cùng một bức tường, hai kết cục: worker bị chặn (✗), pod hostNetwork đi lọt (✓)
+      — đó là toàn bộ lý do pod tồn tại. Kết quả về qua <b>sổ cái</b>, không qua XCom,
+      nên close_run chỉ việc đọc vé rồi phát Asset.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══ 2. DESC vs ASC ═══ -->
+  <section>
+    <h2>2 · Vì sao quét mới-nhất-trước (DESC) — quyết định lớn nhất của DAG</h2>
+    <p class="d">API không có bộ lọc “từ thời điểm X trở đi” (<code>gte:</code> → HTTP 400),
+    chỉ cho <b>sắp thứ tự</b>. Vấn đề: nếu một văn bản bị sửa <i>ngay lúc đang quét</i>,
+    nó nhảy chỗ và cả danh sách dịch đi một ô. Hướng quét quyết định mình
+    <b>đọc trùng</b> hay <b>bỏ sót</b>:</p>
+
+    <figure>
+      <svg viewBox="0 -16 840 292" role="img"
+           aria-label="So sánh hai hướng quét: DESC làm hàng chưa đọc dịch ra xa con trỏ nên chỉ đọc trùng; ASC làm hàng chưa đọc lọt qua con trỏ nên bị bỏ sót im lặng.">
+        <defs>
+          <marker id="ah2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--thread)"/></marker>
+        </defs>
+
+        <!-- DESC row -->
+        <text class="ttl" x="20" y="76">DESC</text>
+        <text class="sm" x="20" y="94">mới nhất trước</text>
+        <path d="M476,44 C400,4 250,4 178,44" class="flowA" style="stroke:var(--thread)" marker-end="url(#ah2)"/>
+        <text class="amT" x="282" y="8">bị sửa → nhảy về ĐẦU</text>
+        <rect class="read" x="150" y="48" width="52" height="44" rx="6"/>
+        <rect class="read" x="210" y="48" width="52" height="44" rx="6"/>
+        <rect class="read" x="270" y="48" width="52" height="44" rx="6"/>
+        <rect class="read" x="330" y="48" width="52" height="44" rx="6"/>
+        <rect class="boxC" x="390" y="48" width="52" height="44" rx="6"/>
+        <rect class="amber" x="450" y="48" width="52" height="44" rx="6"/>
+        <rect class="boxC" x="510" y="48" width="52" height="44" rx="6"/>
+        <rect class="boxC" x="570" y="48" width="52" height="44" rx="6"/>
+        <text class="amT" x="476" y="75" text-anchor="middle">sửa</text>
+        <line x1="386" y1="36" x2="386" y2="104" stroke="var(--accent)" stroke-width="2"/>
+        <text class="acT sm" x="386" y="30" text-anchor="middle">con trỏ — đã đọc tới đây</text>
+        <text class="sm" x="150" y="112">◄ đã đọc</text>
+        <text class="sm" x="622" y="112" text-anchor="end">chưa đọc ►</text>
+        <text class="okT" x="150" y="136">→ hàng chưa đọc bị đẩy RA XA con trỏ · tệ nhất đọc trùng 1 ô — dedup nuốt được</text>
+
+        <!-- ASC row -->
+        <text class="ttl" x="20" y="196">ASC</text>
+        <text class="sm" x="20" y="214">cũ nhất trước</text>
+        <path d="M476,164 C520,136 610,136 652,164" class="flowA" style="stroke:var(--thread)" marker-end="url(#ah2)"/>
+        <text class="amT" x="500" y="134">bị sửa → nhảy về CUỐI</text>
+        <rect class="read" x="150" y="168" width="52" height="44" rx="6"/>
+        <rect class="read" x="210" y="168" width="52" height="44" rx="6"/>
+        <rect class="read" x="270" y="168" width="52" height="44" rx="6"/>
+        <rect class="read" x="330" y="168" width="52" height="44" rx="6"/>
+        <rect class="boxC" x="390" y="168" width="52" height="44" rx="6"/>
+        <rect class="amber" x="450" y="168" width="52" height="44" rx="6"/>
+        <rect class="boxC" x="510" y="168" width="52" height="44" rx="6"/>
+        <rect class="ghost" x="630" y="168" width="52" height="44" rx="6"/>
+        <text class="amT" x="476" y="195" text-anchor="middle">sửa</text>
+        <line x1="386" y1="156" x2="386" y2="224" stroke="var(--accent)" stroke-width="2"/>
+        <text class="noT" x="150" y="256">→ hàng phía sau dịch TRÁI, một ô chưa đọc lọt qua con trỏ · bị bỏ qua — mất, im lặng</text>
+      </svg>
+      <figcaption>Trùng thì sửa được bằng khoá chính; sót thì không ai hay biết.
+      Nên chọn hướng chỉ có thể sai theo kiểu sửa được. Đây cũng là lý do
+      “chuỗi sạch” phải <b>3 trang</b> chứ không phải 1 — một trang sạch đơn lẻ
+      có thể chỉ là khe hở giữa hai đợt cập nhật.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══ 3. dừng sớm ═══ -->
+  <section>
+    <h2>3 · Dừng sớm — cái làm DAG này rẻ để chạy mỗi 10 phút</h2>
+    <p class="d">Mới-nhất-trước nghĩa là mọi thứ đáng đọc đều nằm ở đầu.
+    Đọc vài trang không thấy gì lạ thì phía sau càng không có:</p>
+    <div class="chips">
+      <span class="pg">trang 1 · <b>+2 mới</b></span>
+      <span class="pg clean">trang 2 · <b>0</b></span>
+      <span class="pg clean">trang 3 · <b>0</b></span>
+      <span class="pg clean">trang 4 · <b>0</b></span>
+      <span class="stop">DỪNG — chuỗi sạch = 3</span>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="n">62 trang</div>
+        <div class="l">lượt đầu — mọi thứ đều mới, không dừng sớm được (~30s)</div></div>
+      <div class="tile"><div class="n">3–4 trang</div>
+        <div class="l">các lượt sau — chi phí một lần hỏi "có gì mới?"</div></div>
+      <div class="tile"><div class="n">200 trang</div>
+        <div class="l">cầu chì MAX_PAGES — so sánh hỏng thì chết to tiếng, không quét vô hạn</div></div>
+    </div>
+  </section>
+
+  <!-- ═══ 4. code ═══ -->
+  <section>
+    <h2>4 · Bốn đoạn code gánh toàn bộ độ tin cậy</h2>
+
+    <p class="d"><b>a — Cái bẫy HTTP 200</b> · <code>imate_common.api_get</code></p>
+<div class="payload">request = urllib.request.Request(API_ADDR + path, <span class="hl">headers={"Host": API_HOST}</span>)
+with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+    payload = json.loads(response.read().decode("utf-8"))
+<span class="hl">if not payload.get("success"):</span>          <span class="k"># API trả lỗi bằng HTTP 200!</span>
+    raise SourceRefusedError(...)</div>
+    <div class="why"><b>Vì sao:</b> đo thật — <code>pageSize=101</code> trả HTTP 200 kèm
+    <code>success:false, body:null</code>. Ai tin status code sẽ đọc lỗi thành
+    “hôm nay không có gì” và pipeline <b>im lặng nạp rỗng</b>. Kiểm cờ ở một chỗ
+    duy nhất, mọi lời gọi hưởng chung. Header <code>Host</code> vì DNS cluster
+    không phân giải <code>imate.local</code> — gọi bằng IP, server chọn app theo vhost.</div>
+
+    <p class="d"><b>b — Trí nhớ + phân loại</b> · <code>imate_fetch.discover</code></p>
+<div class="payload">known = {gid: ts.isoformat()<span class="hl">.replace("+00:00", "Z")</span> for gid, ts in cur.fetchall()}
+...
+previous = known.get(row["globalId"])
+if previous is None:               <span class="ok">page_fresh   += 1</span>   <span class="k"># MỚI</span>
+elif previous != row["updatedAt"]: <span class="ok">page_changed += 1</span>   <span class="k"># ĐÃ SỬA</span>
+else:                              continue              <span class="k"># đã biết — không đụng DB</span></div>
+    <div class="why"><b>Vì sao:</b> nạp 6.141 cặp <code>(id, updatedAt)</code> vào dict
+    (~1&nbsp;MB) để so O(1) thay vì 6.141 câu SQL. Chỗ <code>.replace("+00:00","Z")</code>
+    là điểm mong manh có chủ đích ghi chú: đây là <b>so chuỗi</b> — Postgres trả
+    <code>+00:00</code>, API trả <code>Z</code>, lệch định dạng là mọi thứ trông như
+    “đã sửa” và lượt nào cũng thành full scan. Nếu nó hỏng, cầu chì MAX_PAGES ở dưới đỡ.</div>
+
+    <p class="d"><b>c — Câu SQL đắt giá nhất</b> · upsert vào worklist</p>
+<div class="payload">INSERT INTO ingestion.doc_worklist (...) VALUES %s
+ON CONFLICT (global_id) DO UPDATE SET
+    ...,
+    <span class="hl">status     = 'discovered'</span>,   <span class="k">-- bản sửa quay về ĐẦU pipeline</span>
+    last_error = NULL,
+    updated_at = now()</div>
+    <div class="why"><b>Vì sao:</b> một câu vừa thêm vừa đè — chạy lại lần nữa vô hại
+    (idempotent). Dòng <code>status='discovered'</code> là lý do văn bản
+    <b>đã publish rồi vẫn được cập nhật</b> khi nguồn sửa nó: thiếu dòng này, bản sửa
+    không bao giờ được tải lại và không ai biết. Ghi <b>commit theo trang</b> —
+    chết ở trang 40 thì 39 trang trước còn nguyên, chạy lại là tiếp.</div>
+
+    <p class="d"><b>d — Báo cáo qua sổ cái, không qua XCom</b></p>
+<div class="payload">cur.execute("UPDATE ingestion.runs SET row_count = %s, message = %s WHERE run_id = %s",
+            (fresh + changed, json.dumps(summary), run_id))</div>
+    <div class="why"><b>Vì sao:</b> pod muốn đẩy XCom phải có sidecar + volume chung.
+    Mà kết quả đằng nào cũng phải nằm trong sổ cái để truy vết — cho đi hai đường
+    là tạo hai chỗ có thể mâu thuẫn nhau về việc lượt này đã làm gì.
+    <code>close_run</code> chỉ đọc vé rồi quyết.</div>
+  </section>
+
+  <!-- ═══ 5. bảng quyết định ═══ -->
+  <section>
+    <h2>5 · Bảng quyết định — đường đã chọn và đường đã bỏ</h2>
+    <div class="tblwrap">
+    <table class="dec">
+      <tr><th>Quyết định</th><th>Đường khác</th><th>Vì sao chọn đường này</th></tr>
+      <tr><td>Quét DESC</td><td class="alt">ASC “tự nhiên” hơn cho cursor</td>
+        <td>ASC bỏ sót im lặng khi danh sách dịch; DESC chỉ đọc trùng — sai kiểu sửa được</td></tr>
+      <tr><td>Bàn giao bằng bảng</td><td class="alt">XCom giữa các task</td>
+        <td>6.141 dòng không vừa XCom; work list đằng nào cũng phải bền qua lượt chạy — và nhờ nó ranh giới 7 DAG thành rẻ</td></tr>
+      <tr><td>Pod hostNetwork riêng</td><td class="alt">bật hostNetwork cho worker</td>
+        <td>hostNetwork bỏ qua NetworkPolicy + thấy service localhost của node — cấp cho worker là cấp cho mọi DAG, kể cả DAG viết sau này</td></tr>
+      <tr><td>Dừng sau 3 trang sạch</td><td class="alt">quét đủ 62 trang mỗi lượt</td>
+        <td>DESC bảo đảm cái mới ở đầu; 3 trang (không phải 1) để nhịn được khe hở giữa hai đợt cập nhật</td></tr>
+      <tr><td>Contract trước khi ghi</td><td class="alt">nạp rồi validate sau</td>
+        <td>nguồn đổi shape thì chặn khi bảng còn sạch — lỗi nổ đúng chỗ, không nổ ở DAG 06 cách đó bốn chặng</td></tr>
+      <tr><td>Đo drift</td><td class="alt">lờ chuyện xoá ở nguồn</td>
+        <td>quét dừng sớm không bao giờ thấy văn bản bị xoá — thú nhận điểm mù bằng một con số thay vì giả vờ đủ</td></tr>
+      <tr><td>Trần 200 trang</td><td class="alt">tin logic so sánh</td>
+        <td>nếu so timestamp hỏng, mọi dòng trông như mới — thà fail to tiếng một lần còn hơn full scan mỗi 10 phút mãi mãi</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <div class="pend">
+    <b>Trạng thái:</b> logic đã viết đủ — <code>imate_common.py</code> ·
+    <code>imate_fetch.py</code> · <code>imate_assets.py</code>. File DAG
+    (<code>imate_01_discover.py</code>, lớp vỏ 3 task) <b>chưa viết, chờ lệnh</b>.
+    Rủi ro treo duy nhất: PodSecurity đã cho service account của Airflow tạo pod,
+    nhưng cờ <code>hostNetwork</code> thì <b>chưa kiểm</b> — là thứ thử đầu tiên khi dựng,
+    hỏng thì hỏng ngay tại đó, đường lui là xin mở firewall cho dải pod.
+  </div>
+
+  <p class="foot">Số đo lấy từ API thật ngày 14/08/2026 · trang chị em:
+  <code>docs/pipeline-imate.html</code> (hành trình 7 DAG) · bản cục bộ của trang này:
+  <code>docs/dag-imate-01-discover.html</code></p>
+</div>
+
+</html>

@@ -8,25 +8,31 @@
 #
 #   ./apply-sql.sh                 run every file in sql/ in name order
 #   ./apply-sql.sh 03_slice_qlgia.sql   run just one
+#
+# Other warehouses pick their own directory, secret and configmap — e.g. the
+# iMate slice lives in its own database on the in-namespace PostgreSQL:
+#   SQL_DIR=sql-imate SECRET=imate-db CM=imate-sql ./apply-sql.sh
 set -euo pipefail
 
 NS="${NS:-stc-hy-airflow}"
 SECRET="${SECRET:-dwh-db}"
+CM="${CM:-dwh-sql}"
 POD="dwh-sql-runner"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SQL_PATH="$ROOT/${SQL_DIR:-sql}"
 
 if [ $# -gt 0 ]; then
   FILES=("$@")
 else
   FILES=()
-  for f in "$ROOT"/sql/*.sql; do FILES+=("$(basename "$f")"); done
+  for f in "$SQL_PATH"/*.sql; do FILES+=("$(basename "$f")"); done
 fi
 
 echo "namespace : $NS"
 echo "files     : ${FILES[*]}"
 
-kubectl -n "$NS" create configmap dwh-sql \
-  --from-file="$ROOT/sql" --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$NS" create configmap "$CM" \
+  --from-file="$SQL_PATH" --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl -n "$NS" delete pod "$POD" --ignore-not-found --wait=true >/dev/null
 
@@ -56,7 +62,7 @@ kubectl -n "$NS" run "$POD" --restart=Never --image=postgres:18-alpine \
       "resources": {"requests":{"cpu":"50m","memory":"64Mi"},
                     "limits":{"cpu":"500m","memory":"256Mi"}}
     }],
-    "volumes": [{"name":"sql","configMap":{"name":"dwh-sql"}}]
+    "volumes": [{"name":"sql","configMap":{"name":"$CM"}}]
   }
 }
 JSON
