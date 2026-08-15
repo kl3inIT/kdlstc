@@ -39,7 +39,7 @@ INSERT INTO curated.dim_date
 SELECT to_char(d, 'YYYYMMDD')::int, d,
        extract(year from d)::int, extract(quarter from d)::int,
        extract(month from d)::int, to_char(d, 'YYYYMM')::int,
-       'Thang ' || to_char(d, 'MM/YYYY'),
+       'Tháng ' || to_char(d, 'MM/YYYY'),
        extract(day from d)::int, extract(isodow from d)::int,
        to_char(d, 'DD/MM/YYYY'), extract(isodow from d) IN (6, 7)
 FROM generate_series(
@@ -52,10 +52,10 @@ ON CONFLICT (date_key) DO NOTHING;
 
 -- Unknown members: a fact row must never be dropped for want of a dimension.
 INSERT INTO curated.dim_document_kind (kind_key, kind_code, kind_name, kind_group, sort_order)
-VALUES (-1, '(chua xac dinh)', 'Chua xac dinh', NULL, 999)
+VALUES (-1, '(chua xac dinh)', 'Chưa xác định', NULL, 999)
 ON CONFLICT (kind_code) DO NOTHING;
 INSERT INTO curated.dim_issuing_body (body_key, body_code, body_name, body_level, is_confirmed)
-VALUES (-1, '(chua xac dinh)', 'Chua xac dinh', NULL, false)
+VALUES (-1, '(chua xac dinh)', 'Chưa xác định', NULL, false)
 ON CONFLICT (body_code) DO NOTHING;
 
 -- New reference rows get keys above the current maximum; existing keys are
@@ -77,6 +77,12 @@ SELECT (SELECT coalesce(max(body_key), 0) FROM curated.dim_issuing_body)
                     WHERE d.body_code = b.body_code);
 
 -- Names may have been confirmed since last publish — dims follow refdata.
+UPDATE curated.dim_document_kind d
+   SET kind_name = k.kind_name
+  FROM refdata.document_kind k
+ WHERE k.kind_code = d.kind_code
+   AND d.kind_name IS DISTINCT FROM k.kind_name;
+
 UPDATE curated.dim_issuing_body d
    SET body_name = b.body_name, body_level = b.body_level,
        is_confirmed = b.is_confirmed

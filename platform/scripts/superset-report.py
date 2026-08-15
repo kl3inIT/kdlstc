@@ -94,22 +94,22 @@ if not ds_id:
 cols = [
     {"column_name": "global_id",  "type": "TEXT", "groupby": False, "filterable": False},
     {"column_name": "so_ky_hieu", "type": "TEXT", "groupby": True, "filterable": True,
-     "verbose_name": "So ky hieu"},
+     "verbose_name": "Số ký hiệu"},
     {"column_name": "ngay", "type": "DATE", "is_dttm": True, "groupby": True,
-     "filterable": True, "verbose_name": "Ngay van ban"},
+     "filterable": True, "verbose_name": "Ngày văn bản"},
     {"column_name": "thang_key", "type": "BIGINT", "groupby": True, "filterable": True},
     {"column_name": "thang", "type": "TEXT", "groupby": True, "filterable": True,
-     "verbose_name": "Thang"},
+     "verbose_name": "Tháng"},
     {"column_name": "loai", "type": "TEXT", "groupby": True, "filterable": True,
-     "verbose_name": "Loai van ban"},
+     "verbose_name": "Loại văn bản"},
     {"column_name": "don_vi_gui", "type": "TEXT", "groupby": True, "filterable": True,
-     "verbose_name": "Don vi gui"},
+     "verbose_name": "Đơn vị gửi"},
 ]
 r = S.put(f"{BASE}/api/v1/dataset/{ds_id}?override_columns=true", headers=H,
           timeout=60, json={
     "columns": cols,
     "metrics": [{"metric_name": "so_van_ban", "expression": "COUNT(*)",
-                 "metric_type": "count", "verbose_name": "So van ban"}],
+                 "metric_type": "count", "verbose_name": "Số văn bản"}],
 })
 if r.status_code != 200:
     p("LOI dataset PUT:", r.status_code, r.text[:400]); sys.exit(1)
@@ -142,31 +142,31 @@ def chart(name, viz, params, dash_ids=None):
     return cid, cuuid
 
 
-c_day = chart("So van ban theo ngay", "echarts_timeseries_bar", {
+c_day = chart("Số văn bản theo ngày", "echarts_timeseries_bar", {
     "x_axis": "ngay", "time_grain_sqla": "P1D",
     "metrics": ["so_van_ban"], "row_limit": 10000,
-    "x_axis_title": "Ngay", "y_axis_title": "So van ban",
+    "x_axis_title": "Ngày", "y_axis_title": "Số văn bản",
     "show_legend": False, "rich_tooltip": True,
 })
-c_month = chart("So van ban theo thang", "echarts_timeseries_bar", {
+c_month = chart("Số văn bản theo tháng", "echarts_timeseries_bar", {
     "x_axis": "ngay", "time_grain_sqla": "P1M",
     "metrics": ["so_van_ban"], "row_limit": 500,
-    "x_axis_title": "Thang", "y_axis_title": "So van ban",
+    "x_axis_title": "Tháng", "y_axis_title": "Số văn bản",
     "show_legend": False,
 })
-c_kind = chart("Theo loai van ban", "pie", {
+c_kind = chart("Theo loại văn bản", "pie", {
     "groupby": ["loai"], "metric": "so_van_ban",
     "row_limit": 25, "show_labels_threshold": 2,
     "donut": True, "label_type": "key_value",
 })
-c_body = chart("Top don vi gui", "echarts_timeseries_bar", {
+c_body = chart("Top đơn vị gửi", "echarts_timeseries_bar", {
     "x_axis": "don_vi_gui", "metrics": ["so_van_ban"],
     "row_limit": 15, "x_axis_sort": "so_van_ban", "x_axis_sort_asc": False,
-    "show_legend": False, "y_axis_title": "So van ban",
+    "show_legend": False, "y_axis_title": "Số văn bản",
 })
 
 # ── 4. dashboard with native filters ─────────────────────────────────────
-DASH = "Bao cao van ban den — iMate"
+DASH = "Báo cáo văn bản đến — iMate"
 dash_id = find("dashboard", "dashboard_title", DASH)
 
 
@@ -192,10 +192,10 @@ position = {
               "parents": ["ROOT_ID", "GRID_ID"],
               "meta": {"background": "BACKGROUND_TRANSPARENT"}},
 }
-position.update(cbox("CH-DAY", *c_day, "So van ban theo ngay", 12, 60, "ROW-1"))
-position.update(cbox("CH-MONTH", *c_month, "So van ban theo thang", 4, 55, "ROW-2"))
-position.update(cbox("CH-KIND", *c_kind, "Theo loai van ban", 4, 55, "ROW-2"))
-position.update(cbox("CH-BODY", *c_body, "Top don vi gui", 4, 55, "ROW-2"))
+position.update(cbox("CH-DAY", *c_day, "Số văn bản theo ngày", 12, 60, "ROW-1"))
+position.update(cbox("CH-MONTH", *c_month, "Số văn bản theo tháng", 4, 55, "ROW-2"))
+position.update(cbox("CH-KIND", *c_kind, "Theo loại văn bản", 4, 55, "ROW-2"))
+position.update(cbox("CH-BODY", *c_body, "Top đơn vị gửi", 4, 55, "ROW-2"))
 
 
 def nfilter(fid, name, column):
@@ -215,9 +215,9 @@ def nfilter(fid, name, column):
 
 metadata = {
     "native_filter_configuration": [
-        nfilter("thang", "Thang", "thang"),
-        nfilter("loai", "Loai van ban", "loai"),
-        nfilter("dvg", "Don vi gui", "don_vi_gui"),
+        nfilter("thang", "Tháng", "thang"),
+        nfilter("loai", "Loại văn bản", "loai"),
+        nfilter("dvg", "Đơn vị gửi", "don_vi_gui"),
     ],
     "cross_filters_enabled": True,
     "chart_configuration": {},
