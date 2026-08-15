@@ -1,0 +1,121 @@
+# Apache Superset — tầng trình bày đọc Gold, KHÔNG phải một chặng pipeline.
+#
+# Chạy trong namespace riêng stc-hy-bi với quota PVC riêng (3 khe), tự chứa:
+#   - PostgreSQL metadata bundled (1 PVC longhorn 2Gi) — dashboard/chart là
+#     sản phẩm thật, phải bền qua restart
+#   - Redis bundled CÓ persistence (1 PVC longhorn 1Gi) — hàng đợi Celery
+#     sống qua restart, khỏi mất job đang chạy dở
+#   - Web + worker stateless
+# Tổng 2/3 khe PVC của quota riêng stc-hy-bi; airflow không bị đụng.
+#
+# Mọi giá trị bí mật (mật khẩu DB, admin, SECRET_KEY) KHÔNG nằm ở đây —
+# scripts/deploy-superset.sh sinh và truyền qua --set từ Secret trong cluster.
+#
+# Chart: superset/superset 0.22.4 · app 6.1.0 (pin trong deploy script)
+
+# Image gốc KHÔNG kèm driver Postgres — chart chủ ý để người dùng tự khai.
+# Cài lúc khởi động là đủ cho POC; lên thật thì bake vào image qua CI.
+# Bẫy đã dính một lần: `pip` trần cài vào Python HỆ THỐNG trong khi app chạy
+# từ venv /app/.venv (venv do uv tạo, không kèm pip) — cài xong app vẫn không
+# thấy module. Phải nhắm thẳng interpreter của venv.
+bootstrapScript: |
+  #!/bin/bash
+  if command -v uv >/dev/null 2>&1; then
+    uv pip install --python /app/.venv/bin/python psycopg2-binary==2.9.10
+  else
+    /app/.venv/bin/python -m ensurepip 2>/dev/null || true
+    /app/.venv/bin/python -m pip install psycopg2-binary==2.9.10
+  fi
+  if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
+
+postgresql:
+  enabled: true
+  auth:
+    username: superset
+    database: superset
+    # password: --set qua deploy script
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 2Gi
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+
+redis:
+  enabled: true
+  auth:
+    enabled: false          # chỉ nghe trong namespace, cache vứt được
+  master:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 1Gi
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 250m, memory: 256Mi }
+  replica:
+    replicaCount: 0
+
+supersetNode:
+  replicas:
+    enabled: true
+    replicaCount: 1
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { cpu: 750m, memory: 1536Mi }
+
+supersetWorker:
+  replicas:
+    enabled: true
+    replicaCount: 1
+  # Celery mặc định concurrency = số core của NODE (16), không phải cgroup —
+  # 16 process con boot cùng lúc thổi bay mọi trần RAM. Ghim 2 là đủ cho POC.
+  command:
+    - "/bin/sh"
+    - "-c"
+    - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; exec celery --app=superset.tasks.celery_app:app worker --concurrency=2 --max-tasks-per-child=128"
+  resources:
+    requests: { cpu: 50m, memory: 512Mi }
+    # 1Gi bị OOMKilled ngay lúc celery boot — đo thật trên app 6.1.0.
+    # CPU limit giữ khiêm tốn: quota namespace 4 CPU limits TỔNG, rolling
+    # update cần chỗ cho pod cũ + mới cùng lúc.
+    limits: { cpu: 750m, memory: 2Gi }
+
+# Chỉ cần cho alerts/reports định kỳ — POC chưa dùng, tiết kiệm RAM
+supersetCeleryBeat:
+  enabled: false
+
+init:
+  enabled: true
+  loadExamples: false
+  createAdmin: true
+  adminUser:
+    username: admin
+    firstname: Quan tri
+    lastname: STC
+    email: admin@stc-hy.local
+    # password: --set qua deploy script
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  path: /
+  pathType: Prefix
+  hosts:
+    - bi-stc.10.123.123.194.nip.io
+  annotations:
+    # truy vấn dài hơn mặc định 60s của nginx
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+
+# Giao diện tiếng Việt có sẵn trong Superset
+extraEnv:
+  BABEL_DEFAULT_LOCALE: vi
+
+config:
+  ROW_LIMIT: 50000
