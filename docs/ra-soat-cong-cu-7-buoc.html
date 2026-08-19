@@ -1,0 +1,1157 @@
+<title>Rà soát công cụ 7 bước</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Be+Vietnam+Pro:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root {
+  --paper:        #F7F8FA;
+  --surface:      #FFFFFF;
+  --surface-sunk: #EEF1F5;
+  --ink:          #14181F;
+  --ink-soft:     #4A535F;
+  --ink-faint:    #79838F;
+  --rule:         #D8DEE6;
+  --rule-strong:  #B6C0CC;
+  --accent:       #2F5D8C;
+  --accent-soft:  #E3EBF4;
+  --ok:           #2E7D5B;
+  --ok-soft:      #E0F0E8;
+  --gap:          #9A6410;
+  --gap-soft:     #F6EBD6;
+  --bad:          #A83232;
+  --bad-soft:     #F7E3E3;
+
+  --f-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  --wrap: 60rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:        #101319;
+    --surface:      #171B23;
+    --surface-sunk: #1D222B;
+    --ink:          #E6E9EE;
+    --ink-soft:     #A8B2BE;
+    --ink-faint:    #7A848F;
+    --rule:         #2A303A;
+    --rule-strong:  #3B434F;
+    --accent:       #7FA9D6;
+    --accent-soft:  #1B2735;
+    --ok:           #6FC79B;
+    --ok-soft:      #16281F;
+    --gap:          #DDA845;
+    --gap-soft:     #2B2314;
+    --bad:          #E2827F;
+    --bad-soft:     #2C1A1A;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper:        #101319;
+  --surface:      #171B23;
+  --surface-sunk: #1D222B;
+  --ink:          #E6E9EE;
+  --ink-soft:     #A8B2BE;
+  --ink-faint:    #7A848F;
+  --rule:         #2A303A;
+  --rule-strong:  #3B434F;
+  --accent:       #7FA9D6;
+  --accent-soft:  #1B2735;
+  --ok:           #6FC79B;
+  --ok-soft:      #16281F;
+  --gap:          #DDA845;
+  --gap-soft:     #2B2314;
+  --bad:          #E2827F;
+  --bad-soft:     #2C1A1A;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3.25rem;
+}
+
+/* ---------- masthead ---------- */
+
+.masthead { display: flex; flex-direction: column; gap: 1rem; }
+
+.dossier-line {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.25rem;
+  padding-bottom: .9rem;
+  border-bottom: 2px solid var(--accent);
+}
+
+h1 {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 2.9rem);
+  line-height: 1.12;
+  letter-spacing: -.015em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.standfirst {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 46rem;
+  margin: 0;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem 1.5rem;
+  font-family: var(--f-mono);
+  font-size: .74rem;
+  color: var(--ink-faint);
+  padding-top: .5rem;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------- scope banner ---------- */
+
+.scope {
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-left: 4px solid var(--accent);
+  padding: 1.5rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+.scope h2 { margin: 0; }
+
+.scope-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin-top: .25rem;
+}
+
+.scope-card {
+  border: 1px solid var(--rule);
+  background: var(--surface-sunk);
+  padding: .9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.scope-card .label {
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.scope-card .value {
+  font-family: var(--f-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.scope-card .note { font-size: .85rem; color: var(--ink-soft); line-height: 1.5; }
+
+/* ---------- sections ---------- */
+
+section { display: flex; flex-direction: column; gap: 1.25rem; }
+
+h2 {
+  font-family: var(--f-display);
+  font-weight: 600;
+  font-size: clamp(1.4rem, 3vw, 1.75rem);
+  line-height: 1.25;
+  margin: 0;
+  text-wrap: balance;
+}
+
+h3 {
+  font-family: var(--f-display);
+  font-weight: 600;
+  font-size: 1.14rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: .9rem;
+  padding-bottom: .7rem;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.section-head .num {
+  font-family: var(--f-mono);
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .06em;
+  flex: none;
+}
+
+p { margin: 0; max-width: 46rem; }
+p + p { margin-top: .85rem; }
+
+strong { font-weight: 600; }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible, .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+code {
+  font-family: var(--f-mono);
+  font-size: .85em;
+  background: var(--surface-sunk);
+  border: 1px solid var(--rule);
+  padding: .08em .34em;
+  border-radius: 2px;
+  word-break: break-word;
+}
+
+/* ---------- status chips ---------- */
+
+.chip {
+  font-family: var(--f-mono);
+  font-size: .67rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .18rem .5rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  white-space: nowrap;
+  display: inline-block;
+}
+.chip.ok  { color: var(--ok);  background: var(--ok-soft); }
+.chip.gap { color: var(--gap); background: var(--gap-soft); }
+.chip.bad { color: var(--bad); background: var(--bad-soft); }
+.chip.half{ color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- tables ---------- */
+
+.scroller { overflow-x: auto; border: 1px solid var(--rule-strong); background: var(--surface); }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 40rem;
+  font-size: .92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+thead th {
+  text-align: left;
+  font-family: var(--f-mono);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: .7rem .9rem;
+  border-bottom: 2px solid var(--rule-strong);
+  background: var(--surface-sunk);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: .72rem .9rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+td.tool { font-weight: 500; white-space: nowrap; }
+td.status { white-space: nowrap; }
+.layer-row td {
+  background: var(--surface-sunk);
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+/* ---------- step ledger ---------- */
+
+.ledger { display: flex; flex-direction: column; border: 1px solid var(--rule-strong); background: var(--surface); }
+
+.row {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr;
+  gap: 0 1.1rem;
+  padding: 1.15rem 1.3rem;
+  border-bottom: 1px solid var(--rule);
+}
+.row:last-child { border-bottom: none; }
+
+.row .step-no {
+  font-family: var(--f-mono);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--rule-strong);
+  line-height: 1.1;
+  text-align: right;
+}
+
+.row .body { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+
+.row .title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+
+.row .dag {
+  font-family: var(--f-mono);
+  font-size: .72rem;
+  color: var(--ink-faint);
+}
+
+.row p { font-size: .93rem; }
+
+.miss {
+  list-style: none;
+  margin: .15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+
+.miss li {
+  font-size: .9rem;
+  line-height: 1.5;
+  padding-left: 1.1rem;
+  position: relative;
+  color: var(--ink-soft);
+}
+
+.miss li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: var(--gap);
+  font-family: var(--f-mono);
+}
+
+.miss li.none::before { content: "✓"; color: var(--ok); }
+.miss li.wrong::before { content: "!"; color: var(--bad); font-weight: 700; }
+
+/* ---------- defect cards ---------- */
+
+.defects { display: flex; flex-direction: column; gap: 1rem; }
+
+.defect {
+  border: 1px solid var(--rule-strong);
+  border-left: 4px solid var(--bad);
+  background: var(--surface);
+  padding: 1.2rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.defect .where {
+  font-family: var(--f-mono);
+  font-size: .74rem;
+  color: var(--ink-faint);
+  word-break: break-all;
+}
+
+.defect .fix {
+  font-size: .9rem;
+  padding-top: .55rem;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+}
+.defect .fix b { color: var(--ink); font-weight: 600; }
+
+/* ---------- cases ---------- */
+
+.cases { display: flex; flex-direction: column; gap: 1.1rem; counter-reset: casenum; }
+
+.case {
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.case-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .7rem;
+  padding: 1rem 1.35rem;
+  background: var(--surface-sunk);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.case-head .cn {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--accent);
+}
+
+.case-body {
+  padding: 1.15rem 1.35rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.2rem;
+}
+
+.case-col { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+
+.case-col .k {
+  font-family: var(--f-mono);
+  font-size: .67rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.case-col .v { font-size: .92rem; line-height: 1.55; color: var(--ink-soft); }
+.case-col .v b { color: var(--ink); font-weight: 600; }
+
+/* ---------- plan ---------- */
+
+.plan { display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--rule-strong); }
+
+.phase {
+  padding: 0 0 1.5rem 1.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.phase:last-child { padding-bottom: 0; }
+
+.phase::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: .55rem;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.phase .when {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.phase ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .3rem; }
+.phase li { font-size: .93rem; color: var(--ink-soft); line-height: 1.55; }
+
+/* ---------- closing note ---------- */
+
+.note-block {
+  background: var(--surface-sunk);
+  border: 1px solid var(--rule);
+  padding: 1.3rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+footer {
+  border-top: 1px solid var(--rule);
+  padding-top: 1.25rem;
+  font-family: var(--f-mono);
+  font-size: .72rem;
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+@media (max-width: 34rem) {
+  .row { grid-template-columns: 1fr; gap: .5rem; }
+  .row .step-no { text-align: left; font-size: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="dossier-line">
+      <span>Sở Tài chính Hưng Yên</span>
+      <span>Kho dữ liệu tổng hợp ngành Tài chính</span>
+      <span>Bản rà soát nội bộ</span>
+    </div>
+    <h1>Rà soát công cụ 7 bước</h1>
+    <p class="standfirst">
+      Đối chiếu những gì lát cắt iMate đang chạy thật với bộ công cụ mà kiến trúc
+      6 lớp đã cam kết, chỉ rõ từng chỗ còn thiếu theo đúng thứ tự 7 bước, và
+      xác định năm tình huống kiểm thử sẽ dựng thêm để nghiệm thu.
+    </p>
+    <div class="meta-row">
+      <span>Ngày lập: 19/08/2026</span>
+      <span>Nguồn thật: iMate — tenant doit.phuyen</span>
+      <span>Dữ liệu đã chạy: 6.141 văn bản · 99.214 lượt chuyển</span>
+    </div>
+  </header>
+
+  <div class="scope">
+    <h2>Ranh giới thật và mô phỏng</h2>
+    <p>
+      Toàn bộ phần trình bày dưới đây dựa trên <strong>một nguồn thật duy nhất là
+      iMate</strong>. Mọi nguồn khác xuất hiện trong các tình huống kiểm thử đều là
+      <strong>nguồn mô phỏng</strong> do nhóm tự dựng — chưa có hệ thống nghiệp vụ nào
+      khác được cấp quyền truy cập. Ranh giới này giữ nguyên trong mọi báo cáo để
+      không ai đọc nhầm một con số mô phỏng thành số liệu điều hành.
+    </p>
+    <div class="scope-grid">
+      <div class="scope-card">
+        <span class="label">Thật</span>
+        <span class="value">iMate / QLVBĐH</span>
+        <span class="note">
+          API vận hành thật của Sở Công Thương Phú Yên. 6.141 văn bản đã đi trọn 7 bước,
+          chạy lại hai lần cho ra số liệu trùng khớp tuyệt đối.
+        </span>
+      </div>
+      <div class="scope-card">
+        <span class="label">Mô phỏng</span>
+        <span class="value">Các nguồn còn lại</span>
+        <span class="note">
+          TABMIS, MISA, Quản lý Giá, Mua sắm tập trung. Dùng để dựng tình huống kiểm thử;
+          dữ liệu do nhóm sinh ra, không phải số liệu của đơn vị nào.
+        </span>
+      </div>
+      <div class="scope-card">
+        <span class="label">Chưa có quyền</span>
+        <span class="value">Danh mục cơ quan</span>
+        <span class="note">
+          Ba API danh bạ của iMate nằm sau JWT chưa được cấp. Vì vậy 339 cơ quan hiện
+          mang tên suy từ mã, đánh dấu <code>is_confirmed = false</code>.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <span class="num">PHẦN I</span>
+      <h2>Bộ công cụ theo kiến trúc 6 lớp</h2>
+    </div>
+    <p>
+      Kiến trúc được duyệt gọi tên cụ thể từng công cụ cho từng lớp. Bảng dưới đối chiếu
+      với hiện trạng lát cắt iMate đang vận hành trên cụm Rancher.
+    </p>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Công cụ kiến trúc yêu cầu</th>
+            <th scope="col">Trạng thái</th>
+            <th scope="col">Hiện trạng thực tế</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="layer-row"><td colspan="3">Lớp 2 · Thu thập &amp; Điều phối</td></tr>
+          <tr>
+            <td class="tool">Apache Airflow</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Airflow 3.2.2 trên Kubernetes, 7 DAG nối nhau bằng Asset, chạy theo lịch 10 phút một lần.</td>
+          </tr>
+          <tr>
+            <td class="tool">dlt</td>
+            <td class="status"><span class="chip half">Một nửa</span></td>
+            <td>
+              Dùng <code>RESTClient</code> cho tầng trích xuất (có retry, backoff, tái dùng kết nối).
+              Chưa dùng tầng nạp <code>dlt.pipeline</code> — hiện tự viết <code>INSERT ON CONFLICT</code>.
+            </td>
+          </tr>
+          <tr>
+            <td class="tool">Connector riêng theo nguồn</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Gọi API trực tiếp trong DAG, chưa tách thành dịch vụ connector độc lập.</td>
+          </tr>
+
+          <tr class="layer-row"><td colspan="3">Lớp 3 · Lưu trữ &amp; Xử lý</td></tr>
+          <tr>
+            <td class="tool">SeaweedFS — Raw Zone</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Bucket riêng <code>imate</code>, khoá đặt theo mã băm nội dung nên mọi phiên bản đều được giữ.</td>
+          </tr>
+          <tr>
+            <td class="tool">Apicurio Registry</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Chưa triển khai. Hiện chỉ kiểm 8 trường bắt buộc có hay không, không kiểm kiểu, không lưu phiên bản schema.</td>
+          </tr>
+          <tr>
+            <td class="tool">Mapping Engine</td>
+            <td class="status"><span class="chip half">Một nửa</span></td>
+            <td>Logic bóc tách số văn bản và tra danh mục có chạy thật, nhưng nằm trong DAG chứ chưa phải dịch vụ riêng.</td>
+          </tr>
+          <tr>
+            <td class="tool">GX Core — Quality Gate</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Cổng chất lượng tự viết bằng SQL. Ngưỡng nằm cứng trong mã Python, chưa phải luật có phiên bản trong cơ sở dữ liệu.</td>
+          </tr>
+          <tr>
+            <td class="tool">PostgreSQL — Curated Store</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Cơ sở dữ liệu riêng <code>stc_imate</code>, lược đồ hình sao: 2 bảng dữ kiện, 3 bảng chiều.</td>
+          </tr>
+          <tr>
+            <td class="tool">OpenSearch</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Chưa triển khai. Chưa có nhu cầu tra cứu toàn văn trong phạm vi báo cáo hiện tại.</td>
+          </tr>
+
+          <tr class="layer-row"><td colspan="3">Lớp 4 · Phục vụ &amp; Khai thác</td></tr>
+          <tr>
+            <td class="tool">Cube — Semantic Layer</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>
+              Khoảng trống lớn nhất. Mỗi kênh khai thác hiện tự viết SQL riêng, nên cùng một
+              chỉ tiêu có thể ra hai con số khác nhau ở hai nơi.
+            </td>
+          </tr>
+          <tr>
+            <td class="tool">Apache Superset</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Superset 6.1 gắn SSO Keycloak, ánh xạ vai trò, báo cáo văn bản đến với 3 bộ lọc, đã kiểm thử đầu cuối.</td>
+          </tr>
+          <tr>
+            <td class="tool">APISIX — API Gateway</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Chưa triển khai. Chưa có đường phục vụ dữ liệu ra IOC và LGSP.</td>
+          </tr>
+
+          <tr class="layer-row"><td colspan="3">Lớp 6 · Nền tảng dùng chung</td></tr>
+          <tr>
+            <td class="tool">Keycloak — SSO/RBAC</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Realm <code>khodl</code>, đăng nhập một lần vào Superset, ánh xạ vai trò về quyền xem báo cáo.</td>
+          </tr>
+          <tr>
+            <td class="tool">Redis</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Phục vụ bộ đệm và hàng đợi của Superset, có lưu trữ bền.</td>
+          </tr>
+          <tr>
+            <td class="tool">RabbitMQ</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Chưa triển khai. Các bước hiện nối nhau bằng Asset của Airflow.</td>
+          </tr>
+          <tr>
+            <td class="tool">Prometheus / Grafana / Loki</td>
+            <td class="status"><span class="chip gap">Thiếu</span></td>
+            <td>Chưa triển khai. Giám sát hiện dựa vào nhật ký Airflow và sổ cái <code>ingestion.runs</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="num">PHẦN II</span>
+      <h2>Khoảng trống theo từng bước</h2>
+    </div>
+    <p>
+      Bảy bước dưới đây là bảy DAG đang chạy thật. Với mỗi bước, phần gạch đầu dòng
+      liệt kê đúng những gì còn thiếu so với kiến trúc; dấu chấm than đánh dấu chỗ
+      hệ thống <strong>đang mô tả sai năng lực của chính nó</strong> — nhóm ưu tiên vá trước.
+    </p>
+
+    <div class="ledger">
+
+      <div class="row">
+        <span class="step-no">1</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Nguồn</h3>
+            <span class="dag">imate_01_discover</span>
+            <span class="chip half">Một nửa</span>
+          </div>
+          <p>
+            Quét danh sách văn bản theo thứ tự mới nhất trước, so mốc thời gian với sổ công việc,
+            ghi nhận cái mới và cái vừa đổi. Ở trạng thái ổn định chỉ đọc 3 trang là dừng.
+          </p>
+          <ul class="miss">
+            <li>Chưa có Schema Registry: không lưu phiên bản schema, không phân biệt được thay đổi
+                cộng thêm với thay đổi phá vỡ.</li>
+            <li>Kiểm hợp đồng mới dừng ở mức trường có hay không, chưa kiểm kiểu dữ liệu.</li>
+            <li class="wrong">Trạng thái <code>schema_blocked</code> có khai báo và có ghi trong hồ sơ,
+                nhưng <strong>không DAG iMate nào đặt được trạng thái này</strong>. Nguồn đổi cấu trúc
+                thì pod dừng, tác vụ đỏ, còn sổ cái kẹt ở <code>received</code>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="step-no">2</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Bronze</h3>
+            <span class="dag">imate_02_land_bronze</span>
+            <span class="chip ok">Đạt</span>
+          </div>
+          <p>
+            Tải chi tiết từng văn bản, ghi nguyên byte vào SeaweedFS với khoá đặt theo mã băm
+            nội dung. Nội dung giống hệt thì ghi đè vô hại; nội dung đổi thì sinh đối tượng mới
+            nằm cạnh bản cũ, nên kho giữ mọi phiên bản từng thấy.
+          </p>
+          <ul class="miss">
+            <li class="none">Bất biến và truy vết được — đây là bước vững nhất của lát cắt.</li>
+            <li class="wrong">Hồ sơ tuyên bố có thể phát lại từ Bronze, nhưng <strong>chưa có mã nguồn
+                thực hiện</strong>: bước Silver chỉ đọc khoá hiện hành, không có tham số chọn phiên bản.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="step-no">3</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Silver-1</h3>
+            <span class="dag">imate_03_silver_one</span>
+            <span class="chip half">Một nửa</span>
+          </div>
+          <p>
+            Trải phẳng payload thành bốn bảng toàn chuỗi, giữ nguyên văn, chưa ép kiểu.
+            Đây là nơi dữ liệu lần đầu truy vấn được bằng SQL.
+          </p>
+          <ul class="miss">
+            <li>Không kiểm hợp đồng ở payload chi tiết. Một trường biến mất sẽ âm thầm thành rỗng
+                thay vì làm dừng lô — đúng loại lỗi khó phát hiện nhất.</li>
+            <li>Chưa dùng tầng nạp của dlt, nên không tận dụng được cơ chế suy schema và ghi nhận
+                thay đổi cấu trúc sẵn có.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="step-no">4</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Silver-2</h3>
+            <span class="dag">imate_04_silver_two</span>
+            <span class="chip half">Một nửa</span>
+          </div>
+          <p>
+            Ép kiểu, bóc tách số văn bản theo ba quy ước đánh số của Nghị định 30/2020, tra loại
+            văn bản theo danh mục đóng và tự đăng ký cơ quan ban hành vào danh mục mở.
+          </p>
+          <ul class="miss">
+            <li class="wrong">Chỉ số <strong>độ phủ ánh xạ đang đo sai thứ</strong>: hai điều kiện
+                &ldquo;khớp loại&rdquo; và &ldquo;khớp cơ quan&rdquo; hiện là cùng một biểu thức. Con số
+                95,47% thực chất chỉ là tỉ lệ bóc tách được số văn bản.</li>
+            <li>Không có bảng đối chiếu sang mã chuẩn nhà nước. Mã cơ quan hiện là chữ viết tắt
+                cắt từ số văn bản, chỉ nhất quán trong nội bộ một tenant.</li>
+            <li>Ánh xạ chưa tách thành Mapping Engine dùng chung cho nhiều nguồn.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="step-no">5</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Cổng chất lượng</h3>
+            <span class="dag">imate_05_quality_gate</span>
+            <span class="chip half">Một nửa</span>
+          </div>
+          <p>
+            Chấm trên toàn bộ ảnh chụp hiện tại chứ không riêng lô vừa chạy, tách hai chỉ số không
+            bao giờ trộn lẫn: độ phủ ánh xạ là bài tập còn nợ, còn điểm chất lượng là sự cố phải chặn.
+          </p>
+          <ul class="miss">
+            <li>Chưa dùng GX Core. Toàn bộ luật viết bằng SQL thủ công, không tận dụng được thư viện
+                kiểm định chuẩn.</li>
+            <li>Ngưỡng nằm cứng trong mã nguồn. Muốn đổi phải sửa code và triển khai lại, thay vì
+                là quyết định nghiệp vụ có phiên bản và người duyệt.</li>
+            <li>Chưa có trường ghi &ldquo;ai xử lý, trong bao lâu&rdquo; khi một luật bị vi phạm.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="step-no">6</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Gold</h3>
+            <span class="dag">imate_06_publish</span>
+            <span class="chip half">Một nửa</span>
+          </div>
+          <p>
+            Dựng lược đồ hình sao. Chiều thời gian sinh đủ mọi ngày kể cả ngày không có văn bản;
+            thành viên &ldquo;Chưa xác định&rdquo; được chèn trước nên không dòng dữ kiện nào rơi mất.
+          </p>
+          <ul class="miss">
+            <li>Bảng dữ kiện chỉ giữ trạng thái hiện tại, không có lịch sử phiên bản. Không trả lời
+                được câu &ldquo;báo cáo tháng 6 in hôm nay khác bản in tháng trước ở chỗ nào&rdquo;.</li>
+            <li>Chưa có chiều biến đổi chậm cho cơ quan ban hành, nên không tra được tên đơn vị
+                tại đúng thời điểm văn bản phát sinh.</li>
+            <li>Chưa dùng dbt cho lát cắt này, dù công cụ đã chứng minh chạy được ở lát cắt Quản lý Giá.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="step-no">7</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Phục vụ &amp; Khai thác</h3>
+            <span class="dag">imate_07_report + Superset</span>
+            <span class="chip gap">Thiếu nhiều</span>
+          </div>
+          <p>
+            Xuất báo cáo số lượng văn bản theo ngày ra tệp CSV, kèm bảng dựng sẵn trong nhật ký.
+            Superset đọc trực tiếp lược đồ hình sao qua vai trò chỉ đọc.
+          </p>
+          <ul class="miss">
+            <li>Thiếu hẳn lớp ngữ nghĩa Cube. Bước 7 và Superset hiện đi hai đường SQL khác nhau —
+                cùng một chỉ tiêu có thể ra hai con số, và không có nơi nào là định nghĩa gốc.</li>
+            <li>Thiếu bước Phục vụ như kiến trúc mô tả: chưa có APISIX, chưa có đường dữ liệu ra
+                IOC và LGSP.</li>
+            <li>Báo cáo chưa dựng lại được từ mã nguồn: bố cục hiện tạo bằng lệnh gọi API, chưa
+                xuất thành tệp cấu hình đưa vào kho mã.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="num">PHẦN III</span>
+      <h2>Ba chỗ hệ thống đang mô tả sai chính mình</h2>
+    </div>
+    <p>
+      Ba mục này khác hẳn phần &ldquo;chưa làm&rdquo;. Ở đây tài liệu và mã nguồn <strong>đang nói
+      khác nhau</strong> — nghĩa là người đọc báo cáo có thể tin vào một năng lực không tồn tại.
+      Nhóm đề nghị xử lý trước mọi việc bổ sung công cụ.
+    </p>
+    <div class="defects">
+
+      <div class="defect">
+        <h3>Trạng thái chặn khi nguồn đổi cấu trúc không bao giờ xảy ra</h3>
+        <p class="where">platform/dags/imate_*.py — không có lệnh đặt trạng thái schema_blocked</p>
+        <p>
+          Hợp đồng dữ liệu có kiểm và có ném lỗi, nhưng không nơi nào bắt lỗi ấy để ghi trạng thái
+          chặn vào sổ cái. Hai lát cắt Quản lý Giá và TABMIS làm đúng; riêng bảy DAG iMate thì không.
+          Hệ quả là khi nguồn đổi cấu trúc, người vận hành chỉ thấy một tác vụ đỏ, không thấy lý do.
+        </p>
+        <p class="fix"><b>Cách vá:</b> bắt lỗi hợp đồng ở tầng điều phối, ghi trạng thái chặn kèm
+          nguyên văn trường bị thiếu, và dừng chuỗi thay vì để tác vụ chết không lời giải thích.</p>
+      </div>
+
+      <div class="defect">
+        <h3>Độ phủ ánh xạ đang đo một thứ khác với điều nó tuyên bố</h3>
+        <p class="where">platform/dags/imate_04_silver_two.py — hai điều kiện khớp trùng biểu thức</p>
+        <p>
+          Tài liệu mô tả chỉ số này là &ldquo;tỉ lệ văn bản khớp được cả loại theo danh mục đóng lẫn
+          cơ quan đã định danh&rdquo;. Thực tế cả hai điều kiện đều kiểm cùng một thứ: bóc tách được
+          số văn bản hay không. Con số 95,47% vì thế lạc quan hơn thực chất.
+        </p>
+        <p class="fix"><b>Cách vá:</b> tách thành hai phép kiểm độc lập — loại phải tồn tại trong
+          danh mục đóng, cơ quan phải đã được xác nhận — rồi đo lại và công bố con số mới kèm
+          giải thích vì sao thay đổi.</p>
+      </div>
+
+      <div class="defect">
+        <h3>Khả năng phát lại từ Bronze mới là tiềm năng, chưa phải năng lực</h3>
+        <p class="where">platform/dags/imate_03_silver_one.py — chỉ đọc khoá Bronze hiện hành</p>
+        <p>
+          Bronze đúng là đã lưu đủ mọi phiên bản để phát lại. Nhưng không có DAG hay tham số nào
+          cho phép chọn một thời điểm trong quá khứ và dựng lại kho từ đó. Tài liệu nêu năng lực này
+          như đã có.
+        </p>
+        <p class="fix"><b>Cách vá:</b> hoặc bổ sung DAG phát lại nhận tham số mốc thời gian, hoặc
+          sửa tài liệu cho đúng hiện trạng. Nhóm đề xuất phương án thứ nhất vì dữ liệu đã sẵn.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="num">PHẦN IV</span>
+      <h2>Năm tình huống sẽ dựng thêm</h2>
+    </div>
+    <p>
+      Năm tình huống do lãnh đạo nêu đều là những sự cố <strong>không thể chờ nguồn thật tự sinh ra</strong>:
+      iMate sẽ không đổi cấu trúc theo lịch của mình, cũng không tự khai báo một bản sửa hồi tố để
+      mình kiểm thử. Vì vậy mỗi tình huống được dựng trên một nguồn mô phỏng do nhóm điều khiển,
+      còn iMate giữ vai trò đối chứng: kết quả trên nguồn thật phải không đổi sau khi thêm cơ chế mới.
+    </p>
+
+    <div class="cases">
+
+      <div class="case">
+        <div class="case-head">
+          <span class="cn">Tình huống 1</span>
+          <h3>Nguồn đổi cấu trúc dữ liệu trả về</h3>
+          <span class="chip gap">Cần Apicurio</span>
+        </div>
+        <div class="case-body">
+          <div class="case-col">
+            <span class="k">Cách dựng</span>
+            <span class="v">
+              Nguồn mô phỏng phát ba phiên bản payload liên tiếp: <b>thêm một trường</b> (thay đổi
+              cộng thêm), <b>đổi kiểu một trường</b> và <b>bỏ một trường bắt buộc</b> (thay đổi phá vỡ).
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Kết quả phải chứng minh</span>
+            <span class="v">
+              Thêm trường thì lô vẫn chạy và được ghi nhận; đổi kiểu hoặc mất trường thì lô
+              <b>bị chặn ngay tại bước 1</b>, sổ cái ghi trạng thái chặn kèm tên trường, Bronze
+              không nhận một byte nào của lô hỏng.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Phải bổ sung</span>
+            <span class="v">Triển khai Apicurio Registry; nối kiểm tra tương thích vào bước 1;
+              vá lỗi trạng thái chặn nêu ở Phần III.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-head">
+          <span class="cn">Tình huống 2</span>
+          <h3>Trường dữ liệu rỗng — báo cáo thể hiện thế nào</h3>
+          <span class="chip half">Đã có nền</span>
+        </div>
+        <div class="case-body">
+          <div class="case-col">
+            <span class="k">Cách dựng</span>
+            <span class="v">
+              Nguồn mô phỏng gửi các bản ghi thiếu ngày ban hành, thiếu cơ quan, và một số bản ghi
+              có trường rỗng chứ không phải thiếu — để chứng minh hệ thống phân biệt được ba trạng thái.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Kết quả phải chứng minh</span>
+            <span class="v">
+              Bản ghi thiếu ngày <b>không biến mất</b> mà nằm lại sổ công việc với lý do đếm được;
+              bản ghi thiếu cơ quan hiện ra dưới nhãn <b>&ldquo;Chưa xác định&rdquo;</b> chứ không thành số 0;
+              báo cáo có thêm bảng <b>tỉ lệ rỗng theo từng trường</b>.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Phải bổ sung</span>
+            <span class="v">Chuyển luật chất lượng sang GX Core với ngưỡng lưu trong cơ sở dữ liệu;
+              dựng báo cáo tỉ lệ rỗng theo trường.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-head">
+          <span class="cn">Tình huống 3</span>
+          <h3>Nguồn khai báo sửa dữ liệu hồi tố</h3>
+          <span class="chip bad">Khó nhất</span>
+        </div>
+        <div class="case-body">
+          <div class="case-col">
+            <span class="k">Cách dựng</span>
+            <span class="v">
+              Nguồn mô phỏng gửi bản sửa của một văn bản đã công bố, kèm thông tin
+              <b>hiệu lực áp dụng từ một ngày trong quá khứ</b> — tách bạch với thời điểm nguồn gửi bản sửa.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Kết quả phải chứng minh</span>
+            <span class="v">
+              Báo cáo in hôm nay cho kỳ đã qua <b>khác</b> bản in tháng trước, và hệ thống
+              <b>giải thích được vì sao khác</b>: chỉ ra đúng bản ghi nào đã sửa, sửa lúc nào,
+              áp dụng từ khi nào. Bản cũ vẫn dựng lại được từ Bronze.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Phải bổ sung</span>
+            <span class="v">Thêm hai trục thời gian trên bảng dữ kiện; dựng DAG phát lại từ Bronze —
+              đây là hạng mục nặng nhất trong năm tình huống.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-head">
+          <span class="cn">Tình huống 4</span>
+          <h3>Nhiều cơ quan cùng tên, khác mã</h3>
+          <span class="chip gap">Cần danh mục chuẩn</span>
+        </div>
+        <div class="case-body">
+          <div class="case-col">
+            <span class="k">Cách dựng</span>
+            <span class="v">
+              Danh mục mô phỏng chứa hai đơn vị <b>trùng tên nhưng khác mã</b>, cộng thêm một đơn vị
+              đổi tên giữa kỳ và một trường hợp sáp nhập hai đơn vị thành một.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Kết quả phải chứng minh</span>
+            <span class="v">
+              Trùng tên <b>không làm nhân đôi số liệu</b>; trường hợp chưa phân giải được đi vào
+              hàng đợi ngoại lệ có người phụ trách và hạn xử lý; báo cáo phân biệt rõ đơn vị
+              <b>đã xác nhận</b> với đơn vị mang tên suy đoán.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Phải bổ sung</span>
+            <span class="v">Bảng đối chiếu mã cơ quan sang mã chuẩn nhà nước; quy trình xác nhận;
+              quy tắc xử lý tách, nhập và đổi tên đơn vị.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-head">
+          <span class="cn">Tình huống 5</span>
+          <h3>Báo cáo tình hình chung ghép hai nguồn</h3>
+          <span class="chip gap">Cần Cube</span>
+        </div>
+        <div class="case-body">
+          <div class="case-col">
+            <span class="k">Cách dựng</span>
+            <span class="v">
+              Ghép <b>iMate — nguồn thật</b> với <b>Quản lý Giá — nguồn mô phỏng</b> đã dựng sẵn trên cụm,
+              thành một báo cáo tình hình chung theo đơn vị và theo kỳ.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Kết quả phải chứng minh</span>
+            <span class="v">
+              Một chỉ tiêu chỉ có <b>một định nghĩa duy nhất</b>, mọi kênh khai thác đọc cùng con số;
+              báo cáo hiển thị <b>nguồn gốc và độ tươi của từng nguồn</b>; khi một nguồn thiếu hoặc chậm,
+              báo cáo nói rõ thay vì lặng lẽ cộng thiếu.
+            </span>
+          </div>
+          <div class="case-col">
+            <span class="k">Phải bổ sung</span>
+            <span class="v">Triển khai Cube làm lớp ngữ nghĩa; chiều đơn vị và chiều thời gian dùng chung;
+              quy tắc đối chiếu số liệu giữa hai nguồn.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="num">PHẦN V</span>
+      <h2>Thứ tự thực hiện</h2>
+    </div>
+    <p>
+      Thứ tự dưới đây xếp theo nguyên tắc: sửa chỗ đang nói sai trước, rồi bổ sung công cụ theo
+      đúng chiều dữ liệu chảy, để mỗi hạng mục thêm vào đều có nơi kiểm chứng ngay.
+    </p>
+    <div class="plan">
+
+      <div class="phase">
+        <span class="when">Đợt 1 — Sửa chỗ nói sai</span>
+        <ul>
+          <li>Bắt lỗi hợp đồng và ghi được trạng thái chặn trên cả bảy DAG iMate.</li>
+          <li>Tách hai phép kiểm của độ phủ ánh xạ, đo lại và công bố con số đúng.</li>
+          <li>Bổ sung DAG phát lại từ Bronze, hoặc sửa hồ sơ cho khớp hiện trạng.</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <span class="when">Đợt 2 — Công cụ tầng thu thập và xử lý</span>
+        <ul>
+          <li>Triển khai Apicurio Registry, nối vào bước 1 và bước 3 — mở đường cho Tình huống 1.</li>
+          <li>Chuyển cổng chất lượng sang GX Core, đưa ngưỡng vào cơ sở dữ liệu — mở đường cho Tình huống 2.</li>
+          <li>Dùng nốt tầng nạp của dlt để hoàn thiện việc dùng công cụ này ở cả hai đầu.</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <span class="when">Đợt 3 — Danh mục và thời gian</span>
+        <ul>
+          <li>Bảng đối chiếu mã cơ quan sang mã chuẩn, kèm quy trình xác nhận — Tình huống 4.</li>
+          <li>Hai trục thời gian trên bảng dữ kiện và chiều biến đổi chậm cho đơn vị — Tình huống 3.</li>
+          <li>Chuyển phần dựng lược đồ hình sao sang dbt để có kiểm thử và truy vết dòng dữ liệu.</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <span class="when">Đợt 4 — Tầng phục vụ</span>
+        <ul>
+          <li>Triển khai Cube làm lớp ngữ nghĩa, chuyển bước 7 và Superset cùng đọc một định nghĩa.</li>
+          <li>Xuất bố cục báo cáo Superset thành tệp cấu hình đưa vào kho mã.</li>
+          <li>Dựng báo cáo ghép iMate với nguồn mô phỏng — Tình huống 5.</li>
+          <li>Triển khai APISIX khi có yêu cầu kết nối ra IOC và LGSP.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="note-block">
+    <h2>Điều nhóm đề nghị lãnh đạo lưu ý</h2>
+    <p>
+      Bốn đợt trên bổ sung <strong>công cụ</strong>, không thay đổi kiến trúc. Bảy bước giữ nguyên,
+      luồng dữ liệu giữ nguyên, số liệu iMate hiện có phải không đổi sau mỗi đợt — đó cũng là phép
+      kiểm chứng chính: mỗi lần thêm một công cụ, chạy lại toàn bộ 6.141 văn bản và đối chiếu với
+      kết quả cũ.
+    </p>
+    <p>
+      Cần lãnh đạo hỗ trợ hai việc nằm ngoài tầm nhóm kỹ thuật: <strong>xin cấp JWT cho ba API danh bạ
+      của iMate</strong> để 339 cơ quan có tên chính thức thay vì tên suy đoán, và <strong>xin danh mục mã
+      đơn vị chuẩn của tỉnh</strong> làm đích đối chiếu cho Tình huống 4. Thiếu hai thứ này thì độ phân giải
+      danh mục dừng ở mức 79% như hiện nay, không phải do kỹ thuật.
+    </p>
+  </div>
+
+  <footer>
+    Bản rà soát lập ngày 19/08/2026 · Số liệu trích từ kho dữ liệu đang vận hành trên cụm Rancher<br>
+    Nguồn thật duy nhất trong tài liệu này là iMate; mọi nguồn khác được nêu đều là nguồn mô phỏng phục vụ kiểm thử
+  </footer>
+
+</div>
