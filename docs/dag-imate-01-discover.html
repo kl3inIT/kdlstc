@@ -71,21 +71,19 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--f-body);
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 1.02rem;
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
 }
 
 .page {
-  max-width: 58rem;
+  max-width: 50rem;
   margin: 0 auto;
   padding: 3.5rem 1.5rem 6rem;
   display: flex;
   flex-direction: column;
   gap: 3rem;
 }
-
-/* ---- masthead ---- */
 
 header.top { display: flex; flex-direction: column; gap: .9rem; }
 
@@ -97,85 +95,43 @@ header.top { display: flex; flex-direction: column; gap: .9rem; }
   color: var(--accent);
   border-bottom: 2px solid var(--accent);
   padding-bottom: .8rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: .4rem 1.2rem;
 }
 
 h1 {
   font-family: var(--f-mono);
   font-weight: 700;
-  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
   letter-spacing: -.02em;
   line-height: 1.1;
   margin: 0;
   word-break: break-word;
 }
 
-.sub {
-  font-size: 1.08rem;
-  color: var(--ink-soft);
-  max-width: 44rem;
-  margin: 0;
-  line-height: 1.6;
-}
+.sub { font-size: 1.12rem; color: var(--ink-soft); margin: 0; line-height: 1.62; }
 
-.factbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem 1.5rem;
-  font-family: var(--f-mono);
-  font-size: .73rem;
-  color: var(--ink-faint);
-  border-top: 1px solid var(--rule);
-  padding-top: .6rem;
-}
-
-/* ---- sections ---- */
-
-section { display: flex; flex-direction: column; gap: 1.15rem; }
+section { display: flex; flex-direction: column; gap: 1.1rem; }
 
 h2 {
   font-family: var(--f-head);
   font-weight: 600;
-  font-size: clamp(1.35rem, 3.2vw, 1.65rem);
-  line-height: 1.25;
+  font-size: clamp(1.3rem, 3.2vw, 1.55rem);
+  line-height: 1.3;
   margin: 0;
   text-wrap: balance;
-}
-
-h3 {
-  font-family: var(--f-head);
-  font-weight: 600;
-  font-size: 1.08rem;
-  margin: 0;
-  line-height: 1.35;
-}
-
-.head-rule {
-  display: flex;
-  align-items: baseline;
-  gap: .85rem;
   border-bottom: 1px solid var(--rule-firm);
-  padding-bottom: .65rem;
+  padding-bottom: .6rem;
 }
 
-.head-rule .tag {
-  font-family: var(--f-mono);
-  font-size: .72rem;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: .08em;
-  flex: none;
-}
+h3 { font-family: var(--f-head); font-weight: 600; font-size: 1.05rem; margin: 0; line-height: 1.4; }
 
-p { margin: 0; max-width: 44rem; }
-p + p { margin-top: .8rem; }
+p { margin: 0; }
+p + p { margin-top: .85rem; }
 strong { font-weight: 600; }
+em { font-style: normal; color: var(--accent); font-weight: 500; }
 
 code {
   font-family: var(--f-mono);
-  font-size: .86em;
+  font-size: .85em;
   background: var(--sunk);
   border: 1px solid var(--rule);
   padding: .06em .32em;
@@ -183,43 +139,134 @@ code {
   word-break: break-word;
 }
 
-/* ---- diagrams ---- */
+/* lead sentence */
+.lead {
+  font-size: 1.16rem;
+  line-height: 1.6;
+  border-left: 3px solid var(--accent);
+  padding-left: 1.1rem;
+  color: var(--ink);
+}
 
+/* data sample */
+.sample {
+  border: 1px solid var(--rule-firm);
+  background: var(--surface);
+}
+.sample .cap {
+  font-family: var(--f-mono);
+  font-size: .71rem;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  padding: .55rem .9rem;
+  background: var(--sunk);
+  border-bottom: 1px solid var(--rule-firm);
+}
+.sample dl {
+  margin: 0;
+  padding: .9rem 1rem;
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) 1fr;
+  gap: .4rem 1.2rem;
+  font-family: var(--f-mono);
+  font-size: .82rem;
+}
+.sample dt { color: var(--ink-faint); }
+.sample dd { margin: 0; word-break: break-all; }
+.sample dd.hi { color: var(--accent); font-weight: 700; }
+
+/* the walk */
+.walk { display: flex; flex-direction: column; gap: .4rem; }
+.walk-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: .8rem;
+  align-items: center;
+  border: 1px solid var(--rule-firm);
+  background: var(--surface);
+  padding: .6rem .9rem;
+  font-family: var(--f-mono);
+  font-size: .84rem;
+}
+.walk-row .pg { color: var(--ink-faint); }
+.walk-row .res { font-weight: 700; }
+.walk-row.found .res { color: var(--accent); }
+.walk-row.clean { background: var(--sunk); }
+.walk-row.clean .res { color: var(--ink-faint); font-weight: 400; }
+.walk-row .cnt { font-size: .74rem; color: var(--ink-faint); }
+.walk-stop {
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  background: var(--surface);
+  font-family: var(--f-mono);
+  font-size: .84rem;
+  font-weight: 700;
+  padding: .6rem .9rem;
+  text-align: center;
+}
+
+/* before / after */
+.ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.ba-col { border: 1px solid var(--rule-firm); background: var(--surface); }
+.ba-col .cap {
+  font-family: var(--f-mono);
+  font-size: .7rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: .5rem .85rem;
+  background: var(--sunk);
+  border-bottom: 1px solid var(--rule-firm);
+}
+.ba-col ul { margin: 0; padding: .8rem .95rem .8rem 2rem; display: flex; flex-direction: column; gap: .35rem; }
+.ba-col li { font-size: .9rem; color: var(--ink-soft); line-height: 1.5; }
+
+/* callout */
+.callout {
+  border: 1px solid var(--rule-firm);
+  border-left: 4px solid var(--gap);
+  background: var(--surface);
+  padding: 1.05rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.callout.ok-tone { border-left-color: var(--ok); }
+.callout.bad-tone { border-left-color: var(--bad); }
+.callout p { font-size: .96rem; color: var(--ink-soft); }
+.callout p strong { color: var(--ink); }
+
+/* figure */
 figure {
   margin: 0;
   background: var(--surface);
   border: 1px solid var(--rule-firm);
-  padding: 1.2rem 1.25rem 1rem;
+  padding: 1.15rem 1.2rem 1rem;
   display: flex;
   flex-direction: column;
   gap: .7rem;
   overflow-x: auto;
 }
-
-figure svg { display: block; width: 100%; min-width: 34rem; height: auto; color: var(--ink-soft); }
-
+figure svg { display: block; width: 100%; min-width: 30rem; height: auto; color: var(--ink-soft); }
 figcaption {
   font-size: .88rem;
   color: var(--ink-soft);
   line-height: 1.6;
-  max-width: 46rem;
   border-top: 1px solid var(--rule);
   padding-top: .7rem;
 }
 
 svg text { font: 12px var(--f-mono); fill: var(--ink); }
 svg .sm  { font-size: 10.5px; fill: var(--ink-faint); }
-svg .t2  { fill: var(--ink-soft); }
 svg .ttl { font-weight: 700; }
 svg .acT { fill: var(--accent); }
 svg .okT { fill: var(--ok); font-weight: 700; }
 svg .noT { fill: var(--bad); font-weight: 700; }
 svg .gpT { fill: var(--gap); font-weight: 700; font-size: 11px; }
-
 .bx    { fill: var(--sunk);   stroke: var(--rule-firm); }
 .rd    { fill: var(--paper);  stroke: var(--rule-firm); }
 .zone  { fill: none;          stroke: var(--rule-firm); }
-.pod   { fill: var(--accent-soft); stroke: var(--accent); }
+.podb  { fill: var(--accent-soft); stroke: var(--accent); }
 .amb   { fill: var(--accent-soft); stroke: var(--gap); }
 .ghost { fill: none; stroke: var(--rule-firm); stroke-dasharray: 5 4; }
 .fl    { stroke: currentColor; stroke-width: 1.5; fill: none; }
@@ -227,128 +274,80 @@ svg .gpT { fill: var(--gap); font-weight: 700; font-size: 11px; }
 .flT   { stroke: var(--gap); stroke-width: 2; fill: none; }
 .flX   { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
 
-/* ---- code listing ---- */
-
-.listing { border: 1px solid var(--rule-firm); background: var(--surface); }
-
-.listing > .file {
-  font-family: var(--f-mono);
-  font-size: .72rem;
-  letter-spacing: .05em;
-  color: var(--ink-faint);
-  padding: .55rem .9rem;
-  background: var(--sunk);
-  border-bottom: 1px solid var(--rule-firm);
-  display: flex;
-  flex-wrap: wrap;
-  gap: .3rem .9rem;
-  justify-content: space-between;
-  word-break: break-all;
+/* code — now secondary */
+details.code {
+  border: 1px solid var(--rule-firm);
+  background: var(--surface);
 }
-.listing > .file b { color: var(--accent); font-weight: 700; }
+details.code > summary {
+  font-family: var(--f-mono);
+  font-size: .8rem;
+  padding: .7rem .95rem;
+  cursor: pointer;
+  color: var(--accent);
+  background: var(--sunk);
+  list-style: none;
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+details.code > summary::before { content: "▸"; font-size: .9em; }
+details.code[open] > summary::before { content: "▾"; }
+details.code > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 pre {
   margin: 0;
-  padding: 1.05rem 1.1rem;
+  padding: 1rem 1.05rem;
   background: var(--code-bg);
   color: var(--code-fg);
   font-family: var(--f-mono);
-  font-size: .82rem;
+  font-size: .8rem;
   line-height: 1.62;
   overflow-x: auto;
-  tab-size: 4;
+  border-top: 1px solid var(--rule-firm);
 }
-
 pre .c { color: #6F8F8A; font-style: italic; }
 pre .k { color: #7FC4E8; }
 pre .s { color: #C7D98A; }
 pre .f { color: #F0C674; }
-pre .hl { background: rgba(79,179,168,.16); display: inline-block; width: 100%; }
+pre .hl { background: rgba(79,179,168,.18); display: inline-block; width: 100%; }
 
-.gloss {
-  padding: 1rem 1.1rem;
-  border-top: 1px solid var(--rule);
-  display: flex;
-  flex-direction: column;
-  gap: .55rem;
-  font-size: .93rem;
-  color: var(--ink-soft);
-  line-height: 1.6;
-}
-.gloss b { color: var(--ink); font-weight: 600; }
-
-/* ---- decision cards ---- */
-
-.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }
-
-.decision {
-  border: 1px solid var(--rule-firm);
-  border-top: 3px solid var(--accent);
-  background: var(--surface);
-  padding: 1.05rem 1.15rem;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
-.decision p { font-size: .91rem; color: var(--ink-soft); }
-.decision .why {
-  font-family: var(--f-mono);
-  font-size: .68rem;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-/* ---- gaps ---- */
-
+/* gaps */
 .gaps { display: flex; flex-direction: column; border: 1px solid var(--rule-firm); background: var(--surface); }
-
-.gap-row {
-  display: grid;
-  grid-template-columns: 6.5rem 1fr;
-  gap: .3rem 1rem;
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid var(--rule);
-}
+.gap-row { padding: 1rem 1.15rem; border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: .35rem; }
 .gap-row:last-child { border-bottom: none; }
-
 .gap-row .sev {
   font-family: var(--f-mono);
-  font-size: .66rem;
+  font-size: .65rem;
   font-weight: 700;
-  letter-spacing: .08em;
+  letter-spacing: .09em;
   text-transform: uppercase;
-  padding: .16rem .45rem;
+  align-self: flex-start;
+  padding: .14rem .45rem;
   border: 1px solid currentColor;
   border-radius: 2px;
-  height: fit-content;
-  text-align: center;
-  white-space: nowrap;
 }
 .sev.s-bad { color: var(--bad); }
 .sev.s-gap { color: var(--gap); }
 .sev.s-tool{ color: var(--accent); }
+.gap-row p { font-size: .93rem; color: var(--ink-soft); }
 
-.gap-row .g-body { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
-.gap-row .g-body p { font-size: .92rem; color: var(--ink-soft); }
-
-table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: .91rem; }
 .scroller { overflow-x: auto; border: 1px solid var(--rule-firm); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 30rem; font-size: .9rem; }
 thead th {
   text-align: left;
   font-family: var(--f-mono);
-  font-size: .67rem;
+  font-size: .66rem;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  padding: .65rem .85rem;
+  padding: .6rem .85rem;
   background: var(--sunk);
   border-bottom: 2px solid var(--rule-firm);
   white-space: nowrap;
 }
-tbody td { padding: .65rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.5; }
+tbody td { padding: .6rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.5; }
 tbody tr:last-child td { border-bottom: none; }
-td.no { white-space: nowrap; font-family: var(--f-mono); font-size: .82rem; }
 
 footer {
   border-top: 1px solid var(--rule);
@@ -359,409 +358,155 @@ footer {
   line-height: 1.7;
 }
 
-@media (max-width: 34rem) {
-  .gap-row { grid-template-columns: 1fr; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
-}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
 <div class="page">
 
   <header class="top">
-    <div class="kicker">
-      <span>Kho dữ liệu Sở Tài chính Hưng Yên</span>
-      <span>Lát cắt iMate · Bước 1 trong 7</span>
-    </div>
+    <div class="kicker">Kho dữ liệu Sở Tài chính · Lát cắt iMate · Bước 1 trong 7</div>
     <h1>imate_01_discover</h1>
     <p class="sub">
-      Bước mở đầu chỉ hỏi nguồn đúng một câu — <em>có gì mới hoặc vừa đổi?</em> — rồi ghi câu
-      trả lời vào sổ công việc. Không tải nội dung, không chạm Bronze. Tài liệu này mổ xẻ
-      từng đoạn mã đang chạy thật và nói rõ bước này còn thiếu gì.
+      Bước đầu tiên của bảy bước. Nó chỉ làm đúng một việc: hỏi hệ thống văn bản
+      xem <em>có gì mới không</em>, rồi ghi câu trả lời ra một danh sách việc cho bước sau.
     </p>
-    <div class="factbar">
-      <span>Lịch chạy: 10 phút một lần</span>
-      <span>Trích xuất: dlt RESTClient 1.21.0</span>
-      <span>Đã quét: 6.141 văn bản</span>
-      <span>Ổn định: đọc 3 trang rồi dừng</span>
-    </div>
   </header>
 
   <section>
-    <div class="head-rule">
-      <span class="tag">TỔNG QUAN</span>
-      <h2>Ba tác vụ, một câu hỏi</h2>
-    </div>
-    <p>
-      DAG 1 cố ý làm rất ít. Nó không tải chi tiết văn bản, không ghi Bronze, không ép kiểu.
-      Toàn bộ nhiệm vụ gói trong một câu: <strong>so những gì nguồn đang có với những gì kho
-      đã biết, rồi lập danh sách việc cho bước sau</strong>. Tách nhỏ như vậy để khi nguồn
-      chập chờn thì chỉ bước quét đỏ, còn sáu bước phía sau không bị kéo theo.
+    <h2>Hình dung đơn giản nhất</h2>
+    <p class="lead">
+      Giống một cán bộ văn thư mở sổ công văn đến, lật từ trang mới nhất ngược về trước.
+      Thấy ba trang liền không có gì lạ thì gấp sổ — vì sổ đã xếp mới nhất ở đầu,
+      phía sau chắc chắn càng cũ hơn.
     </p>
-    <figure>
-      <svg viewBox="0 0 860 420" role="img"
-           aria-label="Sơ đồ một lượt chạy: ba tác vụ trên worker Airflow, tác vụ discover sinh ra pod hostNetwork; đường từ worker tới API iMate bị tường lửa chặn, đường từ pod đi lọt; kết quả ghi vào kho, close_run phát Asset đánh thức DAG 2.">
-        <defs>
-          <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
-          <marker id="arA" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/></marker>
-        </defs>
-
-        <rect class="zone" x="20" y="34" width="600" height="108" rx="8"/>
-        <text class="sm" x="32" y="54">WORKER AIRFLOW · địa chỉ 10.42.x.x — dải bị lọc ở cổng 80</text>
-        <rect class="bx" x="36" y="68" width="150" height="54" rx="6"/>
-        <text class="ttl" x="52" y="90">open_run</text>
-        <text class="sm" x="52" y="109">mở vé trong sổ cái</text>
-        <rect class="bx" x="246" y="68" width="170" height="54" rx="6"/>
-        <text class="ttl" x="262" y="90">discover</text>
-        <text class="sm" x="262" y="109">điều phối — không gọi API</text>
-        <rect class="bx" x="466" y="68" width="140" height="54" rx="6"/>
-        <text class="ttl" x="482" y="90">close_run</text>
-        <text class="sm" x="482" y="109">đóng vé · phát Asset</text>
-        <line class="fl" x1="186" y1="95" x2="242" y2="95" marker-end="url(#ar)"/>
-        <line class="fl" x1="416" y1="95" x2="462" y2="95" marker-end="url(#ar)"/>
-
-        <rect class="ghost" x="696" y="38" width="146" height="50" rx="6"/>
-        <text class="t2" x="710" y="59">DAG 2 — đang ngủ</text>
-        <text class="sm" x="710" y="77">schedule=[worklist]</text>
-        <polyline class="flA" points="606,84 646,84 646,63 692,63" marker-end="url(#arA)"/>
-        <text class="acT sm" x="608" y="54">Asset imate://worklist</text>
-
-        <line x1="660" y1="118" x2="660" y2="322" stroke="var(--rule-firm)" stroke-width="3" stroke-dasharray="7 5"/>
-        <text class="sm" x="660" y="338" text-anchor="middle">tường lửa — lọc theo địa chỉ nguồn</text>
-
-        <line class="flX" x1="620" y1="108" x2="652" y2="108"/>
-        <text class="noT" x="656" y="112">✗</text>
-        <text class="sm" x="556" y="126">gọi cổng 80 — bị chặn</text>
-
-        <line class="fl" x1="331" y1="122" x2="331" y2="198" marker-end="url(#ar)"/>
-        <text class="sm" x="340" y="167">sinh pod · đọc nhật ký</text>
-        <rect class="pod" x="246" y="202" width="220" height="76" rx="6"/>
-        <text class="ttl" x="262" y="225">POD hostNetwork</text>
-        <text class="sm" x="262" y="243">địa chỉ nguồn = 10.123.123.x của node</text>
-        <text class="sm" x="262" y="261">python imate_fetch.py discover</text>
-
-        <line class="flA" x1="466" y1="240" x2="688" y2="240" marker-end="url(#arA)"/>
-        <text class="okT" x="664" y="234">✓</text>
-        <text class="sm" x="478" y="232">gọi kèm tiêu đề Host</text>
-
-        <rect class="bx" x="692" y="192" width="148" height="94" rx="6"/>
-        <text class="ttl" x="708" y="218">API iMate</text>
-        <text class="sm" x="708" y="238">10.123.123.199:80</text>
-        <text class="sm" x="708" y="256">6.141 văn bản</text>
-        <text class="sm" x="708" y="274">tenant doit.phuyen</text>
-
-        <rect class="zone" x="20" y="322" width="600" height="72" rx="8"/>
-        <text class="sm" x="32" y="344">KHO DỮ LIỆU</text>
-        <text class="t2" x="32" y="370">ingestion.runs (vé chạy) · ingestion.doc_worklist (sổ công việc)</text>
-        <line class="fl" x1="111" y1="122" x2="111" y2="318" marker-end="url(#ar)"/>
-        <text class="sm" x="118" y="236">mở vé</text>
-        <line class="fl" x1="331" y1="278" x2="331" y2="318" marker-end="url(#ar)"/>
-        <text class="sm" x="340" y="306">ghi theo từng trang</text>
-        <line class="fl" x1="536" y1="122" x2="536" y2="318" marker-end="url(#ar)"/>
-        <text class="sm" x="543" y="236">đọc vé</text>
-      </svg>
-      <figcaption>
-        Cùng một bức tường, hai kết cục: worker bị chặn, pod hostNetwork đi lọt — đó là toàn bộ
-        lý do pod tồn tại. Kết quả về qua <strong>sổ cái</strong> chứ không qua XCom, nên
-        <code>close_run</code> chỉ việc đọc vé rồi quyết định có rung chuông hay không.
-      </figcaption>
-    </figure>
-  </section>
-
-  <section>
-    <div class="head-rule">
-      <span class="tag">MÃ NGUỒN 1</span>
-      <h2>Khung DAG — nơi quyết định có rung chuông hay không</h2>
-    </div>
-
-    <div class="listing">
-      <div class="file"><b>platform/dags/imate_01_discover.py</b><span>toàn bộ phần thân</span></div>
-<pre><span class="k">@dag</span>(
-    dag_id=<span class="s">"imate_01_discover"</span>,
-    schedule=<span class="s">"*/10 * * * *"</span>,
-    catchup=<span class="k">False</span>,          <span class="c"># không chạy bù quá khứ</span>
-    max_active_runs=<span class="s">1</span>,       <span class="c"># không bao giờ hai lượt quét chồng nhau</span>
-    is_paused_upon_creation=<span class="k">True</span>,
-    tags=[<span class="s">"imate"</span>, <span class="s">"poc"</span>],
-)
-<span class="k">def</span> <span class="f">imate_01_discover</span>():
-
-    <span class="k">@task</span>
-    <span class="k">def</span> <span class="f">open_run</span>(**context):
-        <span class="k">return</span> ticket(<span class="s">"01"</span>, context[<span class="s">"dag_run"</span>].run_id)
-
-    discover = fetch_pod(<span class="s">"discover"</span>, <span class="s">"discover"</span>, timeout_minutes=<span class="s">10</span>)
-
-<span class="hl">    <span class="k">@task</span>(outlets=[WORKLIST])</span>
-    <span class="k">def</span> <span class="f">close_run</span>(info):
-        summary = run_message(info[<span class="s">"run_id"</span>])
-        pending = worklist_count(<span class="s">"discovered"</span>)
-        set_run_status(info[<span class="s">"run_id"</span>], <span class="s">"parsed"</span>)
-<span class="hl">        <span class="k">if</span> <span class="k">not</span> pending:</span>
-<span class="hl">            <span class="k">raise</span> AirflowSkipException(<span class="s">"Khong co gi moi va khong con viec cho."</span>)</span>
-        <span class="k">return</span> {<span class="s">"pending"</span>: pending, **summary}
-
-    info = open_run()
-    info &gt;&gt; discover &gt;&gt; close_run(info)</pre>
-      <div class="gloss">
-        <p>
-          <b>Hai dòng được tô sáng là toàn bộ cơ chế nối bảy DAG.</b> Airflow 3 cho phép một tác vụ
-          khai báo <code>outlets</code> — khi tác vụ chạy xong, nó phát ra sự kiện trên
-          <code>imate://worklist</code>, và DAG 2 đang đăng ký nghe sự kiện đó sẽ tự khởi động.
-        </p>
-        <p>
-          Điểm tinh tế nằm ở chỗ <b>một tác vụ bị bỏ qua thì không phát sự kiện nào</b>. Nên khi
-          không có gì mới, <code>close_run</code> chủ động ném ngoại lệ bỏ qua, và sáu DAG phía sau
-          tiếp tục ngủ thay vì chạy rỗng. Cứ 10 phút một lần, phần lớn thời gian hệ thống chỉ tốn
-          đúng ba trang HTTP.
-        </p>
-        <p>
-          <code>max_active_runs=1</code> không phải để tiết kiệm tài nguyên mà để bảo toàn tính đúng
-          đắn: hai lượt quét chạy song song sẽ cùng đọc một sổ công việc và cùng ghi đè lên nhau.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="head-rule">
-      <span class="tag">MÃ NGUỒN 2</span>
-      <h2>Mở vé — và một mẹo DNS phải làm trước khi pod ra đời</h2>
-    </div>
-
-    <div class="listing">
-      <div class="file"><b>platform/dags/imate_ops.py</b><span>hàm ticket()</span></div>
-<pre><span class="k">def</span> <span class="f">ticket</span>(stage, raw_run_id):
-    run_id = <span class="s">f"r_im{stage}"</span> + re.sub(<span class="s">r"[^0-9A-Za-z]"</span>, <span class="s">""</span>, <span class="k">str</span>(raw_run_id))[-<span class="s">24</span>:]
-    period = datetime.now(timezone.utc).date().isoformat()
-
-<span class="hl">    s3_url = urlparse(S3_ENDPOINT)</span>
-<span class="hl">    s3_endpoint = <span class="s">f"http://{socket.gethostbyname(s3_url.hostname)}:{s3_url.port <span class="k">or</span> 8333}"</span></span>
-
-    <span class="k">with</span> imate_cursor() <span class="k">as</span> cur:
-        cur.execute(<span class="s">"""
-            INSERT INTO ingestion.runs (run_id, source_code, period, status, raw_path)
-            VALUES (%s, %s, %s, 'received', %s)
-            ON CONFLICT (run_id) DO UPDATE
-               SET status = 'received', started_at = now(),
-                   finished_at = NULL, message = NULL, row_count = NULL
-        """</span>, (run_id, SOURCE_CODE, period, <span class="s">f"bronze/imate/"</span>))
-    <span class="k">return</span> {<span class="s">"run_id"</span>: run_id, <span class="s">"period"</span>: period, <span class="s">"s3_endpoint"</span>: s3_endpoint}</pre>
-      <div class="gloss">
-        <p>
-          <b>Vé chạy là sợi chỉ xuyên suốt.</b> Mọi thứ bước này ghi ra đều mang <code>run_id</code>,
-          nên sau này nhìn một con số trên báo cáo là lần ngược được về đúng lượt quét đã sinh ra nó.
-          Mệnh đề <code>ON CONFLICT DO UPDATE</code> làm cho việc chạy lại an toàn: cùng một lượt
-          Airflow thì tái dùng đúng vé cũ, không đẻ vé rác.
-        </p>
-        <p>
-          <b>Hai dòng tô sáng giải một bài toán ít ai ngờ.</b> Pod ở bước sau chạy chế độ hostNetwork,
-          tức mượn không gian mạng của node — mà node thì dùng bộ phân giải tên miền của riêng nó,
-          không biết gì về tên dịch vụ nội bộ trong cụm. Nếu để pod tự tra <code>sw-seaweedfs-s3…</code>
-          thì hỏng. Nên worker tra sẵn ra địa chỉ IP rồi truyền vào pod dưới dạng biến môi trường —
-          pod không cần đến DNS của cụm nữa.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="head-rule">
-      <span class="tag">MÃ NGUỒN 3</span>
-      <h2>Vì sao phải sinh hẳn một pod riêng để gọi API</h2>
-    </div>
     <p>
-      Đây là câu hỏi hay gặp nhất khi đọc DAG này. Câu trả lời không nằm ở kiến trúc mà ở tường lửa:
-      API iMate nằm ở <code>10.123.123.199</code> cổng 80, còn pod thường của Airflow mang địa chỉ
-      dải <code>10.42.0.0/16</code> — dải này <strong>bị chặn ở cổng 80</strong>. Cổng 6443 trên đúng
-      máy đó lại trả lời bình thường, nên đây là chặn theo cổng, không phải thiếu đường mạng.
+      Cứ 10 phút một lần, bước này lật sổ như vậy. Nó <strong>không chép nội dung văn bản</strong> —
+      chỉ ghi lại số hiệu nào cần lấy về. Việc chép nội dung là của bước 2.
+    </p>
+    <div class="callout ok-tone">
+      <h3>Vì sao tách làm hai bước?</h3>
+      <p>
+        Hỏi &ldquo;có gì mới&rdquo; là việc <strong>nhẹ</strong> — vài lời gọi, vài giây.
+        Tải nội dung 6.141 văn bản là việc <strong>nặng</strong> — hàng nghìn lời gọi, vài phút.
+        Gộp chung thì mỗi lần mạng chập chờn là hỏng cả hai. Tách ra thì việc nhẹ vẫn chạy đều
+        10 phút một lần, còn việc nặng chỉ khởi động khi thật sự có gì để làm.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Một văn bản trông như thế nào</h2>
+    <p>
+      Đây là dữ liệu thật mà hệ thống iMate trả về cho mỗi văn bản trong danh sách.
+      Bước 1 chỉ quan tâm đúng hai dòng được tô màu.
     </p>
 
-    <div class="listing">
-      <div class="file"><b>platform/dags/imate_ops.py</b><span>hàm fetch_pod() — phần cốt lõi</span></div>
-<pre><span class="k">return</span> KubernetesPodOperator(
-    task_id=task_id,
-    image=FETCH_IMAGE,          <span class="c"># ghcr.io/…/kdlstc-airflow:3.2.2-dlt1.21.0-r1</span>
-<span class="hl">    hostnetwork=<span class="k">True</span>,          <span class="c"># KPO viết liền một từ, không phải host_network</span></span>
-<span class="hl">    dnspolicy=<span class="s">"ClusterFirstWithHostNet"</span>,</span>
-    cmds=[<span class="s">"python"</span>, <span class="s">"/src/imate_fetch.py"</span>, stage,
-          <span class="s">"--run-id"</span>, <span class="s">"{{ ti.xcom_pull(task_ids='open_run')['run_id'] }}"</span>],
-    env_vars=[
-        k8s.V1EnvVar(name=<span class="s">"IMATE_API_ADDR"</span>, value=API_ADDR),
-        k8s.V1EnvVar(name=<span class="s">"IMATE_API_HOST"</span>, value=API_HOST),
-        _secret_env(k8s, <span class="s">"IMATE_DWH_PASSWORD"</span>, <span class="s">"password"</span>),   <span class="c"># từ Secret imate-db</span>
-    ],
-<span class="hl">    volumes=[k8s.V1Volume(name=<span class="s">"src"</span>,</span>
-<span class="hl">        config_map=k8s.V1ConfigMapVolumeSource(name=<span class="s">"airflow-dags"</span>))],</span>
-    container_security_context=k8s.V1SecurityContext(
-        allow_privilege_escalation=<span class="k">False</span>,
-        capabilities=k8s.V1Capabilities(drop=[<span class="s">"ALL"</span>]),
-    ),
-    automount_service_account_token=<span class="k">False</span>,
-    on_finish_action=<span class="s">"delete_pod"</span>,
-)</pre>
-      <div class="gloss">
-        <p>
-          <b>Pod hostNetwork mượn địa chỉ của node,</b> nên gói tin đi ra mang địa chỉ nguồn
-          <code>10.123.123.x</code> và lọt qua tường lửa. Đổi lại, <code>dnspolicy</code> phải đặt
-          lại thành <code>ClusterFirstWithHostNet</code> để pod vẫn tra được tên dịch vụ trong cụm.
-        </p>
-        <p>
-          <b>hostNetwork là con dao cùn:</b> nó cũng vô hiệu hoá NetworkPolicy và phơi các cổng
-          nội bộ của node ra cho pod. Vì vậy đặc quyền này chỉ cấp cho đúng hai tác vụ thật sự cần
-          mạng, tuyệt đối không cấp cho worker — nếu không, mọi DAG trong cụm đều được miễn kiểm soát mạng.
-          Phần bù lại là siết chặt mọi thứ khác: bỏ toàn bộ capability, cấm leo thang đặc quyền,
-          không gắn token dịch vụ.
-        </p>
-        <p>
-          <b>Mã nguồn đến bằng đúng con đường mà DAG đến:</b> ConfigMap <code>airflow-dags</code>
-          gắn chỉ-đọc vào <code>/src</code>. Một đường giao hàng duy nhất, không có bản sao thứ hai
-          để lệch nhau.
-        </p>
+    <div class="sample">
+      <div class="cap">một dòng trong danh sách văn bản</div>
+      <dl>
+        <dt>globalId</dt><dd class="hi">d5f47c6c-f057-5adb-80c4-293f499d5044</dd>
+        <dt>documentNo</dt><dd>1234/QĐ-UBND</dd>
+        <dt>subject</dt><dd>V/v phê duyệt dự toán kinh phí năm 2025</dd>
+        <dt>uploadedAt</dt><dd>2025-03-14T08:12:00Z</dd>
+        <dt>updatedAt</dt><dd class="hi">2025-03-14T09:45:49.473Z</dd>
+        <dt>processStatus</dt><dd>DA_XU_LY</dd>
+      </dl>
+    </div>
+
+    <p>
+      <em>globalId</em> là mã định danh — giống số vào sổ, không bao giờ đổi.
+      <em>updatedAt</em> là mốc lần sửa gần nhất. Chỉ cần hai thứ này là biết được
+      văn bản nào mới và văn bản nào vừa bị sửa.
+    </p>
+
+    <div class="ba">
+      <div class="ba-col">
+        <div class="cap">Kho đã biết gì</div>
+        <ul>
+          <li>Mở sổ công việc ra, lấy toàn bộ 6.141 cặp <code>mã văn bản → mốc sửa</code></li>
+          <li>Giữ trong bộ nhớ, khoảng 1 MB</li>
+        </ul>
+      </div>
+      <div class="ba-col">
+        <div class="cap">So với nguồn thế nào</div>
+        <ul>
+          <li>Mã chưa từng thấy → <strong>văn bản mới</strong></li>
+          <li>Mã đã có nhưng mốc sửa khác → <strong>đã bị sửa</strong></li>
+          <li>Mã đã có, mốc sửa y nguyên → bỏ qua, không đụng gì</li>
+        </ul>
       </div>
     </div>
   </section>
 
   <section>
-    <div class="head-rule">
-      <span class="tag">MÃ NGUỒN 4</span>
-      <h2>Cánh cửa duy nhất ra nguồn — và hai cái bẫy của API này</h2>
+    <h2>Một lượt quét thật diễn ra thế nào</h2>
+    <p>
+      Danh sách xếp mới nhất trước, mỗi trang 100 văn bản. Đây là một lượt chạy điển hình
+      lúc hệ thống đã ổn định:
+    </p>
+
+    <div class="walk">
+      <div class="walk-row found">
+        <span class="pg">Trang 1</span>
+        <span class="res">2 văn bản mới</span>
+        <span class="cnt">đếm lại chuỗi sạch = 0</span>
+      </div>
+      <div class="walk-row clean">
+        <span class="pg">Trang 2</span>
+        <span class="res">không có gì</span>
+        <span class="cnt">chuỗi sạch = 1</span>
+      </div>
+      <div class="walk-row clean">
+        <span class="pg">Trang 3</span>
+        <span class="res">không có gì</span>
+        <span class="cnt">chuỗi sạch = 2</span>
+      </div>
+      <div class="walk-row clean">
+        <span class="pg">Trang 4</span>
+        <span class="res">không có gì</span>
+        <span class="cnt">chuỗi sạch = 3</span>
+      </div>
+      <div class="walk-stop">GẤP SỔ — ba trang liền không có gì mới</div>
     </div>
 
-    <div class="listing">
-      <div class="file"><b>platform/dags/imate_common.py</b><span>_client(), api_get(), check_list_contract()</span></div>
-<pre><span class="c"># Mỗi luồng một RESTClient: bước tải chi tiết chạy 8 luồng song song,</span>
-<span class="c"># mà Session của requests không bảo đảm an toàn khi dùng chung.</span>
-_local = threading.local()
+    <p>
+      Đọc 4 trang thay vì 62 trang. Đó là lý do bước này chạy được 10 phút một lần
+      mà gần như không tốn gì.
+    </p>
 
-<span class="k">def</span> <span class="f">_client</span>():
-    <span class="k">if</span> <span class="f">getattr</span>(_local, <span class="s">"client"</span>, <span class="k">None</span>) <span class="k">is</span> <span class="k">None</span>:
-<span class="hl">        _local.client = RESTClient(          <span class="c"># dlt cấp sẵn session có retry/backoff</span></span>
-            base_url=API_ADDR,
-<span class="hl">            headers={<span class="s">"Host"</span>: API_HOST, <span class="s">"Accept"</span>: <span class="s">"application/json"</span>},</span>
-        )
-    <span class="k">return</span> _local.client
-
-<span class="k">def</span> <span class="f">api_get</span>(path):
-    response = _client().get(path, timeout=HTTP_TIMEOUT)
-    response.raise_for_status()
-    payload = response.json()
-<span class="hl">    <span class="k">if</span> <span class="k">not</span> payload.get(<span class="s">"success"</span>):        <span class="c"># bẫy: lỗi vẫn trả HTTP 200</span></span>
-        <span class="k">raise</span> SourceRefusedError(
-            <span class="s">f"{path} -&gt; errorCode={payload.get('errorCode')} …"</span>)
-    <span class="k">return</span> payload[<span class="s">"body"</span>]
-
-LIST_CONTRACT = (<span class="s">"globalId"</span>, <span class="s">"tenantId"</span>, <span class="s">"documentId"</span>, <span class="s">"documentNo"</span>,
-                 <span class="s">"uploadedAt"</span>, <span class="s">"createdAt"</span>, <span class="s">"updatedAt"</span>, <span class="s">"processStatus"</span>)
-
-<span class="k">def</span> <span class="f">check_list_contract</span>(documents):
-    <span class="k">for</span> row <span class="k">in</span> documents:
-        missing = [f <span class="k">for</span> f <span class="k">in</span> LIST_CONTRACT <span class="k">if</span> f <span class="k">not</span> <span class="k">in</span> row]
-        <span class="k">if</span> missing:
-            <span class="k">raise</span> SourceContractError(
-                <span class="s">f"van ban {row.get('globalId', '?')} thieu truong: {missing}"</span>)</pre>
-      <div class="gloss">
-        <p>
-          <b>Bẫy thứ nhất — lỗi đội lốt thành công.</b> API này trả <code>HTTP 200</code> kèm
-          <code>success: false</code> khi tham số sai; chỉ riêng lỗi xác thực mới dùng 401. Nếu chỉ
-          nhìn mã trạng thái, pipeline sẽ đọc một thông báo lỗi thành &ldquo;kết quả rỗng&rdquo; và
-          âm thầm nạp về con số 0.
-        </p>
-        <p>
-          <b>Bẫy thứ hai — định tuyến theo tên miền ảo.</b> DNS của cụm không phân giải được
-          <code>imate.local</code>, nên phải gọi thẳng bằng IP; nhưng máy chủ lại chọn ứng dụng dựa
-          trên tiêu đề <code>Host</code>. Client vì thế ghim sẵn tiêu đề này cho mọi lời gọi.
-        </p>
-        <p>
-          <b>Hợp đồng được kiểm trước khi ghi bất cứ thứ gì.</b> Nguồn lỡ bỏ mất trường ngày đăng
-          thì lô bị từ chối ngay lúc sổ công việc còn sạch, thay vì để phát hiện tận lúc lên báo cáo.
-          Nhưng hãy chú ý: phép kiểm này chỉ hỏi <em>trường có mặt không</em> — chưa hỏi
-          <em>kiểu có đúng không</em>. Đây chính là khoảng trống nêu ở cuối tài liệu.
-        </p>
-      </div>
+    <div class="callout">
+      <h3>Vì sao phải ba trang, không phải một?</h3>
+      <p>
+        Nguồn thường ghi văn bản theo đợt. Một trang sạch đơn lẻ có thể chỉ là
+        <strong>khe hở giữa hai đợt</strong> — gấp sổ ngay thì bỏ sót đợt sau.
+        Ba trang là 300 văn bản đệm: đủ chắc chắn, mà vẫn rẻ.
+      </p>
     </div>
   </section>
 
   <section>
-    <div class="head-rule">
-      <span class="tag">MÃ NGUỒN 5</span>
-      <h2>Vòng quét — trái tim của bước này</h2>
-    </div>
+    <h2>Vì sao lật sổ từ mới về cũ, không phải từ cũ tới mới</h2>
+    <p>
+      Đây là quyết định quan trọng nhất của bước này, và lý do không hiển nhiên.
+    </p>
+    <p>
+      Vấn đề: trong lúc đang lật sổ, có người sửa một văn bản. Văn bản đó
+      <strong>đổi chỗ</strong>, và cả danh sách xê dịch theo. Hướng lật quyết định
+      mình bị lỗi kiểu nào.
+    </p>
 
-    <div class="listing">
-      <div class="file"><b>platform/dags/imate_fetch.py</b><span>hàm discover() — rút gọn phần vòng lặp</span></div>
-<pre><span class="c"># Nạp những gì kho đã biết: mã văn bản → mốc cập nhật</span>
-cur.execute(<span class="s">"SELECT global_id, source_updated_at FROM ingestion.doc_worklist "</span>
-            <span class="s">"WHERE tenant_id = %s"</span>, (TENANT_ID,))
-known = <span class="k">dict</span>(cur.fetchall())
-
-page, clean_streak = <span class="s">1</span>, <span class="s">0</span>
-
-<span class="k">while</span> page &lt;= MAX_PAGES:                     <span class="c"># cầu chì: tối đa 200 trang</span>
-<span class="hl">    body = list_page(page, sort=<span class="s">"DESC"</span>)        <span class="c"># mới nhất trước</span></span>
-    documents = body[<span class="s">"documents"</span>]
-    check_list_contract(documents)             <span class="c"># từ chối sớm nếu nguồn đổi hình dạng</span>
-
-    <span class="k">for</span> row <span class="k">in</span> documents:
-        previous = known.get(row[<span class="s">"globalId"</span>])
-<span class="hl">        current = datetime.fromisoformat(row[<span class="s">"updatedAt"</span>].replace(<span class="s">"Z"</span>, <span class="s">"+00:00"</span>))</span>
-        <span class="k">if</span> previous <span class="k">is</span> <span class="k">None</span>:      page_fresh += <span class="s">1</span>      <span class="c"># chưa từng thấy</span>
-        <span class="k">elif</span> previous != current:  page_changed += <span class="s">1</span>    <span class="c"># đã đổi</span>
-        <span class="k">else</span>:                      <span class="k">continue</span>            <span class="c"># y nguyên, bỏ qua</span>
-        batch.append((...))
-
-    <span class="c"># Ghi vào sổ công việc — văn bản đã đổi quay lại vạch xuất phát</span>
-    execute_values(cur, <span class="s">"""
-        INSERT INTO ingestion.doc_worklist (…) VALUES %s
-        ON CONFLICT (global_id) DO UPDATE SET
-            source_updated_at = EXCLUDED.source_updated_at,
-            status     = 'discovered',
-            last_error = NULL
-    """</span>, batch)
-
-<span class="hl">    clean_streak = <span class="s">0</span> <span class="k">if</span> (page_fresh <span class="k">or</span> page_changed) <span class="k">else</span> clean_streak + <span class="s">1</span></span>
-<span class="hl">    <span class="k">if</span> clean_streak &gt;= STOP_AFTER_CLEAN_PAGES:   <span class="c"># ba trang sạch liên tiếp</span></span>
-        <span class="k">break</span>
-    <span class="k">if</span> <span class="k">not</span> body[<span class="s">"meta"</span>][<span class="s">"hasNextPage"</span>]:
-        <span class="k">break</span>
-    page += <span class="s">1</span></pre>
-      <div class="gloss">
-        <p>
-          <b>Không có bộ lọc theo khoảng thời gian trên API này.</b> Tham số <code>filter[updatedAt]</code>
-          chỉ khớp chính xác một mốc; thêm tiền tố kiểu <em>lớn hơn hoặc bằng</em> thì máy chủ trả lỗi 400.
-          Nghĩa là không có cách nào hỏi &ldquo;cho tôi mọi thứ kể từ ngày X&rdquo;. Thứ duy nhất dùng được
-          là <strong>thứ tự sắp xếp</strong> — và thế là đủ.
-        </p>
-        <p>
-          <b>Văn bản vừa đổi thì quay lại vạch xuất phát.</b> Mệnh đề <code>ON CONFLICT</code> đặt lại
-          trạng thái về <code>discovered</code> và xoá lỗi cũ, nên bản mới sẽ đi lại trọn vẹn bảy bước
-          thay vì giữ nguyên trạng thái mà phiên bản trước đã đạt tới.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="head-rule">
-      <span class="tag">THIẾT KẾ</span>
-      <h2>Ba quyết định đáng giải thích</h2>
-    </div>
     <figure>
-      <svg viewBox="0 -18 840 288" role="img"
-           aria-label="So sánh hai hướng quét: sắp giảm dần khiến hàng chưa đọc dịch ra xa con trỏ nên chỉ đọc trùng; sắp tăng dần khiến hàng chưa đọc lọt qua con trỏ nên bị bỏ sót im lặng.">
+      <svg viewBox="0 -18 840 286" role="img"
+           aria-label="So sánh hai hướng quét. Lật từ mới về cũ: văn bản bị sửa nhảy lên đầu, đẩy các dòng chưa đọc ra xa con trỏ, kết quả là đọc trùng. Lật từ cũ tới mới: văn bản bị sửa nhảy xuống cuối, các dòng phía sau dịch lại gần con trỏ, một dòng chưa đọc lọt qua và bị bỏ sót.">
         <defs>
           <marker id="arT" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
             <path d="M0,0 L8,4 L0,8 z" fill="var(--gap)"/></marker>
         </defs>
 
-        <text class="ttl" x="20" y="74">GIẢM DẦN</text>
-        <text class="sm" x="20" y="92">mới nhất trước</text>
+        <text class="ttl" x="16" y="72">MỚI → CŨ</text>
+        <text class="sm" x="16" y="90">cách đang dùng</text>
         <path d="M476,42 C400,2 250,2 178,42" class="flT" marker-end="url(#arT)"/>
-        <text class="gpT" x="278" y="6">bị sửa → nhảy về ĐẦU</text>
+        <text class="gpT" x="270" y="6">bị sửa → nhảy lên ĐẦU</text>
         <rect class="rd" x="150" y="46" width="52" height="42" rx="5"/>
         <rect class="rd" x="210" y="46" width="52" height="42" rx="5"/>
         <rect class="rd" x="270" y="46" width="52" height="42" rx="5"/>
@@ -772,15 +517,15 @@ page, clean_streak = <span class="s">1</span>, <span class="s">0</span>
         <rect class="bx" x="570" y="46" width="52" height="42" rx="5"/>
         <text class="gpT" x="476" y="72" text-anchor="middle">sửa</text>
         <line x1="386" y1="34" x2="386" y2="100" stroke="var(--accent)" stroke-width="2"/>
-        <text class="acT sm" x="386" y="28" text-anchor="middle">con trỏ — đã đọc tới đây</text>
+        <text class="acT sm" x="386" y="28" text-anchor="middle">đã đọc tới đây</text>
         <text class="sm" x="150" y="108">◄ đã đọc</text>
         <text class="sm" x="622" y="108" text-anchor="end">chưa đọc ►</text>
-        <text class="okT" x="150" y="132">hàng chưa đọc bị đẩy RA XA — tệ nhất là đọc trùng một ô, khoá chính loại ngay</text>
+        <text class="okT" x="150" y="132">dòng chưa đọc bị đẩy RA XA → cùng lắm đọc lại một dòng, vô hại</text>
 
-        <text class="ttl" x="20" y="192">TĂNG DẦN</text>
-        <text class="sm" x="20" y="210">cũ nhất trước</text>
+        <text class="ttl" x="16" y="190">CŨ → MỚI</text>
+        <text class="sm" x="16" y="208">cách KHÔNG dùng</text>
         <path d="M476,160 C520,132 610,132 652,160" class="flT" marker-end="url(#arT)"/>
-        <text class="gpT" x="498" y="130">bị sửa → nhảy về CUỐI</text>
+        <text class="gpT" x="492" y="130">bị sửa → nhảy xuống CUỐI</text>
         <rect class="rd" x="150" y="164" width="52" height="42" rx="5"/>
         <rect class="rd" x="210" y="164" width="52" height="42" rx="5"/>
         <rect class="rd" x="270" y="164" width="52" height="42" rx="5"/>
@@ -791,176 +536,286 @@ page, clean_streak = <span class="s">1</span>, <span class="s">0</span>
         <rect class="ghost" x="630" y="164" width="52" height="42" rx="5"/>
         <text class="gpT" x="476" y="190" text-anchor="middle">sửa</text>
         <line x1="386" y1="152" x2="386" y2="218" stroke="var(--accent)" stroke-width="2"/>
-        <text class="noT" x="150" y="250">hàng phía sau dịch trái, một ô chưa đọc LỌT QUA con trỏ — mất dữ liệu, không ai hay</text>
+        <text class="noT" x="150" y="248">dòng phía sau dịch LẠI GẦN → một dòng lọt qua, mất luôn, không ai biết</text>
       </svg>
       <figcaption>
-        Đọc trùng thì khoá chính sửa được; bỏ sót thì không ai biết. Nên chọn hướng chỉ có thể
-        sai theo kiểu sửa được. Đây cũng là lý do chuỗi sạch phải là <strong>ba trang</strong>
-        chứ không phải một — một trang sạch đơn lẻ có thể chỉ là khe hở giữa hai đợt cập nhật.
+        Đọc trùng thì sửa được ngay — mã văn bản là khoá, ghi đè lên chính nó, vô hại.
+        Bỏ sót thì <strong>không ai biết</strong>: văn bản đó biến mất khỏi kho mà không để lại dấu vết.
+        Nên chọn hướng chỉ có thể sai theo kiểu sửa được.
       </figcaption>
     </figure>
 
-    <div class="decisions">
-
-      <div class="decision">
-        <span class="why">Vì sao so kiểu ngày tháng</span>
-        <h3>Một lỗi có thật, đã trả giá</h3>
-        <p>
-          Bản dựng đầu tiên so hai mốc thời gian dưới dạng chuỗi. Kết quả: <strong>lượt nào cũng
-          xếp cả 6.141 văn bản vào diện &ldquo;đã đổi&rdquo;</strong> và tải lại toàn bộ.
-        </p>
-        <p>
-          Nguyên nhân: PostgreSQL in ra micro giây (<code>…49.473000+00:00</code>) trong khi API gửi
-          mili giây (<code>…49.473Z</code>) — không chuỗi nào khớp chuỗi nào. Ép cả hai về kiểu ngày
-          tháng thì cách biểu diễn hết còn quan trọng. Cầu chì 200 trang là thứ đã hạn chế thiệt hại.
-        </p>
-      </div>
-
-      <div class="decision">
-        <span class="why">Vì sao dừng sau ba trang sạch</span>
-        <h3>Đủ để yên tâm, đủ rẻ để chạy mỗi 10 phút</h3>
-        <p>
-          Danh sách xếp mới nhất trước nên mọi thứ mới hoặc vừa đổi đều nằm ở đầu. Gặp ba trang
-          liên tiếp không có gì lạ là có thể dừng.
-        </p>
-        <p>
-          Một trang thì quá mạo hiểm khi nguồn ghi theo lô; ba trang là <strong>300 văn bản đệm</strong>
-          — đủ an toàn mà vẫn giữ chi phí mỗi lượt ở mức ba lời gọi HTTP.
-        </p>
-      </div>
-
+    <div class="callout">
+      <h3>Vì sao không hỏi thẳng &ldquo;cho tôi mọi thứ từ ngày X&rdquo;?</h3>
+      <p>
+        Vì API không cho. Tham số lọc theo ngày của iMate <strong>chỉ khớp đúng một mốc</strong>;
+        thử thêm điều kiện &ldquo;lớn hơn hoặc bằng&rdquo; thì máy chủ trả lỗi. Thứ duy nhất
+        dùng được là <strong>sắp thứ tự</strong> — và hoá ra thế là đủ.
+      </p>
     </div>
   </section>
 
   <section>
-    <div class="head-rule">
-      <span class="tag">KHOẢNG TRỐNG</span>
-      <h2>Bước này còn thiếu gì</h2>
-    </div>
+    <h2>Vì sao có một cái pod lạ trong sơ đồ</h2>
     <p>
-      Phần dưới liệt kê đúng những gì DAG 1 chưa làm được, xếp theo mức độ cần xử lý. Nhóm đề nghị
-      giải quyết ba mục đỏ trước, vì đó là chỗ <strong>hệ thống đang mô tả sai năng lực của chính nó</strong> —
-      nguy hiểm hơn hẳn việc chưa có công cụ.
+      Airflow bình thường tự chạy được mọi việc. Nhưng riêng bước này phải sinh thêm
+      một máy ảo nhỏ để gọi API. Lý do nằm ở tường lửa, không phải ở kiến trúc.
+    </p>
+    <p>
+      Máy chạy Airflow mang địa chỉ dải <code>10.42.x.x</code>, và dải này
+      <strong>bị chặn ở cổng 80</strong> khi gọi sang hệ thống văn bản. Cách giải: sinh một
+      máy ảo &ldquo;mượn&rdquo; địa chỉ của máy chủ vật lý — địa chỉ đó không bị chặn.
+    </p>
+
+    <figure>
+      <svg viewBox="0 0 800 400" role="img"
+           aria-label="Sơ đồ: ba tác vụ chạy trên máy Airflow, tác vụ giữa sinh ra một máy ảo mượn địa chỉ node. Đường từ máy Airflow tới API bị tường lửa chặn; đường từ máy ảo đi lọt. Kết quả ghi vào kho dữ liệu.">
+        <defs>
+          <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
+          <marker id="arA" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--accent)"/></marker>
+        </defs>
+
+        <rect class="zone" x="16" y="30" width="570" height="104" rx="8"/>
+        <text class="sm" x="28" y="50">MÁY CHẠY AIRFLOW · địa chỉ 10.42.x.x — bị chặn cổng 80</text>
+        <rect class="bx" x="32" y="64" width="140" height="52" rx="6"/>
+        <text class="ttl" x="46" y="86">mở vé</text>
+        <text class="sm" x="46" y="104">ghi sổ: lượt chạy bắt đầu</text>
+        <rect class="bx" x="228" y="64" width="150" height="52" rx="6"/>
+        <text class="ttl" x="242" y="86">sinh máy ảo</text>
+        <text class="sm" x="242" y="104">không tự gọi API</text>
+        <rect class="bx" x="434" y="64" width="136" height="52" rx="6"/>
+        <text class="ttl" x="448" y="86">đóng vé</text>
+        <text class="sm" x="448" y="104">gọi bước 2 dậy</text>
+        <line class="fl" x1="172" y1="90" x2="224" y2="90" marker-end="url(#ar)"/>
+        <line class="fl" x1="378" y1="90" x2="430" y2="90" marker-end="url(#ar)"/>
+
+        <rect class="ghost" x="646" y="34" width="140" height="48" rx="6"/>
+        <text class="sm" x="658" y="55">BƯỚC 2 — đang ngủ</text>
+        <text class="sm" x="658" y="72">chỉ dậy khi được gọi</text>
+        <polyline class="flA" points="570,80 606,80 606,58 642,58" marker-end="url(#arA)"/>
+
+        <line x1="614" y1="112" x2="614" y2="308" stroke="var(--rule-firm)" stroke-width="3" stroke-dasharray="7 5"/>
+        <text class="sm" x="614" y="324" text-anchor="middle">tường lửa</text>
+
+        <line class="flX" x1="576" y1="104" x2="606" y2="104"/>
+        <text class="noT" x="610" y="108">✗</text>
+        <text class="sm" x="500" y="122">bị chặn</text>
+
+        <line class="fl" x1="303" y1="116" x2="303" y2="190" marker-end="url(#ar)"/>
+        <rect class="podb" x="228" y="194" width="212" height="72" rx="6"/>
+        <text class="ttl" x="242" y="216">MÁY ẢO mượn địa chỉ node</text>
+        <text class="sm" x="242" y="234">địa chỉ nguồn = 10.123.123.x</text>
+        <text class="sm" x="242" y="252">sống vài chục giây rồi tự xoá</text>
+
+        <line class="flA" x1="440" y1="230" x2="642" y2="230" marker-end="url(#arA)"/>
+        <text class="okT" x="618" y="224">✓</text>
+        <text class="sm" x="452" y="222">đi lọt</text>
+
+        <rect class="bx" x="646" y="186" width="140" height="88" rx="6"/>
+        <text class="ttl" x="658" y="210">Hệ thống iMate</text>
+        <text class="sm" x="658" y="230">10.123.123.199</text>
+        <text class="sm" x="658" y="248">6.141 văn bản</text>
+
+        <rect class="zone" x="16" y="308" width="570" height="70" rx="8"/>
+        <text class="sm" x="28" y="330">KHO DỮ LIỆU</text>
+        <text class="sm" x="28" y="356">sổ lượt chạy · sổ công việc (danh sách văn bản cần lấy)</text>
+        <line class="fl" x1="102" y1="116" x2="102" y2="304" marker-end="url(#ar)"/>
+        <line class="fl" x1="303" y1="266" x2="303" y2="304" marker-end="url(#ar)"/>
+        <text class="sm" x="312" y="292">ghi từng trang</text>
+        <line class="fl" x1="502" y1="116" x2="502" y2="304" marker-end="url(#ar)"/>
+        <text class="sm" x="510" y="230">đọc lại kết quả</text>
+      </svg>
+      <figcaption>
+        Cùng một bức tường, hai kết cục. Đặc quyền &ldquo;mượn địa chỉ&rdquo; này chỉ cấp cho
+        đúng máy ảo sống vài chục giây, <strong>không cấp cho máy chạy Airflow</strong> — vì cấp
+        cho nó là cấp cho mọi luồng trong hệ thống, kể cả những luồng viết sau này.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Ba cái bẫy đã vấp thật</h2>
+
+    <div class="callout bad-tone">
+      <h3>Bẫy 1 — Báo lỗi nhưng vẫn nói &ldquo;thành công&rdquo;</h3>
+      <p>
+        Khi tham số sai, API này trả về mã trạng thái <strong>200 (thành công)</strong>, nhưng
+        bên trong lại ghi <code>success: false</code> và phần dữ liệu để trống. Nếu chỉ nhìn mã
+        trạng thái thì pipeline sẽ đọc một thông báo lỗi thành &ldquo;hôm nay không có văn bản
+        nào&rdquo; và im lặng nạp về con số không. Cách giải: kiểm cờ <code>success</code> ở
+        đúng một chỗ, mọi lời gọi hưởng chung.
+      </p>
+    </div>
+
+    <div class="callout bad-tone">
+      <h3>Bẫy 2 — So sai mốc thời gian, tải lại toàn bộ mỗi lượt</h3>
+      <p>
+        Bản đầu tiên so hai mốc thời gian dưới dạng chuỗi ký tự. Kết quả:
+        <strong>lượt nào cũng coi cả 6.141 văn bản là &ldquo;đã sửa&rdquo;</strong>.
+      </p>
+      <p>
+        Nguyên nhân: kho ghi <code>…49.473000+00:00</code> còn API gửi <code>…49.473Z</code> —
+        cùng một thời điểm, hai cách viết, không chuỗi nào khớp chuỗi nào. Sửa bằng cách đổi cả
+        hai về kiểu ngày giờ rồi mới so. Cái đã hạn chế thiệt hại là cầu chì 200 trang.
+      </p>
+    </div>
+
+    <div class="callout bad-tone">
+      <h3>Bẫy 3 — Gọi bằng địa chỉ IP thì máy chủ không biết trả gì</h3>
+      <p>
+        Hệ thống mạng nội bộ không tra được tên <code>imate.local</code>, nên phải gọi thẳng bằng
+        địa chỉ số. Nhưng máy chủ lại chọn ứng dụng dựa vào <strong>tên</strong> ghi trong lời gọi.
+        Cách giải: gọi bằng địa chỉ số nhưng vẫn ghi kèm tên vào tiêu đề, cho mọi lời gọi.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Phần mã nguồn</h2>
+    <p>
+      Ba đoạn dưới đây là toàn bộ phần đáng đọc. Mở ra khi cần đối chiếu; bỏ qua cũng không
+      ảnh hưởng gì tới việc hiểu bước này.
+    </p>
+
+    <details class="code">
+      <summary>Vòng lặp quét — trái tim của bước 1</summary>
+<pre><span class="c"># Kho đã biết gì: 6.141 cặp mã văn bản → mốc sửa</span>
+known = <span class="k">dict</span>(cur.fetchall())
+
+<span class="k">while</span> page &lt;= MAX_PAGES:                  <span class="c"># cầu chì: tối đa 200 trang</span>
+    body = list_page(page, sort=<span class="s">"DESC"</span>)     <span class="c"># mới nhất trước</span>
+    check_list_contract(body[<span class="s">"documents"</span>])  <span class="c"># nguồn đổi hình dạng thì dừng ngay</span>
+
+    <span class="k">for</span> row <span class="k">in</span> body[<span class="s">"documents"</span>]:
+        previous = known.get(row[<span class="s">"globalId"</span>])
+<span class="hl">        current  = datetime.fromisoformat(row[<span class="s">"updatedAt"</span>].replace(<span class="s">"Z"</span>, <span class="s">"+00:00"</span>))</span>
+        <span class="k">if</span>   previous <span class="k">is</span> <span class="k">None</span>:      page_fresh   += <span class="s">1</span>   <span class="c"># mới</span>
+        <span class="k">elif</span> previous != current:  page_changed += <span class="s">1</span>   <span class="c"># đã sửa</span>
+        <span class="k">else</span>:                      <span class="k">continue</span>            <span class="c"># y nguyên</span>
+
+<span class="hl">    clean_streak = <span class="s">0</span> <span class="k">if</span> (page_fresh <span class="k">or</span> page_changed) <span class="k">else</span> clean_streak + <span class="s">1</span></span>
+<span class="hl">    <span class="k">if</span> clean_streak &gt;= <span class="s">3</span>:  <span class="k">break</span>              <span class="c"># gấp sổ</span></span>
+    page += <span class="s">1</span></pre>
+    </details>
+
+    <details class="code">
+      <summary>Ghi vào sổ công việc — một câu vừa thêm vừa sửa</summary>
+<pre>INSERT INTO ingestion.doc_worklist (...) VALUES %s
+ON CONFLICT (global_id) DO UPDATE SET
+    source_updated_at = EXCLUDED.source_updated_at,
+<span class="hl">    status     = 'discovered',   <span class="c">-- văn bản đã sửa quay lại vạch xuất phát</span></span>
+    last_error = NULL</pre>
+    </details>
+
+    <details class="code">
+      <summary>Cánh cửa duy nhất ra nguồn — nơi chặn bẫy 1 và bẫy 3</summary>
+<pre>_local = threading.local()
+
+<span class="k">def</span> <span class="f">_client</span>():
+    <span class="k">if</span> <span class="f">getattr</span>(_local, <span class="s">"client"</span>, <span class="k">None</span>) <span class="k">is</span> <span class="k">None</span>:
+        _local.client = RESTClient(              <span class="c"># dlt lo việc thử lại khi mạng lỗi</span>
+            base_url=API_ADDR,
+<span class="hl">            headers={<span class="s">"Host"</span>: API_HOST, ...},   <span class="c"># bẫy 3</span></span>
+        )
+    <span class="k">return</span> _local.client
+
+<span class="k">def</span> <span class="f">api_get</span>(path):
+    payload = _client().get(path, timeout=HTTP_TIMEOUT).json()
+<span class="hl">    <span class="k">if</span> <span class="k">not</span> payload.get(<span class="s">"success"</span>):            <span class="c"># bẫy 1</span></span>
+        <span class="k">raise</span> SourceRefusedError(...)
+    <span class="k">return</span> payload[<span class="s">"body"</span>]</pre>
+    </details>
+  </section>
+
+  <section>
+    <h2>Bước này còn thiếu gì</h2>
+    <p>
+      Ba mục đầu là chỗ <strong>tài liệu và mã nguồn đang nói khác nhau</strong> — nguy hiểm hơn
+      việc chưa có công cụ, vì người đọc báo cáo có thể tin vào một năng lực không tồn tại.
     </p>
 
     <div class="gaps">
-
       <div class="gap-row">
-        <span class="sev s-bad">Sai lệch</span>
-        <div class="g-body">
-          <h3>Trạng thái chặn không bao giờ đạt được</h3>
-          <p>
-            Hợp đồng vỡ thì pod ném lỗi rồi chết, tác vụ chuyển đỏ, và <code>close_run</code> không
-            bao giờ chạy — vé kẹt vĩnh viễn ở <code>received</code>. Trạng thái <code>schema_blocked</code>
-            có khai báo trong mã và có ghi trong hồ sơ, nhưng bảy DAG iMate không nơi nào đặt được nó.
-            Người vận hành chỉ thấy một ô đỏ, không biết vì sao.
-          </p>
-        </div>
+        <span class="sev s-bad">Nói sai</span>
+        <h3>Nguồn đổi cấu trúc thì hệ thống chết câm</h3>
+        <p>
+          Có phát hiện được, nhưng máy ảo chết trước khi kịp ghi lý do vào sổ. Người vận hành
+          chỉ thấy một ô đỏ, không biết vì sao. Trạng thái &ldquo;bị chặn do đổi cấu trúc&rdquo;
+          có tên trong mã và có ghi trong hồ sơ, nhưng thực tế không bao giờ xảy ra.
+        </p>
       </div>
-
       <div class="gap-row">
-        <span class="sev s-bad">Sai lệch</span>
-        <div class="g-body">
-          <h3>Phản hồi danh sách không được lưu lại</h3>
-          <p>
-            Bronze chỉ chứa payload chi tiết do DAG 2 tải về. Còn phản hồi của API danh sách —
-            thứ quyết định văn bản nào được đưa vào sổ công việc — không được lưu ở đâu cả. Hệ quả:
-            về sau không trả lời được câu &ldquo;vì sao pipeline cho rằng văn bản này đã thay đổi&rdquo;.
-          </p>
-        </div>
+        <span class="sev s-bad">Nói sai</span>
+        <h3>Không lưu lại câu trả lời của nguồn</h3>
+        <p>
+          Kho chỉ lưu nội dung chi tiết do bước 2 tải về. Còn danh sách mà bước 1 đọc được —
+          thứ quyết định văn bản nào vào sổ công việc — thì không lưu ở đâu. Sau này không trả
+          lời được câu &ldquo;vì sao hệ thống cho rằng văn bản này đã thay đổi&rdquo;.
+        </p>
       </div>
-
       <div class="gap-row">
-        <span class="sev s-bad">Sai lệch</span>
-        <div class="g-body">
-          <h3>Không kiểm đúng giá trị tenant nhận về</h3>
-          <p>
-            Lời gọi có lọc theo mã đơn vị, và hợp đồng có liệt kê trường <code>tenantId</code> —
-            nhưng chỉ kiểm trường <em>có mặt</em>, không kiểm <em>đúng giá trị</em>. Nguồn lỗi trả
-            nhầm văn bản của đơn vị khác thì pipeline nuốt gọn. Với dữ liệu hành chính, đây là rủi ro
-            cách ly dữ liệu.
-          </p>
-        </div>
+        <span class="sev s-bad">Nói sai</span>
+        <h3>Không kiểm văn bản có đúng của đơn vị mình không</h3>
+        <p>
+          Có lọc theo mã đơn vị khi gọi, nhưng không kiểm lại kết quả trả về. Nguồn lỗi trả nhầm
+          văn bản của đơn vị khác thì hệ thống nhận hết. Với dữ liệu hành chính, đây là rủi ro
+          lẫn dữ liệu giữa các đơn vị.
+        </p>
       </div>
-
       <div class="gap-row">
         <span class="sev s-gap">Im lặng</span>
-        <div class="g-body">
-          <h3>Hai cái cầu chì không kêu</h3>
-          <p>
-            Chạm trần 200 trang thì vòng quét lặng lẽ dừng, không cảnh báo — tenant hiện tại mới
-            62 trang nên chưa chạm, nhưng nạp lần đầu cho đơn vị lớn hơn sẽ mất dữ liệu mà không ai biết.
-            Tương tự, độ lệch giữa số kho giữ và số nguồn báo (dấu hiệu nguồn đã xoá văn bản) được
-            tính ra và ghi vào sổ, nhưng không có ngưỡng và không ai đọc.
-          </p>
-        </div>
+        <h3>Hai cái cầu chì không kêu</h3>
+        <p>
+          Chạm trần 200 trang thì lặng lẽ dừng — hiện mới 62 trang nên chưa chạm, nhưng nạp lần
+          đầu cho đơn vị lớn hơn sẽ mất dữ liệu mà không ai biết. Tương tự, chênh lệch giữa số
+          kho giữ và số nguồn báo (dấu hiệu nguồn đã xoá văn bản) có tính ra, nhưng không có
+          ngưỡng và không ai đọc.
+        </p>
       </div>
-
       <div class="gap-row">
-        <span class="sev s-tool">Công cụ</span>
-        <div class="g-body">
-          <h3>Chưa có Schema Registry</h3>
-          <p>
-            Kiến trúc chỉ định Apicurio Registry cho lớp 3. Hiện chưa triển khai, nên không lưu phiên
-            bản schema, không phân biệt được thêm trường với đổi kiểu, và không có nhật ký kiểm toán
-            cho mỗi lần nguồn đổi hình dạng.
-          </p>
-        </div>
+        <span class="sev s-tool">Thiếu công cụ</span>
+        <h3>Chưa có nơi lưu và đối chiếu cấu trúc dữ liệu</h3>
+        <p>
+          Kiến trúc chỉ định dùng Apicurio Registry. Hiện chưa triển khai, nên chỉ kiểm được
+          &ldquo;trường có mặt hay không&rdquo;, không kiểm được kiểu dữ liệu, và không phân biệt
+          được nguồn <em>thêm</em> trường với nguồn <em>đổi</em> trường.
+        </p>
       </div>
-
-      <div class="gap-row">
-        <span class="sev s-tool">Công cụ</span>
-        <div class="g-body">
-          <h3>Chưa tách connector, chưa phát chỉ số giám sát</h3>
-          <p>
-            Kiến trúc mô tả mỗi nguồn có một connector riêng dạng dịch vụ; hiện lời gọi API nằm thẳng
-            trong pod. Bước này cũng chưa phát chỉ số nào cho Prometheus — số trang đọc, số dòng thấy,
-            độ lệch đều chỉ nằm trong sổ cái, không theo dõi được theo thời gian.
-          </p>
-        </div>
-      </div>
-
     </div>
   </section>
 
   <section>
-    <div class="head-rule">
-      <span class="tag">KIỂM THỬ</span>
-      <h2>Những tình huống bước này chưa được thử</h2>
-    </div>
+    <h2>Những tình huống chưa được thử</h2>
     <p>
-      Nhóm A thuộc tình huống &ldquo;nguồn đổi cấu trúc&rdquo; mà lãnh đạo nêu. Nhóm B là các tình huống
-      riêng của bước quét, chưa ai nêu nhưng nhóm kỹ thuật thấy cần bổ sung — trong đó mục đầu tiên
-      là điểm mù nguy hiểm nhất về mặt dữ liệu.
+      Bốn dòng đầu thuộc tình huống &ldquo;nguồn đổi cấu trúc&rdquo; mà lãnh đạo nêu.
+      Sáu dòng sau là tình huống riêng của bước quét — dòng in đậm là điểm mù đáng lo nhất.
     </p>
     <div class="scroller">
       <table>
         <thead>
-          <tr>
-            <th scope="col">Nhóm</th>
-            <th scope="col">Tình huống</th>
-            <th scope="col">Hiện bắt được?</th>
-          </tr>
+          <tr><th scope="col">Tình huống</th><th scope="col">Hiện xử lý được chưa</th></tr>
         </thead>
         <tbody>
-          <tr><td class="no">A</td><td>Nguồn bỏ mất một trường bắt buộc</td><td>Có phát hiện, nhưng không ghi được trạng thái chặn</td></tr>
-          <tr><td class="no">A</td><td>Nguồn thêm một trường mới</td><td>Không phân biệt — coi như bình thường</td></tr>
-          <tr><td class="no">A</td><td>Nguồn đổi kiểu một trường</td><td>Hoàn toàn không bắt</td></tr>
-          <tr><td class="no">A</td><td>Nguồn đổi ý nghĩa mà giữ nguyên kiểu</td><td>Không bắt — phải có registry mới lần ra</td></tr>
-          <tr><td class="no">B</td><td><strong>Nguồn sửa văn bản mà không nâng mốc cập nhật</strong></td><td>Không bắt — văn bản đó vĩnh viễn không được tải lại</td></tr>
-          <tr><td class="no">B</td><td>Văn bản bị chèn hoặc sửa ngay giữa lúc quét</td><td>Thiết kế đã tính, nhưng chưa kiểm chứng bằng thử nghiệm</td></tr>
-          <tr><td class="no">B</td><td>Chạm trần 200 trang khi nạp lần đầu</td><td>Dừng im lặng, không cảnh báo</td></tr>
-          <tr><td class="no">B</td><td>Nguồn xoá văn bản</td><td>Có đo độ lệch, chưa có ngưỡng cảnh báo</td></tr>
-          <tr><td class="no">B</td><td>API trả lỗi hoặc 401 giữa chừng</td><td>Mã có xử lý, chưa có thử nghiệm</td></tr>
-          <tr><td class="no">B</td><td>Mạng chập chờn giữa lượt quét</td><td>dlt có cơ chế thử lại, chưa chứng minh</td></tr>
+          <tr><td>Nguồn bỏ mất một trường</td><td>Phát hiện được, nhưng không ghi được lý do</td></tr>
+          <tr><td>Nguồn thêm một trường mới</td><td>Không phân biệt — coi như bình thường</td></tr>
+          <tr><td>Nguồn đổi kiểu một trường</td><td>Không bắt được</td></tr>
+          <tr><td>Nguồn đổi ý nghĩa, giữ nguyên kiểu</td><td>Không bắt được</td></tr>
+          <tr><td><strong>Nguồn sửa văn bản mà quên cập nhật mốc sửa</strong></td><td><strong>Không bắt được — văn bản đó vĩnh viễn không được tải lại</strong></td></tr>
+          <tr><td>Văn bản bị sửa ngay giữa lúc quét</td><td>Thiết kế đã tính, chưa thử nghiệm</td></tr>
+          <tr><td>Chạm trần 200 trang khi nạp lần đầu</td><td>Dừng im lặng, không cảnh báo</td></tr>
+          <tr><td>Nguồn xoá văn bản</td><td>Có đo chênh lệch, chưa có ngưỡng báo động</td></tr>
+          <tr><td>Nguồn trả lỗi giữa chừng</td><td>Mã có xử lý, chưa thử nghiệm</td></tr>
+          <tr><td>Mạng chập chờn</td><td>Có cơ chế thử lại, chưa chứng minh</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
   <footer>
-    Tài liệu mô tả mã nguồn tại nhánh feat/rancher-platform, cập nhật 19/08/2026<br>
-    Nguồn thật duy nhất: API iMate của tenant doit.phuyen — 6.141 văn bản đã đi trọn bảy bước
+    Mô tả mã nguồn tại nhánh feat/rancher-platform, cập nhật 19/08/2026<br>
+    Số liệu lấy từ hệ thống đang chạy thật — tenant doit.phuyen, 6.141 văn bản
   </footer>
 
 </div>
