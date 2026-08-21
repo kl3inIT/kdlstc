@@ -25,6 +25,14 @@ spec:
         # Đổi model thì phải cuộn lại pod; annotation này để lệnh apply nhận ra.
         stc/model-configmap: cube-model
     spec:
+      # Tắt biến môi trường tự sinh từ Service.
+      #
+      # Kubernetes tiêm CUBESTORE_PORT=tcp://10.43.x.x:3030 cho mọi pod cùng
+      # namespace với Service tên cubestore — mà chính Cube Store đọc biến tên đó
+      # làm cổng của nó, rồi chết vì "invalid digit found in string". Địa chỉ đã
+      # truyền tường minh qua CUBEJS_CUBESTORE_HOST/PORT, nên không cần biến tự
+      # sinh nào cả.
+      enableServiceLinks: false
       containers:
         - name: cube
           image: cubejs/cube:v1.7.24
@@ -35,8 +43,20 @@ spec:
             - name: sql
               containerPort: 15432
           env:
+            # TẮT chế độ dev, kể cả ở môi trường kiểm chứng.
+            #
+            # Bật lên thì Cube ngừng cưỡng chế JWT và mở Playground cho bất kỳ ai
+            # gọi tới được Service — tức toàn bộ pod trong cụm đọc được kho tài
+            # chính mà không cần khoá nào. Client của pipeline vốn đã tự ký JWT
+            # ngắn hạn, nên chế độ dev không mua lại gì ngoài lỗ hổng đó.
+            #
+            # "Ra thật sẽ tắt" là loại ghi chú không bao giờ được thực hiện.
             - name: CUBEJS_DEV_MODE
-              value: "true"          # môi trường kiểm chứng; ra thật phải tắt
+              value: "false"
+            - name: CUBEJS_CUBESTORE_HOST
+              value: cubestore.stc-hy.svc.cluster.local
+            - name: CUBEJS_CUBESTORE_PORT
+              value: "3030"
             - name: CUBEJS_DB_TYPE
               value: postgres
             - name: CUBEJS_DB_HOST
@@ -106,3 +126,77 @@ spec:
     - name: sql
       port: 15432
       targetPort: sql
+---
+# Cube Store — hàng đợi và bộ nhớ đệm của Cube.
+#
+# Bắt buộc khi CUBEJS_DEV_MODE tắt: ở chế độ thật Cube không chấp nhận hàng đợi
+# trong bộ nhớ tiến trình, vì một pod khởi động lại sẽ mất hết truy vấn đang
+# chạy và hai bản sao sẽ không thấy việc của nhau.
+#
+# Dùng emptyDir chứ không phải PVC: đây thuần tuý là bộ nhớ đệm — mất thì Cube
+# tính lại từ kho, không mất dữ liệu nào. Đổi lại tiết kiệm một PVC trong hạn
+# mức namespace, và tránh một ổ đĩa phải sao lưu mà không chứa gì đáng sao lưu.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cubestore
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: cubestore
+    app.kubernetes.io/part-of: kho-du-lieu-stc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cubestore
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cubestore
+    spec:
+      # Tắt biến môi trường tự sinh từ Service.
+      #
+      # Kubernetes tiêm CUBESTORE_PORT=tcp://10.43.x.x:3030 cho mọi pod cùng
+      # namespace với Service tên cubestore — mà chính Cube Store đọc biến tên đó
+      # làm cổng của nó, rồi chết vì "invalid digit found in string". Địa chỉ đã
+      # truyền tường minh qua CUBEJS_CUBESTORE_HOST/PORT, nên không cần biến tự
+      # sinh nào cả.
+      enableServiceLinks: false
+      containers:
+        - name: cubestore
+          image: cubejs/cubestore:v1.7.24
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: cubestore
+              containerPort: 3030
+          env:
+            - name: CUBESTORE_DATA_DIR
+              value: /cube/data
+          volumeMounts:
+            - name: data
+              mountPath: /cube/data
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: 500m, memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cubestore
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: cubestore
+spec:
+  selector:
+    app.kubernetes.io/name: cubestore
+  ports:
+    - name: cubestore
+      port: 3030
+      targetPort: cubestore
