@@ -23,7 +23,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: kl3init/kdlstc-airflow
-  RELEASE_TAG: 3.2.2-dlt1.21.0-r1
+  RELEASE_TAG: 3.2.2-dlt1.21.0-gx1.21.0-r1
 
 jobs:
   build-and-push:

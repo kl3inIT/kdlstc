@@ -2,3 +2,8 @@
 # runs the same ingestion code.
 dlt==1.21.0
 openpyxl==3.1.5
+
+# Quality Gate. GX owns the expectations and their evidence; the blocker vs
+# scoring layer on top stays ours, because GX has no notion of "this rule stops
+# the batch and that one only costs points".
+great_expectations==1.21.0
