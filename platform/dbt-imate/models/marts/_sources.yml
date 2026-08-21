@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: staging
+    schema: staging
+    tables:
+      - name: stg_imate__document_typed
+      - name: stg_imate__routing
+
+  - name: refdata
+    schema: refdata
+    tables:
+      - name: document_kind
+      - name: issuing_body
+      - name: imate_unit

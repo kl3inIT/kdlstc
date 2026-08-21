@@ -1,0 +1,21 @@
+# dbt cho lát cắt iMate.
+#
+# Tách project riêng khỏi platform/dbt (lát cắt QL Giá) vì hai lát cắt nằm ở hai
+# cơ sở dữ liệu khác nhau — stc_dwh và stc_imate — và việc tách cơ sở dữ liệu là
+# quyết định có chủ đích để giới hạn bán kính thiệt hại. Gộp một project trỏ hai
+# nơi thì chính chỗ cách ly ấy bị nối lại bằng một tệp cấu hình.
+name: stc_imate
+version: "1.0.0"
+config-version: 2
+
+profile: stc_imate
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  stc_imate:
+    marts:
+      +schema: curated
+      +materialized: incremental

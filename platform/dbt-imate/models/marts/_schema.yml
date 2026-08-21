@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Chiều thời gian, sinh đủ mọi ngày trong dải kể cả ngày không có văn bản
+    columns:
+      - name: date_key
+        tests: [not_null, unique]
+
+  - name: dim_document_kind
+    description: Danh mục ĐÓNG theo Nghị định 30/2020, kèm thành viên -1 Chưa xác định
+    columns:
+      - name: kind_key
+        tests: [not_null, unique]
+      - name: kind_code
+        tests: [not_null, unique]
+
+  - name: dim_issuing_body
+    description: Danh mục MỞ, tự đăng ký khi gặp lần đầu với is_confirmed false
+    columns:
+      - name: body_key
+        tests: [not_null, unique]
+      - name: body_code
+        tests: [not_null, unique]
+
+  - name: fact_document
+    description: Một dòng một văn bản — COUNT(*) ở đây chính là con số trên báo cáo
+    columns:
+      - name: global_id
+        tests: [not_null, unique]
+      # Ba phép kiểm khoá ngoại này là thứ chặn kịch bản tệ nhất: một dòng dữ
+      # kiện trỏ vào chiều không tồn tại thì báo cáo âm thầm đếm thiếu.
+      - name: date_key
+        tests:
+          - not_null
+          - relationships: { to: ref('dim_date'), field: date_key }
+      - name: kind_key
+        tests:
+          - not_null
+          - relationships: { to: ref('dim_document_kind'), field: kind_key }
+      - name: body_key
+        tests:
+          - not_null
+          - relationships: { to: ref('dim_issuing_body'), field: body_key }
+
+  - name: fact_routing
+    description: Một dòng một lượt chuyển, grain mịn hơn fact_document
+    columns:
+      - name: date_key
+        tests:
+          - not_null
+          - relationships: { to: ref('dim_date'), field: date_key }
+      - name: receiver_kind
+        tests:
+          - not_null
+          - accepted_values: { values: ['contact', 'unit', 'unknown'] }
