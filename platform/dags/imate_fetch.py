@@ -29,6 +29,7 @@ from imate_common import (
     MAX_PAGES,
     SOURCE_CODE,
     SourceContractError,
+    DRIFT_ALERT,
     STOP_AFTER_CLEAN_PAGES,
     TENANT_CODE,
     TENANT_ID,
@@ -82,6 +83,7 @@ def discover(run_id):
 
     page, clean_streak = 1, 0
     drift = {"drift": "SKIPPED"}
+    stop_reason = "chua-chay"
     seen, fresh, changed = 0, 0, 0
     source_total = None
 
@@ -149,10 +151,22 @@ def discover(run_id):
 
         if clean_streak >= STOP_AFTER_CLEAN_PAGES:
             log(f"dung som sau {STOP_AFTER_CLEAN_PAGES} trang khong co gi moi")
+            stop_reason = "chuoi-sach"
             break
         if not body["meta"]["hasNextPage"]:
+            stop_reason = "het-trang"
             break
         page += 1
+    else:
+        # Vòng lặp chạy hết mà không break: đã chạm trần.
+        #
+        # Một cầu chì cháy trong im lặng còn tệ hơn không có cầu chì. Ở đây nghĩa
+        # là còn trang chưa đọc — hoặc tenant lớn hơn dự tính, hoặc phép so mốc
+        # thời gian hỏng khiến mọi bản ghi trông như mới. Cả hai đều là chuyện
+        # phải biết ngay, không phải chuyện phát hiện qua một con số lệch ở báo
+        # cáo vài tuần sau.
+        stop_reason = "cham-tran"
+        log(f"CANH BAO: cham tran {MAX_PAGES} trang — lot quet CHUA DAY DU")
 
     # The source's own total against ours. They diverge when a document is
     # deleted upstream — which this walk can never see, because a deletion
@@ -162,18 +176,35 @@ def discover(run_id):
                     "WHERE tenant_id = %s", (TENANT_ID,))
         held = cur.fetchone()[0]
 
+    drift_count = (held - source_total) if source_total is not None else None
+
+    # Nguồn xoá bản ghi thì cách quét dừng-sớm không bao giờ thấy. Điểm mù này
+    # được đo, nhưng đo mà không có ngưỡng thì con số nằm im trong sổ và không ai
+    # đọc. Vượt ngưỡng là phải nói ra.
+    warnings = []
+    if stop_reason == "cham-tran":
+        warnings.append(f"cham tran {MAX_PAGES} trang — quet chua day du")
+    if drift_count is not None and abs(drift_count) > DRIFT_ALERT:
+        warnings.append(
+            f"lech {drift_count} ban ghi so voi nguon (nguong {DRIFT_ALERT}) — "
+            "co the nguon da xoa van ban ma quet dung som khong thay")
+
     summary = {
         "run_id": run_id,
         "extractor": f"dlt-rest-client/{DLT_VERSION}",
         "schema_drift": drift,
+        "stop_reason": stop_reason,
+        "warnings": warnings,
         "pages_read": page,
         "rows_seen": seen,
         "new": fresh,
         "changed": changed,
         "worklist_total": held,
         "source_total": source_total,
-        "drift": (held - source_total) if source_total is not None else None,
+        "drift": drift_count,
     }
+    for warning in warnings:
+        log("CANH BAO: " + warning)
     log("ket qua: " + json.dumps(summary, ensure_ascii=False))
 
     # Reported through the run ledger rather than XCom. The pod could push an

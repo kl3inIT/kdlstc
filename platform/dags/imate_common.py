@@ -60,6 +60,11 @@ STOP_AFTER_CLEAN_PAGES = 3
 # Guard against a bad cursor turning one run into a full re-crawl forever.
 MAX_PAGES = 200
 
+# Chênh lệch giữa số bản ghi kho giữ và tổng số nguồn báo. Khác 0 nghĩa là nguồn
+# đã xoá bản ghi — thứ cách quét dừng-sớm không bao giờ nhìn thấy. Ngưỡng đặt
+# thấp vì với dữ liệu hành chính, một văn bản biến mất đã là chuyện phải hỏi.
+DRIFT_ALERT = 5
+
 DETAIL_INCLUDE = "attachments,receipts,routings,userGeneratedAttachments"
 
 # What a list row must look like. Checked before anything is written, so a
@@ -267,4 +272,19 @@ def check_list_contract(documents):
         if missing:
             raise SourceContractError(
                 f"van ban {row.get('globalId', '?')} thieu truong: {missing}"
+            )
+
+        # Kiểm ĐÚNG GIÁ TRỊ tenant, không chỉ kiểm trường có mặt.
+        #
+        # Lời gọi có lọc filter[tenantId], nhưng tin vào bộ lọc của nguồn là tin
+        # vào thứ mình không kiểm soát. Nguồn nâng cấp, bộ lọc lỗi, API trả cả
+        # văn bản của Sở khác — hợp đồng vẫn qua vì trường tenantId vẫn có mặt,
+        # rồi văn bản của đơn vị khác nằm trong báo cáo của Sở này mà không có gì
+        # báo động. Với dữ liệu hành chính đó không phải lỗi kỹ thuật thuần tuý,
+        # đó là lẫn dữ liệu giữa các cơ quan.
+        if row["tenantId"] != TENANT_ID:
+            raise SourceContractError(
+                f"van ban {row.get('globalId', '?')} thuoc tenant "
+                f"{row['tenantId']}, khong phai {TENANT_ID} — nguon tra nham "
+                "du lieu cua don vi khac"
             )

@@ -1,0 +1,31 @@
+# Ingress cho giao diện Apicurio Registry, đứng sau oauth2-proxy.
+#
+# Apicurio ở cấu hình này KHÔNG có xác thực riêng — mở thẳng ra ingress là ai
+# vào được mạng cũng sửa được hợp đồng dữ liệu của kho, tức sửa được thứ quyết
+# định lô nào bị chặn. Vì vậy nó đi qua cùng cầu SSO mà giao diện lưu trữ dùng.
+#
+# Hostname ở đây là placeholder; hostname thật nằm trong tệp *-ingress.local.yaml
+# không vào git, giống cách các values helm làm.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apicurio-ui
+  namespace: stc-hy
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "http://o2p-oauth2-proxy.stc-hy.svc.cluster.local/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "http://registry.example.com/oauth2/start?rd=$escaped_request_uri"
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Preferred-Username"
+    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: registry.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: apicurio
+                port:
+                  number: 80
