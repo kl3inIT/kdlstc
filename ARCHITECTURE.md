@@ -69,7 +69,25 @@ Tám DAG phủ bảy bước; bước 4 được chẻ làm hai, ghi bằng ch�
 05 publish      bước 5 · Gold
 06 serving      bước 6 · Serving
 07 report       bước 7 · Khai thác
+
+08 replay       ngoài bảy bước — dựng lại kho từ Bronze, chạy bằng tay
 ```
+
+## Giao diện
+
+| Công cụ | Địa chỉ | Xác thực |
+|---|---|---|
+| Airflow | `airflow-stc.<node>.nip.io` | đăng nhập riêng |
+| Superset | `bi-stc.<node>.nip.io` | SSO Keycloak |
+| Apicurio | `registry-stc.<node>.nip.io` | SSO qua oauth2-proxy |
+| pgweb · SeaweedFS | `s3-stc.<node>.nip.io` | SSO qua oauth2-proxy |
+| Keycloak | `sso-stc.<node>.nip.io` | riêng |
+
+Cube không có giao diện: chế độ thật tắt Playground, chỉ còn API sau JWT.
+
+Hostname thật nằm trong các tệp `*-values.local.yaml` không vào git. **Mọi lệnh
+helm upgrade phải kèm tệp local tương ứng** — thiếu nó thì ingress bị ghi đè bằng
+hostname che và giao diện mất đường vào mà không tác vụ nào đỏ.
 
 Nối nhau bằng Asset của Airflow, không DAG nào gọi tên DAG nào. Xem
 [docs/guidelines/dag-airflow.md](docs/guidelines/dag-airflow.md).

@@ -17,17 +17,23 @@ Cập nhật: 21/08/2026 (sau đợt bổ sung Apicurio, GX Core, dbt).
 | Một chỉ tiêu, hai con số | Cube v1.7.24 làm lớp ngữ nghĩa; bước 7 hỏi Cube thay vì tự viết SQL | Tổng khớp tuyệt đối 6.141; CSV 3.839 dòng · 504 ngày · 335 dòng số 0 |
 | 7 bước thiếu bước Serving | Thêm `imate_06_serving`: kiểm cửa đọc bằng vai trò `imate_reader`, thử ghi bắt buộc bị từ chối, ghi độ tươi | Chạy thật: 5 bảng đọc được, ghi bị từ chối, độ tươi 96 ngày |
 
-## Nhóm 1 — Chỗ tài liệu và mã nguồn còn nói khác nhau
+## Nhóm 1 — đã khép hết ngày 21/08/2026
 
-Nguy hiểm hơn "chưa làm", vì người đọc có thể tin vào năng lực không tồn tại.
-Xử lý trước mọi việc bổ sung công cụ. Không cần công cụ mới.
+Cả bốn mục đều là chỗ hệ thống im lặng ở nơi lẽ ra phải lên tiếng, và ba trong
+bốn được hồ sơ mô tả như đã có.
 
-| Hạng mục | Triệu chứng | Trạng thái |
+| Hạng mục | Cách vá | Kiểm chứng |
 |---|---|---|
-| Phát lại từ Bronze | Hồ sơ nói làm được, chưa có mã thực hiện | Chưa vá |
-| Không lưu phản hồi danh sách | Không trả lời được "vì sao pipeline cho rằng văn bản này đã đổi" | Chưa vá |
-| Không kiểm giá trị tenant | Chỉ kiểm trường có mặt, không kiểm đúng đơn vị | Chưa vá |
-| Hai cầu chì im lặng | Chạm trần 200 trang và độ lệch khi nguồn xoá — có đo, không báo | Chưa vá |
+| Không kiểm giá trị tenant | Hợp đồng kiểm `tenantId` đúng giá trị, sai thì `schema_blocked` | Chạy thật, không chặn nhầm |
+| Chạm trần 200 trang dừng lặng lẽ | Ghi `stop_reason` và cảnh báo "quét chưa đầy đủ" | `stop_reason: "chuoi-sach"` trong sổ cái |
+| Độ lệch nguồn xoá không ai đọc | Ngưỡng `DRIFT_ALERT`, vượt thì vào `warnings` | lệch 0, `warnings: []` |
+| Không lưu phản hồi danh sách | Mỗi trang vào Bronze, khoá theo mã băm | 3 đối tượng `bronze/list/`, 57KB mỗi trang |
+| Phát lại từ Bronze chưa có mã | `imate_08_replay`, chọn phiên bản theo mốc thời gian | Phát lại 5 văn bản, đi trọn 03→07, fact giữ nguyên |
+
+Ghi nhận một lỗi thật do chính cơ chế mới bắt được: bật kiểm schema xong thì lô
+nào cũng bị chặn, vì `failureReason` và `readyAt` lúc có giá trị lúc null nên
+kiểu đổi theo mẫu ngẫu nhiên của từng trang — nguồn không đổi gì. Sửa bằng cách
+chỉ ràng buộc kiểu cho trường nằm trong hợp đồng.
 
 ## Nhóm 2 — Công cụ kiến trúc
 
