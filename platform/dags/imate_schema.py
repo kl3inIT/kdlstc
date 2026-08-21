@@ -72,22 +72,31 @@ def infer_schema(rows, required):
     Kiểu lấy từ giá trị đầu tiên khác null gặp được, nên một trường luôn null
     trong mẫu sẽ để ngỏ kiểu thay vì đoán bừa.
     """
+    # CHỈ ràng buộc kiểu cho những trường hạ nguồn thật sự đọc.
+    #
+    # Bản trước ràng buộc kiểu cho MỌI trường nguồn trả về, và đo trên dữ liệu
+    # thật thì lô nào cũng bị chặn: failureReason và readyAt là hai trường lúc có
+    # giá trị lúc null, nên kiểu của chúng đổi theo việc trang vừa lấy tình cờ có
+    # bản ghi nào điền chúng hay không. Nguồn không đổi gì cả — chỉ mẫu đổi.
+    #
+    # Trường ngoài hợp đồng vẫn được ghi nhận là CÓ TỒN TẠI, chỉ không hứa gì về
+    # kiểu. Nhờ vậy nguồn thêm hay bỏ một trường không ai dùng thì registry vẫn
+    # thấy và ghi lại, mà không dựng rào trước một lô hoàn toàn hợp lệ.
+    required_set = set(required)
     properties = {}
     for row in rows:
         for key, value in row.items():
+            if key not in required_set:
+                properties.setdefault(key, {})
+                continue
             if properties.get(key, {}).get("type"):
                 continue
             if value is None:
-                # Không khai kiểu cho trường chỉ thấy toàn null trong mẫu.
-                #
-                # Khai "null" thì lô sau gặp một giá trị thật sẽ thành đổi kiểu,
-                # và registry chặn lô — một báo động giả sinh ra từ chỗ mẫu tình
-                # cờ rỗng, không phải từ nguồn đổi gì. Bỏ trống ràng buộc kiểu
-                # thì trường vẫn được ghi nhận là có tồn tại, mà không hứa điều
-                # mình chưa quan sát được.
+                # Trường bắt buộc mà mẫu chỉ thấy null: ghi nhận có mặt, chưa
+                # hứa kiểu — lô sau gặp giá trị thật sẽ không thành đổi kiểu.
                 properties.setdefault(key, {})
                 continue
-            elif isinstance(value, bool):
+            if isinstance(value, bool):
                 kind = "boolean"
             elif isinstance(value, int):
                 kind = "integer"

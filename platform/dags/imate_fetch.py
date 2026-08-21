@@ -50,6 +50,17 @@ def log(message):
     print(message, flush=True)
 
 
+def archive_list_page(s3, run_id, page, body):
+    """Ghi một trang danh sách vào Bronze, khoá theo nội dung."""
+    blob = json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    digest = hashlib.sha256(blob).hexdigest()
+    key = f"bronze/list/{digest[:16]}.json"
+    s3.put_object(Bucket=S3_BUCKET, Key=key, Body=blob,
+                  ContentType="application/json",
+                  Metadata={"run-id": run_id, "page": str(page)})
+    return key
+
+
 def discover(run_id):
     """
     Walk the document list newest-first and record what is new or changed.
@@ -81,6 +92,12 @@ def discover(run_id):
         known = dict(cur.fetchall())
     log(f"da biet: {len(known)} van ban")
 
+    s3 = object_store()
+    try:
+        s3.create_bucket(Bucket=S3_BUCKET)
+    except Exception:                                 # noqa: BLE001
+        pass                                          # already exists
+
     page, clean_streak = 1, 0
     drift = {"drift": "SKIPPED"}
     stop_reason = "chua-chay"
@@ -99,6 +116,19 @@ def discover(run_id):
         if page == 1:
             drift = check_schema("documents-list", documents, LIST_CONTRACT)
             log(f"schema: {json.dumps(drift, ensure_ascii=False)}")
+
+        # Cất chính câu trả lời của nguồn, không chỉ cất kết luận rút ra từ nó.
+        #
+        # Bước này QUYẾT ĐỊNH văn bản nào vào sổ công việc, nhưng trước đây bằng
+        # chứng cho quyết định ấy không được lưu ở đâu — Bronze chỉ có payload chi
+        # tiết do bước 2 tải. Sáu tháng sau có người hỏi "vì sao hôm ấy hệ thống
+        # cho rằng văn bản này đã thay đổi", sổ cái chỉ trả lời được "3 trang, 2
+        # mới" chứ không đưa ra được dữ liệu thô đã dẫn tới con số đó.
+        #
+        # Khoá đặt theo mã băm nội dung như mọi thứ khác trong Bronze: ba trang y
+        # hệt nhau ở chín mươi phần trăm số lượt sẽ ghi đè lên chính chúng, nên
+        # gần như không tốn thêm chỗ.
+        archive_list_page(s3, run_id, page, body)
 
         batch = []
         page_fresh = page_changed = 0

@@ -51,6 +51,14 @@ spec:
               valueFrom: { secretKeyRef: { name: apicurio-db, key: password } }
             # Giao diện quản trị mở trong môi trường kiểm chứng; khi ra thật
             # phải bật xác thực qua Keycloak.
+            # Cho phép xoá artifact. Mặc định Apicurio khoá việc này, nhưng khi
+            # hợp đồng dữ liệu được định nghĩa lại — ví dụ thu hẹp phạm vi ràng
+            # buộc kiểu — thì phải đăng ký lại từ đầu, và không xoá được nghĩa là
+            # phải đổi tên artifact, để lại rác mang tên gần giống nhau.
+            - name: APICURIO_REST_DELETION_ARTIFACT_ENABLED
+              value: "true"
+            - name: APICURIO_REST_DELETION_GROUP_ENABLED
+              value: "true"
             - name: QUARKUS_HTTP_CORS_ORIGINS
               value: "*"
           readinessProbe:
