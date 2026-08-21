@@ -67,6 +67,15 @@ DETAIL_INCLUDE = "attachments,receipts,routings,userGeneratedAttachments"
 LIST_CONTRACT = ("globalId", "tenantId", "documentId", "documentNo",
                  "uploadedAt", "createdAt", "updatedAt", "processStatus")
 
+# Cái mà payload CHI TIẾT phải có. Danh sách này tồn tại vì bước 3 đọc payload
+# bằng .get(), nghĩa là một trường biến mất sẽ âm thầm thành rỗng, chạy tiếp bình
+# thường, và chỉ lộ ra ở báo cáo vài tuần sau — đúng loại lỗi đắt nhất.
+#
+# Chỉ liệt kê trường mà hạ nguồn THẬT SỰ đọc. Liệt kê thừa thì mỗi lần nguồn dọn
+# một trường không ai dùng cũng thành chặn lô.
+DETAIL_CONTRACT = ("globalId", "tenantId", "documentId", "documentNo",
+                   "uploadedAt", "createdAt", "updatedAt", "processStatus")
+
 
 class SourceContractError(RuntimeError):
     """The source answered, but not with the shape we agreed on."""

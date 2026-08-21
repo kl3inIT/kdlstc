@@ -254,3 +254,8 @@ extraEnv: |
   - name: CUBE_API_SECRET
     valueFrom:
       secretKeyRef: { name: cube-api, key: api-secret }
+  # Schema Registry: bước 3 chạy trên worker (khác bước 1 chạy trong pod riêng),
+  # nên worker cũng cần địa chỉ registry. Thiếu biến này thì phép kiểm lặng lẽ
+  # trả về SKIPPED — mà SKIPPED trông y như một lựa chọn có chủ đích.
+  - name: APICURIO_URL
+    value: "http://apicurio.stc-hy.svc.cluster.local"

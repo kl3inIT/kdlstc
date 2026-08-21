@@ -31,16 +31,36 @@ except ImportError:
 
 from imate_assets import SILVER_ONE, SILVER_TWO
 from imate_common import TENANT_ID, imate_cursor, set_status as set_run_status
+from airflow.exceptions import AirflowException
+
 from imate_ops import ticket
 
 
-# Token = letters (incl. Vietnamese) and dots. Kept identical across the three
-# patterns so a token means the same thing wherever it is captured.
-_TOK = r"[A-Za-zĐđÂâÊêÔôƠơƯư\.]"
+def load_patterns():
+    """
+    Đọc quy ước đánh số từ refdata.numbering_pattern.
 
-PAT_A = rf"^\s*(\d+)\s*/\s*(?:(\d{{4}})\s*/\s*)?({_TOK}{{1,8}})\s*-\s*(.+?)\s*$"
-PAT_B = rf"^\s*(\d+)\s*-\s*({_TOK}{{1,8}})\s*/\s*([^#]+?)\s*(?:#(.*))?$"
-PAT_C = rf"^\s*(\d+)\s*/\s*({_TOK}{{2,12}})(?:\s*-\s*(.+?))?\s*$"
+    Trước đây ba biểu thức này là hằng số trong tệp. Thực tế các đơn vị vẫn phát
+    sinh biến thể — sáp nhập tỉnh, cơ quan đổi cách ghi — và mỗi lần thêm một quy
+    ước là một lần review code cùng một lần triển khai, cho một thứ vốn là quyết
+    định nghiệp vụ chứ không phải kỹ thuật.
+
+    Từ chối chạy khi bảng rỗng thay vì lặng lẽ không khớp gì: một pipeline bóc
+    tách được 0% mà vẫn báo thành công là thứ tệ hơn một pipeline dừng.
+    """
+    with imate_cursor() as cur:
+        cur.execute("""
+            SELECT pattern_code, regex, serial_group, year_group,
+                   kind_group, body_group, default_kind
+              FROM refdata.numbering_pattern
+             WHERE is_active
+             ORDER BY try_order
+        """)
+        rows = cur.fetchall()
+    if not rows:
+        raise AirflowException(
+            "refdata.numbering_pattern rong — khong co quy uoc nao de boc tach")
+    return rows
 
 TYPED_SQL = """
 WITH src AS (
@@ -153,9 +173,24 @@ def imate_04_silver_two():
             # Replace, don't append: one current typed row per document.
             cur.execute("DELETE FROM staging.stg_imate__document_typed "
                         "WHERE global_id = ANY(%s)", (gids,))
+            # Quy ước đánh số nạp từ CSDL. Vẫn truyền theo tham số chứ không
+            # nối chuỗi vào SQL: biểu thức đến từ một bảng mà người ngoài nhóm
+            # kỹ thuật sửa được, nên nó là dữ liệu người dùng nhập, không phải
+            # hằng số của chương trình.
+            patterns = {row[0]: row for row in load_patterns()}
+            missing = [c for c in ("A", "B", "C_cv") if c not in patterns]
+            if missing:
+                raise AirflowException(
+                    f"thieu quy uoc danh so bat buoc: {missing} — "
+                    "kiem tra refdata.numbering_pattern")
+            print("quy uoc danh so: "
+                  + ", ".join(f"{c}(#{patterns[c][2]})" for c in patterns),
+                  flush=True)
+
             cur.execute(TYPED_SQL, {"gids": gids, "run_id": run_id,
-                                    "pat_a": PAT_A, "pat_b": PAT_B,
-                                    "pat_c": PAT_C})
+                                    "pat_a": patterns["A"][1],
+                                    "pat_b": patterns["B"][1],
+                                    "pat_c": patterns["C_cv"][1]})
 
             # Bodies are an open set: register what the data shows, named by
             # its own code until somebody confirms a real name.

@@ -24,6 +24,8 @@ from psycopg2.extras import execute_values
 
 from imate_assets import BRONZE, SILVER_ONE
 from imate_common import S3_BUCKET, TENANT_ID, imate_cursor, set_status as set_run_status
+from imate_common import DETAIL_CONTRACT, SourceContractError
+from imate_schema import SchemaBreakingChange, check as check_schema
 from imate_ops import ticket
 from warehouse import object_store
 
@@ -53,6 +55,27 @@ def imate_03_silver_one():
 
     @task
     def load(info):
+        """
+        Trải phẳng payload Bronze thành bốn bảng toàn chuỗi.
+
+        Bọc toàn bộ trong một lớp bắt lỗi hợp đồng: bước này chạy trên worker chứ
+        không trong pod, nên lớp bắt ở imate_fetch không với tới. Thiếu nó thì
+        nguồn đổi cấu trúc ở payload chi tiết lại rơi vào đúng cái bẫy cũ — tác vụ
+        đỏ, vé kẹt ở 'received', không ai biết vì sao.
+        """
+        try:
+            return _load(info)
+        except (SourceContractError, SchemaBreakingChange) as exc:
+            reason = f"{type(exc).__name__}: {exc}"
+            print("NGUON DOI CAU TRUC — chan lo: " + reason, flush=True)
+            set_run_status(info["run_id"], "schema_blocked",
+                           message=json.dumps({"run_id": info["run_id"],
+                                               "stage": "silver-1",
+                                               "reason": reason[:2000]},
+                                              ensure_ascii=False))
+            raise
+
+    def _load(info):
         run_id = info["run_id"]
         with imate_cursor() as cur:
             cur.execute(
@@ -66,6 +89,8 @@ def imate_03_silver_one():
 
         s3 = object_store()
         staged = failed = 0
+        drift = {"drift": "SKIPPED"}
+        checked_shape = False
 
         for start in range(0, len(todo), CHUNK):
             chunk = todo[start:start + CHUNK]
@@ -106,7 +131,31 @@ def imate_03_silver_one():
                             _s(len(a.get("renders") or [])),
                             _s(a.get("scanned") is not None),
                         ))
+                    # Hợp đồng của payload chi tiết, kiểm TRÊN payload gốc chứ
+                    # không trên tuple đã trải phẳng — sau khi .get() thì trường
+                    # thiếu và trường rỗng trông giống hệt nhau.
+                    #
+                    # Kiểm một payload mỗi lượt là đủ: mọi bản ghi trong một lượt
+                    # đến từ cùng một bộ tuần tự hoá của nguồn. Kiểm 6.141 bản sẽ
+                    # đăng ký 6.141 phiên bản schema y hệt nhau.
+                    if not checked_shape:
+                        missing = [f for f in DETAIL_CONTRACT if f not in doc]
+                        if missing:
+                            raise SourceContractError(
+                                f"payload chi tiet {gid} thieu truong: {missing}")
+                        drift = check_schema("document-detail", [doc],
+                                             DETAIL_CONTRACT)
+                        print("schema chi tiet: "
+                              + json.dumps(drift, ensure_ascii=False), flush=True)
+                        checked_shape = True
+
                     ok_ids.append(gid)
+                except (SourceContractError, SchemaBreakingChange):
+                    # Nguồn đổi hình dạng là chuyện của cả lô, không của riêng
+                    # một bản ghi — ném lên để tác vụ ghi schema_blocked, thay vì
+                    # đếm nó thành một văn bản hỏng rồi chạy tiếp với 6.140 bản
+                    # khác cũng sai y như vậy.
+                    raise
                 except Exception as exc:              # noqa: BLE001
                     bad.append((gid, str(exc)[:300]))
 
@@ -162,7 +211,9 @@ def imate_03_silver_one():
             print(f"trai phang: {staged + failed}/{len(todo)}", flush=True)
 
         set_run_status(info["run_id"], "parsed", row_count=staged,
-                       message=json.dumps({"staged": staged, "failed": failed}))
+                       message=json.dumps({"staged": staged, "failed": failed,
+                                           "schema_drift": drift},
+                                          ensure_ascii=False))
         return {"staged": staged, "failed": failed}
 
     @task(outlets=[SILVER_ONE])
