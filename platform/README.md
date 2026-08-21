@@ -62,8 +62,9 @@ Cừ" phải có câu trả lời chỉ được vào một dòng cụ thể.
 
 | Namespace | Thành phần |
 |---|---|
-| `stc-hy` | Keycloak · oauth2-proxy · SeaweedFS (master/volume/filer/s3/admin) · mock-qlgia · pgweb |
+| `stc-hy` | Keycloak 26.6.4 · oauth2-proxy · SeaweedFS (master/volume/filer/s3/admin) · Apicurio Registry 3.1.7 · mock-qlgia · pgweb |
 | `stc-hy-airflow` | Airflow 3.2.2 (api-server, scheduler, dag-processor, triggerer, worker) + PostgreSQL + Redis |
+| `stc-hy-bi` | Superset 6.1 (web + worker) + PostgreSQL metadata + Redis |
 | PostgreSQL ngoài cụm | `stc_dwh` — kho dữ liệu · `stc_keycloak` |
 
 | Dịch vụ | Địa chỉ |
@@ -150,18 +151,24 @@ nên DAG dùng `ProjectMemberKubernetesPodOperator`: giữ nguyên vòng đời 
 chỉ bỏ event watcher, thay bằng polling trạng thái pod. Khi project-owner cấp
 quyền list/watch Events cho worker service account thì có thể trở lại KPO gốc.
 
-Image Airflow ví dụ là
-`ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-r1`, build từ
+Image Airflow hiện tại là
+`ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-gx1.21.0-r1`, build từ
 `Dockerfile.airflow`. Image giữ nguyên Airflow 3.2.2/Python 3.13 và nướng sẵn
-`dlt==1.21.0`, `openpyxl==3.1.5`. GitHub Actions build và publish package GHCR
+`dlt==1.21.0`, `openpyxl==3.1.5`, `great_expectations==1.21.0`. GitHub Actions build và publish package GHCR
 public nên cluster có thể pull mà không cần secret. Nếu đổi registry, đặt lại
 `AIRFLOW_IMAGE` và `REGISTRY_SECRET`. Các script build chỉ dùng Docker config
 tạm và không ghi credential vào repo.
 
-Checkpoint 2026-08-14: GitHub Actions đã build và attest image GHCR public với
-digest `sha256:603175f3c1f7f57fc872947ff3022b3aeb60135ba2b7e34e8810c23c83224cb8`.
-Airflow Helm revision 11 đã chạy digest này; các pod Ready, DAG import không có
-lỗi và smoke run QL Giá kết thúc `published` với 0 dòng mới sau cursor.
+Checkpoint 2026-08-21: Airflow Helm revision 13 đang chạy digest
+`sha256:f8bb40efd9554a27627ec5f2bac7c6e6fc8c8188c207274cdf62fa9924de959f`;
+api-server, scheduler, dag-processor, triggerer và worker đều Ready. Chuỗi iMate
+04b → 05 → 06 → 07 chạy trọn với 6.141 văn bản và 99.214 lượt chuyển.
+
+Apicurio chạy ở `stc-hy`, dùng database PostgreSQL riêng và Secret
+`apicurio-db`; pipeline chỉ nhận địa chỉ Service, không nhận credential DB.
+Bản 3.1.7 được ghim vì là bản mới nhất chạy được trên CPU của cụm; image từ
+3.2 trở đi yêu cầu x86-64-v3. Registry hiện chỉ mở nội bộ và chưa bật xác thực;
+trước khi mở Ingress phải đặt sau Keycloak/oauth2-proxy hoặc bật OIDC trực tiếp.
 
 QL Giá dùng `dlt` REST client cho HTTP, retry và pagination `nextPage`. Cursor
 đã công bố vẫn chỉ có một nguồn sự thật là `ingestion.cursors`: Airflow truyền
@@ -315,6 +322,8 @@ Ghi lại để không phải trả lần nữa.
 - [ ] Chuyển phần publish Gold sang dbt khi chốt cơ chế công bố nguyên tử giữa
       Gold, `batch_summary` và cursor; hiện Airflow giữ ba cập nhật trong một transaction
 - [ ] Export realm Keycloak ra JSON, commit vào repo
+- [ ] Đối soát/rotate credential quản trị Keycloak: Secret bootstrap hiện
+      không đăng nhập được Admin CLI, nên chưa thể export realm an toàn
 - [ ] Bật xác thực cho S3 API
 - [ ] Chuyển metadata DB của Airflow sang `jmix-ha`, bỏ `bitnamilegacy/postgresql`
       (kho archive, không còn được vá) và trả lại 1 khe PVC

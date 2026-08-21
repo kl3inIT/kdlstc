@@ -16,6 +16,9 @@ from urllib.parse import urlparse
 from imate_common import API_ADDR, API_HOST, SOURCE_CODE, TENANT_ID, imate_cursor
 from warehouse import S3_ENDPOINT
 
+APICURIO_URL = os.environ.get(
+    "APICURIO_URL", "http://apicurio.stc-hy.svc.cluster.local")
+
 # The kubernetes client is imported INSIDE fetch_pod, not here: it costs
 # several seconds, and five of the seven DAGs only need ticket() and the
 # worklist counters. Importing it at module level made imate_06 blow the
@@ -43,6 +46,19 @@ def ticket(stage, raw_run_id):
     s3_url = urlparse(S3_ENDPOINT)
     s3_endpoint = f"http://{socket.gethostbyname(s3_url.hostname)}:{s3_url.port or 8333}"
 
+    # Same treatment for the registry, and for the same reason.
+    registry = ""
+    if APICURIO_URL:
+        reg_url = urlparse(APICURIO_URL)
+        try:
+            registry = (f"http://{socket.gethostbyname(reg_url.hostname)}"
+                        f":{reg_url.port or 80}")
+        except OSError:
+            # A registry that cannot be resolved must not stop ingestion: the
+            # pod falls back to the field-presence contract and says so.
+            print(f"CANH BAO: khong phan giai duoc {APICURIO_URL} — "
+                  "bo qua doi chieu schema lan nay", flush=True)
+
     with imate_cursor() as cur:
         cur.execute(
             """
@@ -54,7 +70,8 @@ def ticket(stage, raw_run_id):
             """,
             (run_id, SOURCE_CODE, period, f"bronze/imate/"),
         )
-    return {"run_id": run_id, "period": period, "s3_endpoint": s3_endpoint}
+    return {"run_id": run_id, "period": period, "s3_endpoint": s3_endpoint,
+            "registry": registry}
 
 
 def worklist_count(status):
@@ -128,6 +145,9 @@ def fetch_pod(task_id, stage, timeout_minutes):
             k8s.V1EnvVar(
                 name="S3_ENDPOINT",
                 value="{{ ti.xcom_pull(task_ids='open_run')['s3_endpoint'] }}"),
+            k8s.V1EnvVar(
+                name="APICURIO_URL",
+                value="{{ ti.xcom_pull(task_ids='open_run')['registry'] }}"),
             _secret_env(k8s, "IMATE_DWH_HOST", "host"),
             _secret_env(k8s, "IMATE_DWH_DBNAME", "dbname"),
             _secret_env(k8s, "IMATE_DWH_USER", "user"),

@@ -1,0 +1,87 @@
+# Apicurio Registry — nơi lưu và đối chiếu cấu trúc dữ liệu của nguồn.
+#
+# Vì sao cần: hợp đồng dữ liệu tự viết chỉ trả lời được "trường này có mặt
+# không". Nó không lưu phiên bản, không phân biệt được nguồn THÊM một trường với
+# nguồn ĐỔI kiểu một trường — mà hai việc đó phải xử lý khác nhau: thêm thì đi
+# tiếp, đổi kiểu thì chặn lô.
+#
+# Lưu trữ dùng chính instance PostgreSQL của Airflow, database riêng. Đây là môi
+# trường kiểm chứng, chưa cần cụm riêng cho registry.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apicurio
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: apicurio
+    app.kubernetes.io/part-of: kho-du-lieu-stc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apicurio
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apicurio
+    spec:
+      containers:
+        - name: registry
+          # 3.1.7 chứ không phải 3.3.1 — bản mới nhất CHẠY ĐƯỢC trên phần cứng
+          # này. Từ 3.2 trở đi Apicurio đổi sang nền UBI mới, biên dịch với
+          # baseline x86-64-v3, còn CPU của các node trong cụm không hỗ trợ tập
+          # lệnh đó: container chết ngay với "Fatal glibc error". Đã đo bằng cách
+          # chạy thử 3.2.6 (hỏng), 3.1.7 và 3.0.15 (chạy).
+          image: quay.io/apicurio/apicurio-registry:3.1.7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: APICURIO_STORAGE_KIND
+              value: sql
+            - name: APICURIO_STORAGE_SQL_KIND
+              value: postgresql
+            - name: APICURIO_DATASOURCE_URL
+              valueFrom: { secretKeyRef: { name: apicurio-db, key: jdbc-url } }
+            - name: APICURIO_DATASOURCE_USERNAME
+              valueFrom: { secretKeyRef: { name: apicurio-db, key: user } }
+            - name: APICURIO_DATASOURCE_PASSWORD
+              valueFrom: { secretKeyRef: { name: apicurio-db, key: password } }
+            # Giao diện quản trị mở trong môi trường kiểm chứng; khi ra thật
+            # phải bật xác thực qua Keycloak.
+            - name: QUARKUS_HTTP_CORS_ORIGINS
+              value: "*"
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits:   { cpu: 500m, memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            runAsNonRoot: true
+            seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apicurio
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: apicurio
+spec:
+  selector:
+    app.kubernetes.io/name: apicurio
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

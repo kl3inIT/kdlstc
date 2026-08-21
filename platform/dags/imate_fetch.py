@@ -22,19 +22,23 @@ from psycopg2.extras import execute_values
 
 from imate_common import (
     DLT_VERSION,
+    LIST_CONTRACT,
     S3_BUCKET,
     PAGE_SIZE,
     imate_cursor,
     MAX_PAGES,
     SOURCE_CODE,
+    SourceContractError,
     STOP_AFTER_CLEAN_PAGES,
     TENANT_CODE,
     TENANT_ID,
     api_get,
+    set_status,
     check_list_contract,
     document_detail,
     list_page,
 )
+from imate_schema import SchemaBreakingChange, check as check_schema
 from warehouse import object_store
 
 
@@ -77,6 +81,7 @@ def discover(run_id):
     log(f"da biet: {len(known)} van ban")
 
     page, clean_streak = 1, 0
+    drift = {"drift": "SKIPPED"}
     seen, fresh, changed = 0, 0, 0
     source_total = None
 
@@ -85,6 +90,13 @@ def discover(run_id):
         documents = body["documents"]
         source_total = body["meta"]["total"]
         check_list_contract(documents)
+
+        # Registry check runs on the FIRST page only. One page is a fair sample
+        # of the shape — every row in a response comes from the same serialiser
+        # — and checking all 62 would register 62 identical versions.
+        if page == 1:
+            drift = check_schema("documents-list", documents, LIST_CONTRACT)
+            log(f"schema: {json.dumps(drift, ensure_ascii=False)}")
 
         batch = []
         page_fresh = page_changed = 0
@@ -153,6 +165,7 @@ def discover(run_id):
     summary = {
         "run_id": run_id,
         "extractor": f"dlt-rest-client/{DLT_VERSION}",
+        "schema_drift": drift,
         "pages_read": page,
         "rows_seen": seen,
         "new": fresh,
@@ -323,10 +336,29 @@ def main():
     parser.add_argument("--run-id", required=True)
     args = parser.parse_args()
 
-    if args.stage == "discover":
-        discover(args.run_id)
-    elif args.stage == "land":
-        land(args.run_id)
+    # A source that changed shape has to say so IN THE LEDGER, not just die.
+    #
+    # Before this, a broken contract raised inside the pod, the pod exited, the
+    # Airflow task went red — and the run ticket stayed at 'received' forever
+    # because the closing task never ran. Whoever was on duty saw one red box
+    # and no reason. The status existed in the code and in the documentation
+    # and was never once reachable.
+    #
+    # The pod writes it itself because the pod is the only thing that knows.
+    try:
+        if args.stage == "discover":
+            discover(args.run_id)
+        elif args.stage == "land":
+            land(args.run_id)
+    except (SourceContractError, SchemaBreakingChange) as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+        log("NGUON DOI CAU TRUC — chan lo: " + reason)
+        set_status(args.run_id, "schema_blocked",
+                   message=json.dumps({"run_id": args.run_id,
+                                       "stage": args.stage,
+                                       "reason": reason[:2000]},
+                                      ensure_ascii=False))
+        return 3
     return 0
 
 
