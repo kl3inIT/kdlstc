@@ -1,5 +1,5 @@
 """
-imate_06_publish — step 6 of 7: the star appears.
+imate_05_publish — step 5 of 7: the star appears.
 
 Builds the three dimensions and merge-upserts the two facts. Only documents
 that came through the gate AND carry no structural defect are published;
@@ -136,7 +136,7 @@ SELECT r.global_id, r.seq,
 
 
 @dag(
-    dag_id="imate_06_publish",
+    dag_id="imate_05_publish",
     schedule=[VERDICT],
     start_date=datetime(2026, 8, 1),
     catchup=False,
@@ -144,7 +144,7 @@ SELECT r.global_id, r.seq,
     is_paused_upon_creation=True,
     tags=["imate", "poc"],
 )
-def imate_06_publish():
+def imate_05_publish():
 
     @task
     def open_run(**context):
@@ -226,4 +226,4 @@ def imate_06_publish():
     close_run(publish(info))
 
 
-imate_06_publish()
+imate_05_publish()

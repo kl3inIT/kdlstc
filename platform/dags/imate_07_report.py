@@ -1,6 +1,11 @@
 """
 imate_07_report — step 7 of 7: the answer.
 
+Reads through the serving layer's contract rather than straight off Gold: it
+starts when step 6 has confirmed the curated tables are readable by the BI
+identity, so the report and the dashboard can never be looking at a table the
+other one cannot reach.
+
 Produces the deliverable that was asked for: document counts per day,
 filterable by issuing body, by month and by kind. One CSV at
 day x kind x body grain (a pivot table filters the rest), plus a rendered
@@ -23,7 +28,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import CURATED
+from imate_assets import SERVING
 from imate_common import S3_BUCKET, imate_cursor, set_status as set_run_status
 from imate_ops import ticket
 from warehouse import object_store
@@ -33,7 +38,7 @@ from warehouse import object_store
 
 @dag(
     dag_id="imate_07_report",
-    schedule=[CURATED],
+    schedule=[SERVING],
     start_date=datetime(2026, 8, 1),
     catchup=False,
     max_active_runs=1,

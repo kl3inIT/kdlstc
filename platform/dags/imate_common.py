@@ -133,6 +133,45 @@ def imate_cursor(autocommit=False):
         conn.close()
 
 
+# ── the serving identity ──────────────────────────────────────────────────
+# Step 6 checks the door a BI tool actually walks through, and a door can only
+# be checked from outside: connecting as imate_etl would prove nothing, because
+# the writer can read everything by definition. imate_reader holds SELECT on the
+# curated/refdata schemas and nothing else, which is exactly what Superset uses.
+READER_CONN_ID = "imate_reader"
+
+
+@contextlib.contextmanager
+def reader_cursor():
+    """Read-only cursor on the slice, using the identity BI tools use."""
+    import psycopg2
+
+    if os.environ.get("IMATE_READER_HOST"):
+        params = {
+            "host": os.environ["IMATE_READER_HOST"],
+            "dbname": os.environ["IMATE_READER_DBNAME"],
+            "user": os.environ["IMATE_READER_USER"],
+            "password": os.environ["IMATE_READER_PASSWORD"],
+        }
+    else:
+        from airflow.hooks.base import BaseHook
+
+        conn = BaseHook.get_connection(READER_CONN_ID)
+        params = {"host": conn.host, "port": conn.port or 5432,
+                  "dbname": conn.schema, "user": conn.login,
+                  "password": conn.password}
+
+    connection = psycopg2.connect(connect_timeout=10,
+                                  application_name="airflow-imate-serving",
+                                  **params)
+    connection.autocommit = True
+    try:
+        with connection.cursor() as cur:
+            yield cur
+    finally:
+        connection.close()
+
+
 def set_status(run_id, status, **fields):
     """warehouse.set_run_status, but through the slice's own connection."""
     from warehouse import RUN_STATES

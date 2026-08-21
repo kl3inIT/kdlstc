@@ -1,5 +1,12 @@
 """
-imate_05_quality_gate — step 5 of 7: judge the batch, block or bless.
+imate_04b_quality_gate — second half of step 4: judge the batch, block or bless.
+
+Numbered 04b, not 05, because the architecture diagram puts the quality gate
+INSIDE Silver-2. It runs as its own DAG anyway for one reason: the gate scores
+the whole typed snapshot, not the batch that just arrived, so it needs to start
+after Silver-2 has finished writing rather than inside that transaction. The
+file number therefore tracks the ARCHITECTURE step, and the letter records the
+split — one DAG per stage was never the promise; one stage per number is.
 
 Two verdicts, deliberately never averaged into one number:
 
@@ -38,7 +45,7 @@ MIN_QUALITY_SCORE = 0.95
 
 
 @dag(
-    dag_id="imate_05_quality_gate",
+    dag_id="imate_04b_quality_gate",
     schedule=[SILVER_TWO],
     start_date=datetime(2026, 8, 1),
     catchup=False,
@@ -46,7 +53,7 @@ MIN_QUALITY_SCORE = 0.95
     is_paused_upon_creation=True,
     tags=["imate", "poc"],
 )
-def imate_05_quality_gate():
+def imate_04b_quality_gate():
 
     @task
     def open_run(**context):
@@ -113,4 +120,4 @@ def imate_05_quality_gate():
     close_run(judge(info))
 
 
-imate_05_quality_gate()
+imate_04b_quality_gate()
