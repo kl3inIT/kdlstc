@@ -97,8 +97,9 @@ nguồn đã biết (xem [docs/roadmap.md](docs/roadmap.md)).
 # Đồng bộ project dbt lên cụm (bắt buộc sau khi sửa model)
 kubectl -n stc-hy-airflow create configmap imate-dbt   --from-file=platform/dbt-imate/dbt_project.yml   --from-file=platform/dbt-imate/profiles.yml   --from-file=platform/dbt-imate/models/marts/ --dry-run=client -o yaml | kubectl apply -f -
 
-# Dựng lại Apicurio
+# Dựng lại Apicurio và Cube (đổi model Cube thì phải chạy lại — pod mới nạp)
 ./platform/scripts/deploy-apicurio.sh
+./platform/scripts/deploy-cube.sh
 
 # Đồng bộ DAG lên cụm
 kubectl -n stc-hy-airflow create configmap airflow-dags \
