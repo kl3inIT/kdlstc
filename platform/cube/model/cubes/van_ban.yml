@@ -130,3 +130,31 @@ cubes:
         title: Đã xác nhận tên
         sql: is_confirmed
         type: boolean
+
+# ── View: mặt phẳng cho công cụ BI ───────────────────────────────────────
+#
+# SQL API của Cube phơi mỗi cube thành một bảng, và chiều của cube nối KHÔNG hiện
+# ra thành cột — Superset nối vào sẽ chỉ thấy đúng năm cột của van_ban, không có
+# tháng, không có loại, không có đơn vị.
+#
+# View gộp cube và các đường nối thành một mặt phẳng duy nhất. Đây cũng chính là
+# thứ đáng để Superset đọc: nó là HỢP ĐỒNG với người dùng cuối, còn cube bên dưới
+# là cách hiện thực. Đổi cách join hay đổi tên bảng vật lý thì view giữ nguyên,
+# dashboard không phải sửa.
+views:
+  - name: bao_cao_van_ban
+    description: Báo cáo văn bản đến — mặt phẳng dùng cho Superset và các kênh BI
+    cubes:
+      - join_path: van_ban
+        includes:
+          - so_van_ban
+          - so_don_vi_gui
+          - so_ky_hieu
+          - trich_yeu
+          - trang_thai
+      - join_path: van_ban.ngay
+        includes: [ngay, thang, thang_key, nam, cuoi_tuan]
+      - join_path: van_ban.loai
+        includes: [ma_loai, ten_loai]
+      - join_path: van_ban.don_vi
+        includes: [ma_don_vi, ten_don_vi, da_xac_nhan]
