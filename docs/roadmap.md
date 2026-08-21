@@ -14,7 +14,7 @@ Cập nhật: 21/08/2026 (sau đợt bổ sung Apicurio, GX Core, dbt).
 | Không có Schema Registry | Apicurio Registry 3.1.7 lưu PostgreSQL, bước 1 đăng ký và đối chiếu schema mỗi lượt | **Đã kiểm đủ 5 tình huống**: lần đầu `NONE` v1 · y nguyên `NONE` v2 · thêm trường `ADDITIVE` v3 · đổi kiểu `BREAKING` · bỏ trường bắt buộc `BREAKING` |
 | `schema_blocked` không đạt được | Pod bắt lỗi hợp đồng/schema và tự ghi `schema_blocked` vào sổ cái trước khi thoát | Nhánh `BREAKING` đã kiểm chứng trên registry thật — tình huống 1 nay chặn được |
 | Gold dựng bằng SQL viết tay | Chuyển sang dbt: project riêng `platform/dbt-imate`, 27 phép kiểm chạy mỗi lượt build | Đối chiếu schema riêng trước khi cắt sang: **0 dòng lệch** trên cả 5 bảng; chạy thật giữ nguyên 6.141 / 99.214 |
-| Một chỉ tiêu, hai con số | Cube v1.7.24 làm lớp ngữ nghĩa; bước 7 hỏi Cube thay vì tự viết SQL | Tổng khớp tuyệt đối 6.141; CSV 3.839 dòng · 504 ngày · 335 dòng số 0 |
+| Một chỉ tiêu, hai con số | Cube v1.7.24 làm lớp ngữ nghĩa; **cả bước 7 lẫn Superset** đọc qua đúng một định nghĩa | Bước 7: tổng 6.141, CSV 3.839 dòng · 504 ngày · 335 dòng số 0. Dashboard: 4/4 biểu đồ, 0 ô rỗng, lọc Tháng 06/2025 chạy xuyên Cube |
 | 7 bước thiếu bước Serving | Thêm `imate_06_serving`: kiểm cửa đọc bằng vai trò `imate_reader`, thử ghi bắt buộc bị từ chối, ghi độ tươi | Chạy thật: 5 bảng đọc được, ghi bị từ chối, độ tươi 96 ngày |
 
 ## Nhóm 1 — đã khép hết ngày 21/08/2026
@@ -49,9 +49,8 @@ chỉ ràng buộc kiểu cho trường nằm trong hợp đồng.
 Bước 6 Serving **đã có** từ 21/08: kiểm cửa đọc bằng vai trò `imate_reader`,
 thử ghi để bắt buộc bị từ chối, ghi độ tươi. Phần còn thiếu là Cube.
 
-Bước 6 nay đã đủ lớp ngữ nghĩa. Còn thiếu PostgREST và APISIX — chỉ cần khi
-tỉnh thật sự yêu cầu đẩy số sang IOC/LGSP; Superset vẫn cần chuyển sang đọc qua
-Cube để hai kênh khai thác dùng chung một định nghĩa.
+Bước 6 nay đã đủ lớp ngữ nghĩa và **cả hai kênh khai thác đều đi qua nó**. Còn
+thiếu PostgREST và APISIX — chỉ cần khi tỉnh thật sự yêu cầu đẩy số sang IOC/LGSP.
 
 Ghi chú về Apicurio: bản mới nhất 3.3.1 **không chạy được** trên phần cứng hiện
 có — từ 3.2 trở đi ảnh biên dịch với baseline x86-64-v3 mà CPU các node không hỗ

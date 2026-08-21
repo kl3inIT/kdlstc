@@ -119,6 +119,9 @@ kubectl -n stc-hy-airflow create configmap imate-dbt   --from-file=platform/dbt-
 ./platform/scripts/deploy-apicurio.sh
 ./platform/scripts/deploy-cube.sh
 
+# Trỏ Superset sang đọc qua Cube (chạy TRONG pod vì SSO đã tắt đăng nhập mật khẩu)
+kubectl -n stc-hy-bi exec -i deploy/superset -- sh -c 'cat > /tmp/ds.py'   < platform/scripts/superset-cube-datasource.py
+
 # Đồng bộ DAG lên cụm
 kubectl -n stc-hy-airflow create configmap airflow-dags \
   --from-file=platform/dags --dry-run=client -o yaml | kubectl apply -f -
