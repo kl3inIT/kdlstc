@@ -28,3 +28,9 @@ platform/vendor/*.tgz
 
 # Browser state captured during Playwright verification runs
 .playwright-cli/
+
+# Skill của dự án khác, không thuộc kho mã này
+.skills/
+.agents/
+.claude/skills/
+backend/

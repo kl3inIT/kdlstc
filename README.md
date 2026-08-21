@@ -17,6 +17,19 @@ trong Git.
 - `jmix-mocks/`: dịch vụ nguồn mô phỏng.
 - `khaithac/`: prototype khai thác và trình bày dữ liệu.
 
+## Tài liệu
+
+Điểm vào là [CLAUDE.md](CLAUDE.md) — bản đồ dẫn sang các tài liệu chuyên sâu:
+
+| Tài liệu | Trả lời câu hỏi |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Đang có gì, chạy ở đâu, gõ lệnh nào |
+| [docs/vision.md](docs/vision.md) | Định làm gì, vì sao chọn kiến trúc này |
+| [docs/roadmap.md](docs/roadmap.md) | Còn thiếu gì, làm theo thứ tự nào |
+| [docs/specs/](docs/specs/) | Từng lát cắt nguồn hoạt động ra sao |
+| [docs/guidelines/](docs/guidelines/) | Cơ chế dùng chung giữa các lát cắt |
+| [docs/decisions/](docs/decisions/) | Vì sao ngày ấy chọn thế, đã loại phương án nào |
+
 Tài liệu vận hành chi tiết nằm tại [platform/README.md](platform/README.md).
 
 ## Airflow image
