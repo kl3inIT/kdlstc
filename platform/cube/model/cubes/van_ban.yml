@@ -1,0 +1,132 @@
+# Định nghĩa chỉ tiêu — nguồn sự thật duy nhất cho mọi kênh khai thác.
+#
+# Trước tệp này, bước 7 và Superset mỗi bên tự viết SQL cho cùng một con số.
+# Hôm nay chúng trùng nhau là may; ngày ai đó sửa một bên mà quên bên kia thì hai
+# nơi ra hai số, và không có chỗ nào là định nghĩa gốc để phân xử.
+#
+# Đọc thẳng lược đồ hình sao ở lớp curated, không dựng lại phép join nào — dbt đã
+# sở hữu hình dạng đó rồi. Hai nơi cùng chứa một logic là hai nơi có thể lệch.
+
+cubes:
+  - name: van_ban
+    sql_table: curated.fact_document
+    description: Văn bản đến, một dòng một văn bản
+
+    joins:
+      - name: ngay
+        sql: "{CUBE}.date_key = {ngay}.date_key"
+        relationship: many_to_one
+      - name: loai
+        sql: "{CUBE}.kind_key = {loai}.kind_key"
+        relationship: many_to_one
+      - name: don_vi
+        sql: "{CUBE}.body_key = {don_vi}.body_key"
+        relationship: many_to_one
+
+    measures:
+      - name: so_van_ban
+        title: Số văn bản
+        type: count
+        description: Đếm số văn bản — chỉ tiêu gốc của báo cáo
+
+      - name: so_don_vi_gui
+        title: Số đơn vị gửi
+        type: count_distinct
+        sql: body_key
+
+    dimensions:
+      - name: global_id
+        sql: global_id
+        type: string
+        primary_key: true
+
+      - name: so_ky_hieu
+        title: Số ký hiệu
+        sql: document_no
+        type: string
+
+      - name: trich_yeu
+        title: Trích yếu
+        sql: subject
+        type: string
+
+      - name: trang_thai
+        title: Trạng thái xử lý
+        sql: process_status
+        type: string
+
+  - name: ngay
+    sql_table: curated.dim_date
+    description: Chiều thời gian, có đủ cả ngày không có văn bản
+    measures:
+      # Đếm trên chính chiều thời gian, không qua bảng dữ kiện.
+      #
+      # Cần vì một chỉ tiêu đo trên fact chỉ trả về những ngày CÓ văn bản. Báo
+      # cáo phải hiện cả ngày không có gì — lỗ hổng dữ liệu tháng 05/2025 là
+      # chuyện thật của nguồn, và một báo cáo làm phẳng nó đi là báo cáo nói dối
+      # về đầu vào của chính mình.
+      - name: so_ngay
+        title: Số ngày
+        type: count
+    dimensions:
+      - name: date_key
+        sql: date_key
+        type: number
+        primary_key: true
+      - name: ngay
+        title: Ngày
+        sql: full_date
+        type: time
+      - name: thang
+        title: Tháng
+        sql: month_label
+        type: string
+      - name: thang_key
+        sql: month_key
+        type: number
+      - name: nam
+        title: Năm
+        sql: year
+        type: number
+      - name: cuoi_tuan
+        title: Cuối tuần
+        sql: is_weekend
+        type: boolean
+
+  - name: loai
+    sql_table: curated.dim_document_kind
+    description: Danh mục đóng theo Nghị định 30/2020
+    dimensions:
+      - name: kind_key
+        sql: kind_key
+        type: number
+        primary_key: true
+      - name: ma_loai
+        sql: kind_code
+        type: string
+      - name: ten_loai
+        title: Loại văn bản
+        sql: kind_name
+        type: string
+
+  - name: don_vi
+    sql_table: curated.dim_issuing_body
+    description: Danh mục mở, tự đăng ký khi gặp lần đầu
+    dimensions:
+      - name: body_key
+        sql: body_key
+        type: number
+        primary_key: true
+      - name: ma_don_vi
+        sql: body_code
+        type: string
+      - name: ten_don_vi
+        title: Đơn vị gửi
+        sql: body_name
+        type: string
+      # Cờ này đi tới tận đây có chủ đích: người đọc báo cáo phân biệt được tên
+      # cơ quan đã có thẩm quyền xác nhận với tên pipeline suy từ mã.
+      - name: da_xac_nhan
+        title: Đã xác nhận tên
+        sql: is_confirmed
+        type: boolean

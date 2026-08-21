@@ -244,3 +244,13 @@ config:
     worker_concurrency: "4"
   dag_processor:
     min_file_process_interval: "120"
+
+extraEnv: |
+  # Lớp ngữ nghĩa: bước 7 hỏi Cube thay vì tự viết SQL, nên worker cần khoá ký
+  # token. Khoá nằm trong Secret, không nằm trong values.
+  - name: CUBE_URL
+    valueFrom:
+      secretKeyRef: { name: cube-api, key: url }
+  - name: CUBE_API_SECRET
+    valueFrom:
+      secretKeyRef: { name: cube-api, key: api-secret }

@@ -1,0 +1,108 @@
+# Cube — lớp ngữ nghĩa của lớp 4 trong kiến trúc.
+#
+# Kết nối bằng vai trò CHỈ ĐỌC imate_reader, cùng danh tính mà Superset dùng.
+# Không dùng vai trò ghi: lớp phục vụ không có lý do gì để sửa được kho, và bước
+# 6 mỗi lượt đều thử ghi để bắt buộc bị từ chối.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cube
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: cube
+    app.kubernetes.io/part-of: kho-du-lieu-stc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cube
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cube
+      annotations:
+        # Đổi model thì phải cuộn lại pod; annotation này để lệnh apply nhận ra.
+        stc/model-configmap: cube-model
+    spec:
+      containers:
+        - name: cube
+          image: cubejs/cube:v1.7.24
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+            - name: sql
+              containerPort: 15432
+          env:
+            - name: CUBEJS_DEV_MODE
+              value: "true"          # môi trường kiểm chứng; ra thật phải tắt
+            - name: CUBEJS_DB_TYPE
+              value: postgres
+            - name: CUBEJS_DB_HOST
+              valueFrom: { secretKeyRef: { name: cube-db, key: host } }
+            - name: CUBEJS_DB_NAME
+              valueFrom: { secretKeyRef: { name: cube-db, key: dbname } }
+            - name: CUBEJS_DB_USER
+              valueFrom: { secretKeyRef: { name: cube-db, key: user } }
+            - name: CUBEJS_DB_PASS
+              valueFrom: { secretKeyRef: { name: cube-db, key: password } }
+            - name: CUBEJS_API_SECRET
+              valueFrom: { secretKeyRef: { name: cube-db, key: api-secret } }
+            # SQL API để Superset nối thẳng bằng giao thức PostgreSQL.
+            - name: CUBEJS_PG_SQL_PORT
+              value: "15432"
+            - name: CUBEJS_SQL_USER
+              valueFrom: { secretKeyRef: { name: cube-db, key: sql-user } }
+            - name: CUBEJS_SQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: cube-db, key: sql-password } }
+            # KHÔNG đặt CUBEJS_SCHEMA_PATH: Cube v1 đã mặc định quét thư mục
+            # model/, đặt thêm biến này khiến nó quét cùng một cây hai lần và
+            # dừng với "Found duplicate cube name".
+          volumeMounts:
+            # Gắn theo subPath, không gắn cả thư mục.
+            #
+            # ConfigMap gắn dạng thư mục luôn kèm một thư mục ẩn ..data trỏ tới
+            # chính các tệp đó; Cube quét đệ quy nên nạp mỗi model HAI lần và
+            # dừng với "Found duplicate cube name". subPath gắn thẳng một tệp,
+            # không sinh liên kết ẩn.
+            #
+            # Đánh đổi: tệp gắn theo subPath không tự cập nhật khi ConfigMap đổi.
+            # Không sao — script triển khai vẫn cuộn lại pod sau mỗi lần đổi model.
+            - name: model
+              mountPath: /cube/conf/model/cubes/van_ban.yml
+              subPath: van_ban.yml
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits:   { cpu: 500m, memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - name: model
+          configMap: { name: cube-model }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cube
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: cube
+spec:
+  selector:
+    app.kubernetes.io/name: cube
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: sql
+      port: 15432
+      targetPort: sql
