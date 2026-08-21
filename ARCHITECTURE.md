@@ -10,12 +10,37 @@ Cập nhật: 21/08/2026.
 | Thành phần | Phiên bản / vị trí |
 |---|---|
 | Kubernetes | Rancher, project `local:p-vs2td` |
-| Airflow | 3.2.2, namespace `stc-hy-airflow` |
+| Airflow | 3.2.2, CeleryExecutor, namespace `stc-hy-airflow` |
 | Object storage | SeaweedFS (S3), namespace `stc-hy` |
+| Schema Registry | Apicurio Registry 3.1.7, PostgreSQL storage, namespace `stc-hy` |
+| Quality engine | Great Expectations Core 1.21.0, chạy trong task Airflow |
 | Warehouse | PostgreSQL — `stc_dwh` (QL Giá, TABMIS), `stc_imate` (iMate) |
 | BI | Superset 6.1, namespace `stc-hy-bi` |
-| SSO | Keycloak, realm `khodl` |
-| Ảnh Airflow | `ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-r1` |
+| SSO | Keycloak 26.6.4, realm `khodl`, namespace `stc-hy` |
+| Ảnh Airflow | `ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-gx1.21.0-r1` |
+
+Checkpoint Rancher ngày 21/08/2026: Helm release Airflow revision 13 chạy
+digest `sha256:f8bb40efd9554a27627ec5f2bac7c6e6fc8c8188c207274cdf62fa9924de959f`;
+worker và các control-plane pod đều Ready. Apicurio 3.1.7 là bản mới nhất chạy
+được trên CPU hiện tại; từ dòng 3.2, image yêu cầu x86-64-v3 và chết ngay khi
+khởi động trên các node này.
+
+## Xác thực dùng chung
+
+Keycloak realm `khodl` là SSO của nền tảng. Trình duyệt đi qua issuer công
+khai do values local cấu hình; các dịch vụ trong cụm dùng Service nội bộ để
+tránh hairpin qua Ingress. Mỗi ứng dụng có client và Secret riêng, không dùng
+chung client-secret:
+
+| Ứng dụng | Client | Nơi giữ bí mật |
+|---|---|---|
+| Airflow | `airflow` | `stc-hy-airflow/keycloak-airflow` |
+| Superset | `superset` | khóa `keycloak-client-secret` trong `stc-hy-bi/superset-secrets` |
+| SeaweedFS qua oauth2-proxy | `seaweedfs` | `stc-hy/oauth2-proxy-sw` |
+
+Tên Secret và tên khóa được ghi để vận hành; giá trị không được đưa vào tài
+liệu hay Git. App khai thác mới phải đăng ký client riêng trong cùng realm,
+không tái sử dụng ba client trên.
 
 Namespace phải được tạo **kèm** annotation `field.cattle.io/projectId`, nếu không
 sẽ thành namespace mồ côi không có quyền gì. Xem
@@ -49,6 +74,12 @@ Tám DAG phủ bảy bước; bước 4 được chẻ làm hai, ghi bằng ch�
 Nối nhau bằng Asset của Airflow, không DAG nào gọi tên DAG nào. Xem
 [docs/guidelines/dag-airflow.md](docs/guidelines/dag-airflow.md).
 
+Bước 1 đã nối Apicurio để lưu phiên bản JSON Schema và phân biệt thay đổi
+`NONE` / `ADDITIVE` / `BREAKING`. Thay đổi phá vỡ được ghi vào sổ cái dưới
+trạng thái `schema_blocked`. Bước 4b dùng GX Core; luật, ngưỡng, mức
+`blocker` / `scoring` / `informational`, chủ sở hữu và hạn xử lý nằm trong
+`metadata.quality_rules`, không còn đóng cứng trong Python.
+
 ## Số liệu đang có (21/08/2026)
 
 ```
@@ -63,6 +94,12 @@ nguồn đã biết (xem [docs/roadmap.md](docs/roadmap.md)).
 ## Lệnh hay dùng
 
 ```bash
+# Đồng bộ project dbt lên cụm (bắt buộc sau khi sửa model)
+kubectl -n stc-hy-airflow create configmap imate-dbt   --from-file=platform/dbt-imate/dbt_project.yml   --from-file=platform/dbt-imate/profiles.yml   --from-file=platform/dbt-imate/models/marts/ --dry-run=client -o yaml | kubectl apply -f -
+
+# Dựng lại Apicurio
+./platform/scripts/deploy-apicurio.sh
+
 # Đồng bộ DAG lên cụm
 kubectl -n stc-hy-airflow create configmap airflow-dags \
   --from-file=platform/dags --dry-run=client -o yaml | kubectl apply -f -

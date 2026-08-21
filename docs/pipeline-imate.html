@@ -222,7 +222,7 @@
 
 <div class="wrap">
   <p class="eyebrow">Nền tảng dữ liệu STC · Slice 3 · iMate POC</p>
-  <h1>Hành trình một văn bản qua 7 DAG</h1>
+  <h1>Hành trình một văn bản qua 8 DAG / 7 bước</h1>
   <p class="lede">Theo chân văn bản thật <span class="doc">01/TB-SCT</span> của tenant
   <span class="doc">doit.phuyen</span> (Sở Công Thương Phú Yên) — từ một dòng trong danh sách API
   đến một con số trong báo cáo. Mỗi chặng đổi <b>đúng một thứ</b>; phần chữ
@@ -233,9 +233,10 @@
     <a href="#s2"><b>02</b>giữ bằng chứng</a><span class="sep">→</span>
     <a href="#s3"><b>03</b>trải phẳng</a><span class="sep">→</span>
     <a href="#s4"><b>04</b>hiểu</a><span class="sep">→</span>
-    <a href="#s5"><b>05</b>chấm điểm</a><span class="sep">→</span>
-    <a href="#s6"><b>06</b>fact/dim</a><span class="sep">→</span>
-    <a href="#s7"><b>07</b>trả lời</a>
+    <a href="#s5"><b>04b</b>chấm điểm</a><span class="sep">→</span>
+    <a href="#s6"><b>05</b>fact/dim</a><span class="sep">→</span>
+    <a href="#s7"><b>06</b>mở cửa đọc</a><span class="sep">→</span>
+    <a href="#s8"><b>07</b>trả lời</a>
   </nav>
 
   <!-- ══ 01 ══ -->
@@ -332,16 +333,18 @@ stg_imate__attachment   0 dòng    <span class="cm">← ~75% văn bản không c
 
   <div class="conn"><em>↓ đếm toàn đợt, phán một lần</em></div>
 
-  <!-- ══ 05 ══ -->
+  <!-- ══ 04b ══ -->
   <section class="stage" id="s5">
     <div class="stage-head">
-      <span class="badge">05</span><span class="dagid">imate_05_quality_gate</span>
+      <span class="badge">04b</span><span class="dagid">imate_04b_quality_gate</span>
       <h2>CHẤM ĐIỂM cả đợt</h2>
     </div>
-    <p class="desc">Không tạo dữ liệu mới — chỉ đếm và phán. Hai số đo
-    <b>cố tình không cộng gộp</b>, vì chúng bảo hai người khác nhau phải làm việc.</p>
-<div class="payload">mapping_coverage   <span class="t">95,5%</span>  ≥ 50%   <span class="ok">✓</span>   <span class="cm">thấp = bài tập của người quản danh mục</span>
-quality_score      <span class="t">99,8%</span>  ≥ 95%   <span class="ok">✓</span>   <span class="cm">thấp = dữ liệu hỏng — sự cố, chặn ngay</span>
+    <p class="desc">Không tạo dữ liệu mới — GX Core chạy các expectation trên toàn
+    snapshot; metadata quyết định luật nào chặn, tính điểm hoặc chỉ theo dõi.</p>
+<div class="payload">uploaded_date_present     <span class="ok">blocker</span>         <span class="cm">thiếu ngày dùng được → chặn</span>
+kind_in_statutory_list     <span class="t">scoring</span>         <span class="cm">nợ quy tắc loại văn bản</span>
+body_resolved              <span class="t">scoring</span>         <span class="cm">nợ quy tắc cơ quan</span>
+body_confirmed             <span class="cm">informational</span>   <span class="cm">đo nhưng không chặn khi chưa có JWT danh bạ</span>
 
 → <span class="ok">PASS</span> — đợt này được phép công bố</div>
     <div class="notes">
@@ -352,10 +355,10 @@ quality_score      <span class="t">99,8%</span>  ≥ 95%   <span class="ok">✓<
 
   <div class="conn"><em>↓ chỉ dữ liệu qua cửa mới được vào ⭐</em></div>
 
-  <!-- ══ 06 ══ -->
+  <!-- ══ 05 ══ -->
   <section class="stage" id="s6">
     <div class="stage-head">
-      <span class="badge">06</span><span class="dagid">imate_06_publish</span>
+      <span class="badge">05</span><span class="dagid">imate_05_publish</span>
       <h2>Dựng FACT / DIM — "1 bảng chính + 3 bảng tra"</h2>
     </div>
     <p class="desc">Giờ mới xuất hiện ngôi sao: bảng đếm ở giữa, ba bảng lọc xung quanh.
@@ -377,11 +380,11 @@ quality_score      <span class="t">99,8%</span>  ≥ 95%   <span class="ok">✓<
 
       <rect class="box" x="452" y="24" width="188" height="58" rx="8"/>
       <text class="ttl" x="468" y="48">dim_document_kind</text>
-      <text class="lbl" x="468" y="68">lọc theo loại — 21 loại</text>
+      <text class="lbl" x="468" y="68">lọc theo loại — 39 loại</text>
 
       <rect class="box" x="452" y="240" width="188" height="58" rx="8"/>
       <text class="ttl" x="468" y="264">dim_issuing_body</text>
-      <text class="lbl" x="468" y="284">lọc theo đơn vị gửi — 339</text>
+      <text class="lbl" x="468" y="284">lọc theo đơn vị gửi — 340</text>
 
       <rect class="ghost" x="30" y="240" width="180" height="58" rx="8"/>
       <text class="ttl" x="46" y="264">fact_routing</text>
@@ -395,10 +398,28 @@ quality_score      <span class="t">99,8%</span>  ≥ 95%   <span class="ok">✓<
     </div>
   </section>
 
-  <div class="conn"><em>↓ COUNT(*) + 3 bộ lọc</em></div>
+  <div class="conn"><em>↓ kiểm cửa đọc, cấm ghi, đo độ tươi</em></div>
+
+  <!-- ══ 06 ══ -->
+  <section class="stage" id="s7">
+    <div class="stage-head">
+      <span class="badge">06</span><span class="dagid">imate_06_serving</span>
+      <h2>MỞ CỬA ĐỌC, nhưng không cho ghi</h2>
+    </div>
+    <p class="desc">Vai trò <b>imate_reader</b> phải đọc được đủ năm bảng curated,
+    thử ghi phải bị PostgreSQL từ chối, và độ tươi được đo trước khi phát Asset serving.</p>
+<div class="payload">fact_document <span class="t">6.141</span> · fact_routing <span class="t">99.214</span>
+write_denied <span class="ok">true</span> · staleness <span class="t">96 ngày</span></div>
+    <div class="notes">
+      <span>đường đọc và đường ghi được kiểm riêng</span>
+      <span>Cube chưa có — đây là điểm cắm lớp ngữ nghĩa sau này</span>
+    </div>
+  </section>
+
+  <div class="conn"><em>↓ chỉ khi cửa phục vụ đạt mới xuất báo cáo</em></div>
 
   <!-- ══ 07 ══ -->
-  <section class="stage" id="s7">
+  <section class="stage" id="s8">
     <div class="stage-head">
       <span class="badge">07</span><span class="dagid">imate_07_report</span>
       <h2>ĐẾM và trả lời — số lượng văn bản theo ngày</h2>
@@ -409,8 +430,8 @@ quality_score      <span class="t">99,8%</span>  ≥ 95%   <span class="ok">✓<
 
     <div class="filters">
       <span>Tháng: <b>tất cả</b> ▾</span>
-      <span>Loại: <b>tất cả (21)</b> ▾</span>
-      <span>Đơn vị gửi: <b>tất cả (339)</b> ▾</span>
+      <span>Loại: <b>tất cả (39)</b> ▾</span>
+      <span>Đơn vị gửi: <b>tất cả (340)</b> ▾</span>
     </div>
 
     <div class="chart">

@@ -532,7 +532,7 @@ footer {
       xác định năm tình huống kiểm thử sẽ dựng thêm để nghiệm thu.
     </p>
     <div class="meta-row">
-      <span>Ngày lập: 19/08/2026</span>
+      <span>Ngày lập: 19/08/2026 · cập nhật: 21/08/2026</span>
       <span>Nguồn thật: iMate — tenant doit.phuyen</span>
       <span>Dữ liệu đã chạy: 6.141 văn bản · 99.214 lượt chuyển</span>
     </div>
@@ -598,7 +598,7 @@ footer {
           <tr>
             <td class="tool">Apache Airflow</td>
             <td class="status"><span class="chip ok">Có</span></td>
-            <td>Airflow 3.2.2 trên Kubernetes, 7 DAG nối nhau bằng Asset, chạy theo lịch 10 phút một lần.</td>
+            <td>Airflow 3.2.2 trên Kubernetes, 8 DAG phủ 7 bước và nối nhau bằng Asset; bước 4 tách Silver-2 với Quality Gate.</td>
           </tr>
           <tr>
             <td class="tool">dlt</td>
@@ -622,8 +622,8 @@ footer {
           </tr>
           <tr>
             <td class="tool">Apicurio Registry</td>
-            <td class="status"><span class="chip gap">Thiếu</span></td>
-            <td>Chưa triển khai. Hiện chỉ kiểm 8 trường bắt buộc có hay không, không kiểm kiểu, không lưu phiên bản schema.</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>Đã triển khai bản 3.1.7 với PostgreSQL storage; bước 1 lưu phiên bản JSON Schema và phân loại <code>NONE</code> / <code>ADDITIVE</code> / <code>BREAKING</code>.</td>
           </tr>
           <tr>
             <td class="tool">Mapping Engine</td>
@@ -632,8 +632,8 @@ footer {
           </tr>
           <tr>
             <td class="tool">GX Core — Quality Gate</td>
-            <td class="status"><span class="chip gap">Thiếu</span></td>
-            <td>Cổng chất lượng tự viết bằng SQL. Ngưỡng nằm cứng trong mã Python, chưa phải luật có phiên bản trong cơ sở dữ liệu.</td>
+            <td class="status"><span class="chip ok">Có</span></td>
+            <td>GX Core 1.21.0 chạy expectation; luật, ngưỡng, mức xử lý, owner, SLA và phiên bản nằm trong <code>metadata.quality_rules</code>.</td>
           </tr>
           <tr>
             <td class="tool">PostgreSQL — Curated Store</td>
@@ -698,7 +698,7 @@ footer {
       <h2>Khoảng trống theo từng bước</h2>
     </div>
     <p>
-      Bảy bước dưới đây là bảy DAG đang chạy thật. Với mỗi bước, phần gạch đầu dòng
+      Bảy bước dưới đây được phủ bởi tám DAG đang chạy thật. Với mỗi bước, phần gạch đầu dòng
       liệt kê đúng những gì còn thiếu so với kiến trúc; dấu chấm than đánh dấu chỗ
       hệ thống <strong>đang mô tả sai năng lực của chính nó</strong> — nhóm ưu tiên vá trước.
     </p>
@@ -718,12 +718,10 @@ footer {
             ghi nhận cái mới và cái vừa đổi. Ở trạng thái ổn định chỉ đọc 3 trang là dừng.
           </p>
           <ul class="miss">
-            <li>Chưa có Schema Registry: không lưu phiên bản schema, không phân biệt được thay đổi
-                cộng thêm với thay đổi phá vỡ.</li>
-            <li>Kiểm hợp đồng mới dừng ở mức trường có hay không, chưa kiểm kiểu dữ liệu.</li>
-            <li class="wrong">Trạng thái <code>schema_blocked</code> có khai báo và có ghi trong hồ sơ,
-                nhưng <strong>không DAG iMate nào đặt được trạng thái này</strong>. Nguồn đổi cấu trúc
-                thì pod dừng, tác vụ đỏ, còn sổ cái kẹt ở <code>received</code>.</li>
+            <li>Apicurio Registry đã lưu phiên bản schema và áp luật tương thích <code>FORWARD</code>.</li>
+            <li>Bước 1 đã phân biệt thay đổi cộng thêm với thay đổi phá vỡ; bước 3 chưa nối registry riêng.</li>
+            <li>Pod đã bắt lỗi hợp đồng/schema và ghi <code>schema_blocked</code> vào sổ cái;
+                <code>NONE</code> đã được xác nhận live, còn hoàn tất <code>ADDITIVE</code> và <code>BREAKING</code>.</li>
           </ul>
         </div>
       </div>
@@ -783,9 +781,8 @@ footer {
             văn bản theo danh mục đóng và tự đăng ký cơ quan ban hành vào danh mục mở.
           </p>
           <ul class="miss">
-            <li class="wrong">Chỉ số <strong>độ phủ ánh xạ đang đo sai thứ</strong>: hai điều kiện
-                &ldquo;khớp loại&rdquo; và &ldquo;khớp cơ quan&rdquo; hiện là cùng một biểu thức. Con số
-                95,47% thực chất chỉ là tỉ lệ bóc tách được số văn bản.</li>
+            <li class="none">Hai điều kiện trùng nhau đã được bỏ; loại văn bản, cơ quan phân giải
+                và cơ quan được nguồn có thẩm quyền xác nhận nay là ba sự việc độc lập.</li>
             <li>Không có bảng đối chiếu sang mã chuẩn nhà nước. Mã cơ quan hiện là chữ viết tắt
                 cắt từ số văn bản, chỉ nhất quán trong nội bộ một tenant.</li>
             <li>Ánh xạ chưa tách thành Mapping Engine dùng chung cho nhiều nguồn.</li>
@@ -794,33 +791,32 @@ footer {
       </div>
 
       <div class="row">
-        <span class="step-no">5</span>
+        <span class="step-no">4b</span>
         <div class="body">
           <div class="title-line">
             <h3>Cổng chất lượng</h3>
-            <span class="dag">imate_05_quality_gate</span>
-            <span class="chip half">Một nửa</span>
+            <span class="dag">imate_04b_quality_gate</span>
+            <span class="chip ok">Đạt</span>
           </div>
           <p>
-            Chấm trên toàn bộ ảnh chụp hiện tại chứ không riêng lô vừa chạy, tách hai chỉ số không
-            bao giờ trộn lẫn: độ phủ ánh xạ là bài tập còn nợ, còn điểm chất lượng là sự cố phải chặn.
+            Chấm trên toàn bộ ảnh chụp hiện tại chứ không riêng lô vừa chạy. GX trả chứng cứ;
+            metadata quyết định luật nào chặn lô, luật nào tính điểm và luật nào chỉ theo dõi.
           </p>
-          <ul class="miss">
-            <li>Chưa dùng GX Core. Toàn bộ luật viết bằng SQL thủ công, không tận dụng được thư viện
-                kiểm định chuẩn.</li>
-            <li>Ngưỡng nằm cứng trong mã nguồn. Muốn đổi phải sửa code và triển khai lại, thay vì
-                là quyết định nghiệp vụ có phiên bản và người duyệt.</li>
-            <li>Chưa có trường ghi &ldquo;ai xử lý, trong bao lâu&rdquo; khi một luật bị vi phạm.</li>
+          <ul>
+            <li>GX Core 1.21.0 hiện thực thi bốn expectation trên snapshot typed.</li>
+            <li>Ngưỡng và mức <code>blocker</code> / <code>scoring</code> / <code>informational</code>
+                nằm trong cơ sở dữ liệu, không còn đóng cứng trong Python.</li>
+            <li>Mỗi luật đã có owner, hạn xử lý, hành động khi lỗi và phiên bản để truy vết.</li>
           </ul>
         </div>
       </div>
 
       <div class="row">
-        <span class="step-no">6</span>
+        <span class="step-no">5</span>
         <div class="body">
           <div class="title-line">
             <h3>Gold</h3>
-            <span class="dag">imate_06_publish</span>
+            <span class="dag">imate_05_publish</span>
             <span class="chip half">Một nửa</span>
           </div>
           <p>
@@ -838,10 +834,30 @@ footer {
       </div>
 
       <div class="row">
+        <span class="step-no">6</span>
+        <div class="body">
+          <div class="title-line">
+            <h3>Serving</h3>
+            <span class="dag">imate_06_serving</span>
+            <span class="chip half">Một nửa</span>
+          </div>
+          <p>
+            Kiểm tra vai trò <code>imate_reader</code> đọc được mọi bảng curated, thử ghi phải bị
+            từ chối và đo độ tươi trước khi phát Asset phục vụ.
+          </p>
+          <ul class="miss">
+            <li class="none">Đường đọc chỉ-đọc đã được kiểm chứng trên 6.141 văn bản và 99.214 lượt chuyển.</li>
+            <li>Cube chưa có, nên các kênh vẫn chưa dùng chung một định nghĩa chỉ tiêu.</li>
+            <li>APISIX và đường ra IOC/LGSP chưa triển khai.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row">
         <span class="step-no">7</span>
         <div class="body">
           <div class="title-line">
-            <h3>Phục vụ &amp; Khai thác</h3>
+            <h3>Khai thác</h3>
             <span class="dag">imate_07_report + Superset</span>
             <span class="chip gap">Thiếu nhiều</span>
           </div>
@@ -850,10 +866,8 @@ footer {
             Superset đọc trực tiếp lược đồ hình sao qua vai trò chỉ đọc.
           </p>
           <ul class="miss">
-            <li>Thiếu hẳn lớp ngữ nghĩa Cube. Bước 7 và Superset hiện đi hai đường SQL khác nhau —
+            <li>Thiếu hẳn lớp ngữ nghĩa Cube. DAG 07 và Superset hiện đi hai đường SQL khác nhau —
                 cùng một chỉ tiêu có thể ra hai con số, và không có nơi nào là định nghĩa gốc.</li>
-            <li>Thiếu bước Phục vụ như kiến trúc mô tả: chưa có APISIX, chưa có đường dữ liệu ra
-                IOC và LGSP.</li>
             <li>Báo cáo chưa dựng lại được từ mã nguồn: bố cục hiện tạo bằng lệnh gọi API, chưa
                 xuất thành tệp cấu hình đưa vào kho mã.</li>
           </ul>
@@ -866,38 +880,36 @@ footer {
   <section>
     <div class="section-head">
       <span class="num">PHẦN III</span>
-      <h2>Ba chỗ hệ thống đang mô tả sai chính mình</h2>
+      <h2>Ba phát hiện lệch tài liệu — hai đã vá, một còn mở</h2>
     </div>
     <p>
-      Ba mục này khác hẳn phần &ldquo;chưa làm&rdquo;. Ở đây tài liệu và mã nguồn <strong>đang nói
-      khác nhau</strong> — nghĩa là người đọc báo cáo có thể tin vào một năng lực không tồn tại.
-      Nhóm đề nghị xử lý trước mọi việc bổ sung công cụ.
+      Ba mục này khác hẳn phần &ldquo;chưa làm&rdquo;. Hai mục đầu đã được sửa ngày 21/08;
+      phát lại từ Bronze vẫn chỉ là tiềm năng và tiếp tục nằm trong roadmap.
     </p>
     <div class="defects">
 
       <div class="defect">
-        <h3>Trạng thái chặn khi nguồn đổi cấu trúc không bao giờ xảy ra</h3>
-        <p class="where">platform/dags/imate_*.py — không có lệnh đặt trạng thái schema_blocked</p>
+        <h3>Đã vá trạng thái chặn khi nguồn đổi cấu trúc</h3>
+        <p class="where">platform/dags/imate_fetch.py — bắt SourceContractError/SchemaBreakingChange và đặt schema_blocked</p>
         <p>
-          Hợp đồng dữ liệu có kiểm và có ném lỗi, nhưng không nơi nào bắt lỗi ấy để ghi trạng thái
-          chặn vào sổ cái. Hai lát cắt Quản lý Giá và TABMIS làm đúng; riêng bảy DAG iMate thì không.
-          Hệ quả là khi nguồn đổi cấu trúc, người vận hành chỉ thấy một tác vụ đỏ, không thấy lý do.
+          Bước Discover giờ bắt lỗi hợp đồng và lỗi tương thích từ Apicurio, ghi lý do vào sổ cái
+          rồi trả mã lỗi cho Airflow. Nhánh <code>BREAKING</code> vẫn phải qua kiểm chứng live cuối
+          trước khi đánh dấu tình huống 1 hoàn thành.
         </p>
         <p class="fix"><b>Cách vá:</b> bắt lỗi hợp đồng ở tầng điều phối, ghi trạng thái chặn kèm
           nguyên văn trường bị thiếu, và dừng chuỗi thay vì để tác vụ chết không lời giải thích.</p>
       </div>
 
       <div class="defect">
-        <h3>Độ phủ ánh xạ đang đo một thứ khác với điều nó tuyên bố</h3>
-        <p class="where">platform/dags/imate_04_silver_two.py — hai điều kiện khớp trùng biểu thức</p>
+        <h3>Đã bỏ chỉ số độ phủ mang hai tên nhưng đo cùng một việc</h3>
+        <p class="where">platform/dags/imate_quality.py + metadata.quality_rules</p>
         <p>
-          Tài liệu mô tả chỉ số này là &ldquo;tỉ lệ văn bản khớp được cả loại theo danh mục đóng lẫn
-          cơ quan đã định danh&rdquo;. Thực tế cả hai điều kiện đều kiểm cùng một thứ: bóc tách được
-          số văn bản hay không. Con số 95,47% vì thế lạc quan hơn thực chất.
+          GX nay đo riêng ngày đăng hợp lệ, loại thuộc danh mục pháp định, cơ quan phân giải được
+          và cơ quan đã được nguồn có thẩm quyền xác nhận. Luật xác nhận hiện cho kết quả 0% nhưng
+          ở mức <code>informational</code>, vì muốn cải thiện cần JWT danh bạ chứ không phải sửa ETL.
         </p>
-        <p class="fix"><b>Cách vá:</b> tách thành hai phép kiểm độc lập — loại phải tồn tại trong
-          danh mục đóng, cơ quan phải đã được xác nhận — rồi đo lại và công bố con số mới kèm
-          giải thích vì sao thay đổi.</p>
+        <p class="fix"><b>Đã vá:</b> mỗi sự việc là một expectation có ngưỡng, owner,
+          hành động khi lỗi và phiên bản độc lập.</p>
       </div>
 
       <div class="defect">
@@ -933,7 +945,7 @@ footer {
         <div class="case-head">
           <span class="cn">Tình huống 1</span>
           <h3>Nguồn đổi cấu trúc dữ liệu trả về</h3>
-          <span class="chip gap">Cần Apicurio</span>
+          <span class="chip gap">Đang kiểm chứng</span>
         </div>
         <div class="case-body">
           <div class="case-col">
@@ -953,8 +965,9 @@ footer {
           </div>
           <div class="case-col">
             <span class="k">Phải bổ sung</span>
-            <span class="v">Triển khai Apicurio Registry; nối kiểm tra tương thích vào bước 1;
-              vá lỗi trạng thái chặn nêu ở Phần III.</span>
+            <span class="v">Apicurio và đường ghi <code>schema_blocked</code> đã có;
+              <code>NONE</code> đã đạt; còn hoàn tất <code>ADDITIVE</code>,
+              <code>BREAKING</code> và lưu bằng chứng.</span>
           </div>
         </div>
       </div>
@@ -983,8 +996,8 @@ footer {
           </div>
           <div class="case-col">
             <span class="k">Phải bổ sung</span>
-            <span class="v">Chuyển luật chất lượng sang GX Core với ngưỡng lưu trong cơ sở dữ liệu;
-              dựng báo cáo tỉ lệ rỗng theo trường.</span>
+            <span class="v">GX Core và ngưỡng trong cơ sở dữ liệu đã xong;
+              còn dựng báo cáo tỉ lệ rỗng theo trường.</span>
           </div>
         </div>
       </div>
@@ -1096,8 +1109,8 @@ footer {
       <div class="phase">
         <span class="when">Đợt 1 — Sửa chỗ nói sai</span>
         <ul>
-          <li>Bắt lỗi hợp đồng và ghi được trạng thái chặn trên cả bảy DAG iMate.</li>
-          <li>Tách hai phép kiểm của độ phủ ánh xạ, đo lại và công bố con số đúng.</li>
+          <li>Đã bắt lỗi hợp đồng tại pod Discover và ghi được trạng thái <code>schema_blocked</code>.</li>
+          <li>Đã tách các phép kiểm ánh xạ, đo lại bằng GX và công bố từng sự việc riêng.</li>
           <li>Bổ sung DAG phát lại từ Bronze, hoặc sửa hồ sơ cho khớp hiện trạng.</li>
         </ul>
       </div>
@@ -1105,8 +1118,8 @@ footer {
       <div class="phase">
         <span class="when">Đợt 2 — Công cụ tầng thu thập và xử lý</span>
         <ul>
-          <li>Triển khai Apicurio Registry, nối vào bước 1 và bước 3 — mở đường cho Tình huống 1.</li>
-          <li>Chuyển cổng chất lượng sang GX Core, đưa ngưỡng vào cơ sở dữ liệu — mở đường cho Tình huống 2.</li>
+          <li>Apicurio Registry đã triển khai và nối bước 1; còn nối bước 3 nếu cần hợp đồng riêng cho bảng typed.</li>
+          <li>Cổng chất lượng đã chuyển sang GX Core, ngưỡng và trách nhiệm xử lý nằm trong cơ sở dữ liệu.</li>
           <li>Dùng nốt tầng nạp của dlt để hoàn thiện việc dùng công cụ này ở cả hai đầu.</li>
         </ul>
       </div>
@@ -1150,7 +1163,7 @@ footer {
   </div>
 
   <footer>
-    Bản rà soát lập ngày 19/08/2026 · Số liệu trích từ kho dữ liệu đang vận hành trên cụm Rancher<br>
+    Bản rà soát lập ngày 19/08/2026, cập nhật 21/08/2026 · Số liệu trích từ kho dữ liệu đang vận hành trên cụm Rancher<br>
     Nguồn thật duy nhất trong tài liệu này là iMate; mọi nguồn khác được nêu đều là nguồn mô phỏng phục vụ kiểm thử
   </footer>
 

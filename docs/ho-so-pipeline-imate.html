@@ -121,7 +121,7 @@
   <p class="eyebrow">Nền tảng dữ liệu Sở Tài chính Hưng Yên · Slice 3</p>
   <h1>Hồ sơ pipeline iMate</h1>
   <p class="lede">Tài liệu kỹ thuật đầy đủ của lát cắt thứ ba: nguồn văn bản đến iMate
-  (tenant <code>doit.phuyen</code> — Sở Công Thương Phú Yên) đi qua <b>7 DAG</b> theo
+  (tenant <code>doit.phuyen</code> — Sở Công Thương Phú Yên) đi qua <b>8 DAG / 7 bước</b> theo
   kiến trúc medallion, đổ vào kho <b>cô lập hoàn toàn</b>, và phục vụ báo cáo qua
   <b>Superset + SSO Keycloak</b>. Mọi con số trong hồ sơ là số đo thật đã nghiệm thu,
   không phải số thiết kế.</p>
@@ -129,8 +129,8 @@
   <div class="status">
     <span>văn bản <b>6.141</b></span>
     <span>routing <b>99.214</b></span>
-    <span>coverage <b>95,47%</b></span>
-    <span>quality <b>1.0</b></span>
+    <span>GX <b>4 luật</b></span>
+    <span>schema <b>Apicurio 3.1.7</b></span>
     <span>chạy suốt <b>2 lần, số y hệt</b></span>
     <span>verify <b>Playwright E2E</b></span>
   </div>
@@ -139,7 +139,7 @@
     <a href="#s1"><b>01</b>Kiến trúc tổng thể</a>
     <a href="#s2"><b>02</b>Hồ sơ nguồn iMate</a>
     <a href="#s3"><b>03</b>Cô lập hạ tầng</a>
-    <a href="#s4"><b>04</b>Bảy DAG chi tiết</a>
+    <a href="#s4"><b>04</b>Tám DAG / 7 bước</a>
     <a href="#s5"><b>05</b>Mô hình dữ liệu</a>
     <a href="#s6"><b>06</b>Chất lượng &amp; lineage</a>
     <a href="#s7"><b>07</b>BI: Superset + SSO</a>
@@ -152,11 +152,11 @@
   <section id="s1">
     <h2><span class="n">01</span>Kiến trúc tổng thể</h2>
     <p class="d">Ba tầng, ba ranh giới: <b>nguồn</b> (ngoài tầm kiểm soát, sau firewall),
-    <b>pipeline</b> (7 DAG trong namespace Airflow), <b>trình bày</b> (namespace BI riêng).
+    <b>pipeline</b> (8 DAG phủ 7 bước trong namespace Airflow), <b>trình bày</b> (namespace BI riêng).
     Dữ liệu chỉ chảy một chiều; quyền ghi hẹp dần theo chiều chảy.</p>
 
     <figure>
-      <svg viewBox="0 0 920 400" role="img" aria-label="Kiến trúc: nguồn iMate sau firewall, pod hostNetwork vượt qua, 7 DAG trong namespace airflow ghi vào database stc_imate và bucket imate, Superset trong namespace bi đọc bằng imate_reader, người dùng vào qua Keycloak SSO.">
+      <svg viewBox="0 0 920 400" role="img" aria-label="Kiến trúc: nguồn iMate sau firewall, pod hostNetwork vượt qua, 8 DAG phủ 7 bước trong namespace airflow ghi vào database stc_imate và bucket imate, Superset trong namespace bi đọc bằng imate_reader, người dùng vào qua Keycloak SSO.">
         <defs>
           <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
             <path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker>
@@ -188,9 +188,9 @@
         <text class="okT" x="228" y="80">✓</text>
 
         <rect class="boxC" x="268" y="140" width="362" height="104" rx="8"/>
-        <text class="ttl" x="284" y="164">7 DAG · chuỗi Asset</text>
+        <text class="ttl" x="284" y="164">8 DAG / 7 bước · chuỗi Asset</text>
         <text class="sm" x="284" y="184">01 discover → 02 bronze → 03 silver-1 →</text>
-        <text class="sm" x="284" y="200">04 silver-2 → 05 gate → 06 publish → 07 report</text>
+        <text class="sm" x="284" y="200">04 silver-2 → 04b gate → 05 gold → 06 serving → 07 report</text>
         <text class="sm" x="284" y="222">danh tính ghi: imate_etl (Connection imate_dwh)</text>
         <line class="flow" x1="348" y1="118" x2="348" y2="136" marker-end="url(#ah)"/>
 
@@ -236,7 +236,7 @@
       <li><b>Bronze bất biến, nguyên văn</b> — mọi tranh chấp số liệu kết thúc bằng việc mở đúng file JSON nguồn đã trả.</li>
       <li><b>Grain là hợp đồng</b> — <code>fact_document</code> 1 văn bản = 1 dòng; routing tách bảng riêng vì trộn vào là con số nhân ~16.</li>
       <li><b>Không vứt dòng nào</b> — không map được thì vào thành viên <code>-1</code> + hàng chờ có người xử lý; tổng không bao giờ hụt ngầm.</li>
-      <li><b>Hai số đo chất lượng không cộng gộp</b> — coverage là bài tập của người quản danh mục, quality là sự cố chặn publish.</li>
+      <li><b>Bốn sự việc chất lượng không trộn lẫn</b> — GX đo ngày đăng, loại, cơ quan phân giải và cơ quan được xác nhận; metadata quyết định blocker, scoring hay informational.</li>
       <li><b>Idempotent mọi tầng</b> — chạy lại bất kỳ bước nào đều an toàn; hỏng giữa chừng không cần dọn.</li>
       <li><b>Thú nhận điểm mù</b> — xoá ở nguồn không thấy được → đo <code>drift</code>; danh bạ thiếu → ghi 79%, không giả vờ đủ.</li>
     </ul>
@@ -317,7 +317,7 @@ updatedAt</div>
     <h3>Ba danh tính, ba mức quyền</h3>
     <div class="tbl"><table>
       <tr><th>Role</th><th>Ai dùng</th><th>Được phép</th><th>Bị cấm</th></tr>
-      <tr><td><code>imate_etl</code></td><td>7 DAG (worker + pod)</td><td>owner database <code>stc_imate</code></td><td>không thấy <code>stc_dwh</code></td></tr>
+      <tr><td><code>imate_etl</code></td><td>8 DAG (worker + pod)</td><td>owner database <code>stc_imate</code></td><td>không thấy <code>stc_dwh</code></td></tr>
       <tr><td><code>imate_reader</code></td><td>Superset</td><td>SELECT trên curated/refdata/ingestion/metadata (+ <code>ALTER DEFAULT PRIVILEGES</code> cho bảng tương lai)</td>
         <td>INSERT/UPDATE/DELETE — <b>đã kiểm: bị từ chối</b></td></tr>
       <tr><td><code>superset_meta</code>*</td><td>metadata Superset</td><td>database <code>superset</code> trên PG của BI</td><td>không chạm warehouse</td></tr>
@@ -337,14 +337,15 @@ updatedAt</div>
 
   <!-- ════════════════ 04 ════════════════ -->
   <section id="s4">
-    <h2><span class="n">04</span>Bảy DAG — mỗi chặng đổi đúng một thứ</h2>
+    <h2><span class="n">04</span>Tám DAG phủ bảy bước — mỗi chặng đổi đúng một thứ</h2>
     <p class="d">Ranh giới DAG đặt theo <b>đơn vị phục hồi</b>: bàn giao giữa các chặng
     là bảng <code>ingestion.doc_worklist</code> (6.141 dòng không nhét vừa XCom), nên cắt
-    7 DAG gần như miễn phí. Nối nhau bằng <b>Asset</b> — bên sản xuất phát tín hiệu, bên
+    8 DAG gần như miễn phí. Nối nhau bằng <b>Asset</b> — bên sản xuất phát tín hiệu, bên
     tiêu thụ tự thức dậy; không DAG nào gọi tên DAG nào.</p>
 
 <div class="payload">imate://worklist → imate://bronze → imate://staging/silver-1 → imate://staging/silver-2
-                                        → imate://quality/verdict → imate://curated/documents</div>
+                                        → imate://quality/verdict → imate://curated/documents
+                                        → imate://serving/documents</div>
 
     <h3>DAG 01 · <code>imate_01_discover</code> — biết TÊN, chưa lấy ruột</h3>
     <ul>
@@ -352,7 +353,7 @@ updatedAt</div>
       <li><b>Thuật toán:</b> quét danh sách <code>sort[updatedAt]=DESC</code>; mỗi dòng so <code>(globalId, updatedAt)</code> — so <b>datetime</b>, không so chuỗi (bẫy #8) — phân loại MỚI / ĐÃ SỬA / bỏ qua; <b>3 trang sạch liên tiếp thì dừng</b>. Lượt đầu 62 trang ~30s; lượt sau 3–4 trang.</li>
       <li><b>Vì sao DESC:</b> văn bản bị sửa giữa lúc quét nhảy về đầu → hàng chưa đọc bị đẩy RA XA → tệ nhất đọc trùng 1 dòng (dedup nuốt). ASC thì hàng chưa đọc lọt qua con trỏ → <b>mất im lặng</b>. Chọn hướng chỉ có thể sai kiểu sửa được.</li>
       <li><b>Bản sửa quay về đầu:</b> upsert đặt <code>status='discovered'</code> — văn bản đã publish vẫn được tải lại khi nguồn đổi nó.</li>
-      <li><b>Chốt chặn:</b> contract 8 trường kiểm TRƯỚC khi ghi (→ <code>schema_blocked</code>); trần <code>MAX_PAGES=200</code> làm cầu chì; <code>drift</code> = tổng mình − tổng nguồn (thú nhận không thấy được xoá).</li>
+      <li><b>Chốt chặn:</b> contract bắt buộc và Apicurio kiểm TRƯỚC khi ghi; JSON Schema có phiên bản, luật <code>FORWARD</code> phân biệt <code>NONE</code>/<code>ADDITIVE</code>/<code>BREAKING</code>, lỗi phá vỡ → <code>schema_blocked</code>.</li>
       <li><b>Kết quả về qua sổ cái</b> (<code>runs.message</code>), không qua XCom — một nguồn sự thật; kèm <code>extractor: dlt-rest-client/&lt;version&gt;</code> làm lineage.</li>
       <li><b>Lớp vỏ HTTP là dlt RESTClient</b> (chuẩn chung với QL Giá): session retry + backoff có sẵn; thuật toán cursor, bẫy API và sổ sách vẫn là của pipeline — kho giữ cursor, dlt không giữ bản thứ hai.</li>
     </ul>
@@ -386,19 +387,20 @@ C   so/COQUAN[-PHONG]         <span class="t">5748/UBND-NC</span>   <span class=
       <li>Ép kiểu có guard regex (<code>uploaded_at</code> không hợp lệ → <code>defect_reason='missing_uploaded_at'</code>).</li>
     </ul>
 
-    <h3>DAG 05 · <code>imate_05_quality_gate</code> — chấm cả đợt, phán một lần</h3>
+    <h3>DAG 04b · <code>imate_04b_quality_gate</code> — chấm cả đợt, phán một lần</h3>
     <div class="tbl"><table>
-      <tr><th>Số đo</th><th>Nghĩa</th><th>Ngưỡng</th><th>Thấp nghĩa là</th></tr>
-      <tr><td><code>mapping_coverage</code></td><td>tỉ lệ văn bản tách được cả loại lẫn cơ quan</td><td class="num">≥ 0,50</td>
-        <td>bài tập của người quản danh mục — thêm rule, xin JWT; pipeline vẫn chạy</td></tr>
-      <tr><td><code>quality_score</code></td><td>tỉ lệ văn bản không lỗi cấu trúc (có ngày dùng được)</td><td class="num">≥ 0,95</td>
-        <td><b>sự cố</b> — chặn tại đây, bảng sếp nhìn không dính hàng lỗi</td></tr>
+      <tr><th>Luật GX</th><th>Mức</th><th>Kết quả thật</th><th>Ý nghĩa</th></tr>
+      <tr><td><code>uploaded_date_present</code></td><td>blocker</td><td class="num">100%</td><td>thiếu ngày dùng được là sự cố chặn lô</td></tr>
+      <tr><td><code>kind_in_statutory_list</code></td><td>scoring</td><td class="num">95,47%</td><td>nợ quy tắc loại văn bản</td></tr>
+      <tr><td><code>body_resolved</code></td><td>scoring</td><td class="num">95,47%</td><td>nợ quy tắc cơ quan ban hành</td></tr>
+      <tr><td><code>body_confirmed</code></td><td>informational</td><td class="num">0%</td><td>chờ JWT danh bạ; đo nhưng không chặn</td></tr>
     </table></div>
     <p class="d">Chấm trên <b>toàn bộ snapshot typed</b> (không chỉ lô mới) vì báo cáo đọc
     cả bảng — cổng phải phán đúng cái người đọc sẽ thấy. Chứng cứ từng lượt nằm ở
-    <code>metadata.quality_exceptions</code>. Kết quả thật: coverage 0,9547 · quality 1,0 → PASS.</p>
+    <code>metadata.quality_exceptions</code>. GX Core 1.21.0 trả evidence; luật, ngưỡng,
+    owner, SLA và phiên bản nằm trong <code>metadata.quality_rules</code>.</p>
 
-    <h3>DAG 06 · <code>imate_06_publish</code> — ngôi sao xuất hiện</h3>
+    <h3>DAG 05 · <code>imate_05_publish</code> — ngôi sao xuất hiện</h3>
     <ul>
       <li>Chỉ văn bản <b>qua cổng và không defect</b> được publish; defect → <code>status='failed'</code> kèm lý do, đếm được, không rơi thầm.</li>
       <li><b>Load mode thứ ba của nền tảng:</b> merge-upsert theo <code>globalId</code> — DELETE + INSERT đúng những văn bản trong đợt (QL Giá: incremental theo cursor · TABMIS: replace theo kỳ · iMate: replace theo văn bản, vì bản ghi SỐNG).</li>
@@ -406,6 +408,13 @@ C   so/COQUAN[-PHONG]         <span class="t">5748/UBND-NC</span>   <span class=
       <li>Khoá dim mới = max+row_number, <b>không bao giờ đánh số lại</b> khoá cũ (khoá đổi là re-point mọi fact đang cầm nó). Thành viên <code>-1 (Chưa xác định)</code> ở cả hai dim.</li>
       <li>Tên dim đồng bộ từ refdata mỗi lần publish (cả <code>kind_name</code> lẫn <code>body_name</code>) — sửa tên một chỗ, lần publish sau lan xuống.</li>
       <li><code>batch_summary</code> ghi sổ công bố: batch nào, bao nhiêu dòng, tươi đến đâu.</li>
+    </ul>
+
+    <h3>DAG 06 · <code>imate_06_serving</code> — kiểm cửa đọc trước khi khai thác</h3>
+    <ul>
+      <li>Đếm năm bảng curated bằng vai trò <code>imate_reader</code>; thiếu GRANT phải fail thay vì để dashboard rỗng.</li>
+      <li>Thử ghi và bắt buộc bị PostgreSQL từ chối; đo độ tươi 96 ngày trước khi phát Asset serving.</li>
+      <li>Đây là điểm cắm Cube sau này; hiện chưa có lớp ngữ nghĩa dùng chung.</li>
     </ul>
 
     <h3>DAG 07 · <code>imate_07_report</code> — trả lời câu hỏi đặt hàng</h3>
@@ -449,12 +458,12 @@ C   so/COQUAN[-PHONG]         <span class="t">5748/UBND-NC</span>   <span class=
     <div class="tbl"><table>
       <tr><th>Schema</th><th>Bảng</th><th>Vai trò</th></tr>
       <tr><td rowspan="3"><code>ingestion</code></td><td><code>sources · runs · cursors</code></td><td>sổ cái: mỗi lượt một vé, state machine <code>received → parsed → mapped → quality_passed/failed → published</code> (+ <code>schema_blocked</code>)</td></tr>
-      <tr><td><code>doc_worklist</code></td><td>xương sống 7 DAG: mỗi văn bản 1 dòng, <code>status: discovered → landed → staged → mapped → published | failed</code>, kèm <code>bronze_key</code>, <code>content_hash</code>, <code>attempts</code>, <code>last_error</code></td></tr>
+      <tr><td><code>doc_worklist</code></td><td>xương sống 8 DAG: mỗi văn bản 1 dòng, <code>status: discovered → landed → staged → mapped → published | failed</code>, kèm <code>bronze_key</code>, <code>content_hash</code>, <code>attempts</code>, <code>last_error</code></td></tr>
       <tr><td>—</td><td>bàn giao giữa DAG là bảng này, không phải XCom</td></tr>
       <tr><td rowspan="2"><code>staging</code></td><td><code>stg_imate__document / routing / receipt / attachment</code></td><td>Silver-1: nguyên văn, toàn text, giữ vị trí phần tử để trích dẫn ngược</td></tr>
       <tr><td><code>stg_imate__document_typed</code></td><td>Silver-2: ép kiểu + <code>serial_no/kind_code/body_code/parse_pattern/kind_mapped/body_mapped/defect_reason</code></td></tr>
       <tr><td><code>refdata</code></td><td><code>document_kind · issuing_body · imate_unit · imate_contact</code></td><td>bảng mã đóng (NĐ 30) · cơ quan mở (auto-register) · danh bạ từ API</td></tr>
-      <tr><td><code>metadata</code></td><td><code>mapping_rejections · quality_exceptions · quarantine_rows</code></td><td>cái không map được có chủ; chứng cứ điểm số từng lượt</td></tr>
+      <tr><td><code>metadata</code></td><td><code>mapping_rejections · quality_rules · quality_exceptions · quarantine_rows</code></td><td>luật có phiên bản và owner; cái không map được có chủ; chứng cứ từng lượt</td></tr>
       <tr><td><code>curated</code></td><td><code>dim_date · dim_document_kind · dim_issuing_body · fact_document · fact_routing · batch_summary</code></td><td>Gold + sổ công bố</td></tr>
       <tr><td><code>audit</code></td><td><code>audit_log</code></td><td>append-only</td></tr>
     </table></div>
@@ -477,8 +486,8 @@ C   so/COQUAN[-PHONG]         <span class="t">5748/UBND-NC</span>   <span class=
       <tr><td>worklist published</td><td class="num">6.141 / 6.141</td><td>không văn bản nào kẹt hay rơi</td></tr>
       <tr><td>fact_document / fact_routing</td><td class="num">6.141 / 99.214</td><td>khớp nguồn từng con</td></tr>
       <tr><td>kind unknown (−1)</td><td class="num">278</td><td><b>= đúng 219 'none' + 59 'empty'</b> — phép cộng khép kín, không dòng nào bốc hơi</td></tr>
-      <tr><td>mapping_coverage</td><td class="num">95,47%</td><td>4,5% còn lại nằm trong <code>mapping_rejections</code> có đếm</td></tr>
-      <tr><td>quality_score</td><td class="num">1,0000</td><td>không văn bản nào thiếu ngày</td></tr>
+      <tr><td>GX kind/body resolved</td><td class="num">95,47% / 95,47%</td><td>278 dòng chưa phân giải nằm trong hàng chờ có đếm</td></tr>
+      <tr><td>GX uploaded date / body confirmed</td><td class="num">100% / 0%</td><td>ngày đạt blocker; xác nhận cơ quan được giữ ở mức informational khi chưa có JWT</td></tr>
       <tr><td>receiver phân giải</td><td class="num">96.652 contact · 2.133 unit · 429 unknown</td><td>join danh bạ mở đạt 79% lượt — số thật, chờ JWT nâng</td></tr>
       <tr><td>cursor sống</td><td class="num">3 trang / lượt</td><td>lượt theo lịch sau seed: 3 trang · 0 mới · 0 đổi · dừng</td></tr>
     </table></div>
@@ -533,7 +542,7 @@ AUTH_ROLES_SYNC_AT_LOGIN = True   <span class="k"># đổi role ở Keycloak, l�
         <td>so cursor bằng CHUỖI: Postgres in micro giây (<code>.473000</code>), API in mili (<code>.473Z</code>)</td>
         <td><code>imate_fetch.py</code> — so datetime; cầu chì MAX_PAGES đỡ nếu tái phát</td></tr>
       <tr><td>2</td><td><code>imate_06</code> vỡ trần parse DagBag 30s</td>
-        <td>import kubernetes client ở tầng module — 5/7 DAG không cần nó</td>
+        <td>import kubernetes client ở tầng module dù đa số DAG không cần nó</td>
         <td><code>imate_ops.py</code> — import lười trong <code>fetch_pod()</code></td></tr>
       <tr><td>3</td><td>KPO từ chối <code>host_network</code></td><td>tham số tên <code>hostnetwork</code> (một từ)</td>
         <td><code>imate_ops.py</code> + comment</td></tr>
@@ -583,17 +592,20 @@ AUTH_ROLES_SYNC_AT_LOGIN = True   <span class="k"># đổi role ở Keycloak, l�
     <h2><span class="n">09</span>Vận hành</h2>
     <h3>Bản đồ repo</h3>
 <div class="payload">platform/
-  dags/imate_assets.py        6 Asset nối chuỗi (hợp đồng URI)
+  dags/imate_assets.py        7 Asset nối chuỗi (hợp đồng URI)
   dags/imate_common.py        client API trên dlt RESTClient (retry sẵn, ghi dlt_version
                               vào lineage — cùng chuẩn extractor với slice QL Giá)
                               + imate_cursor (3 tầng resolution) + set_status
   dags/imate_fetch.py         discover + land — chạy TRONG pod hostNetwork
   dags/imate_ops.py           ticket, worklist_count, factory fetch_pod (KPO)
-  dags/imate_01..07_*.py      7 DAG — lớp vỏ điều phối, logic nằm ở các module trên
+  dags/imate_schema.py        client Apicurio, suy JSON Schema, phân loại drift
+  dags/imate_quality.py       engine GX + lớp blocker/scoring/informational
+  dags/imate_01..07_*.py      8 DAG (có 04b) — lớp vỏ điều phối, logic nằm ở các module trên
   sql-imate/01_init.sql       skeleton stc_imate (PHÁ-ĐƯỢC — chỉ chạy khi muốn rebuild)
   sql-imate/02_slice_imate.sql  bảng slice (additive, chạy lại thoải mái)
   sql-imate/03_seed_imate.sql   38 loại NĐ 30/2020 + 26 cơ quan, tên có dấu
   scripts/create-imate-connection.sh   role imate_etl + db stc_imate + Secret + Airflow Conn
+  scripts/deploy-apicurio.sh           registry + database + Secret, idempotent
   scripts/deploy-superset.sh           trọn gói BI: secrets, Keycloak client, reader, helm
   scripts/superset-report.py           dựng dashboard qua API (trước SSO / cần service account)
   helm/superset-values.yaml            values pin, đầy comment bẫy</div>
@@ -606,7 +618,7 @@ SQL_DIR=sql-imate SECRET=imate-db CM=imate-sql ./scripts/apply-sql.sh 02_slice_i
 ./scripts/sync-dags.sh
 
 <span class="k"># chạy tay một vòng đầy đủ</span>
-airflow dags trigger imate_01_discover        <span class="k"># 6 DAG sau tự nối bằng Asset</span>
+airflow dags trigger imate_01_discover        <span class="k"># 7 DAG sau tự nối bằng Asset</span>
 
 <span class="k"># hạ tầng BI (idempotent, mật khẩu tái sử dụng)</span>
 ./scripts/deploy-superset.sh

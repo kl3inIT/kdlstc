@@ -775,12 +775,14 @@ ON CONFLICT (global_id) DO UPDATE SET
         </p>
       </div>
       <div class="gap-row">
-        <span class="sev s-tool">Thiếu công cụ</span>
-        <h3>Chưa có nơi lưu và đối chiếu cấu trúc dữ liệu</h3>
+        <span class="sev s-tool">Đã bổ sung 21/08/2026</span>
+        <h3>Đã có nơi lưu và đối chiếu cấu trúc dữ liệu</h3>
         <p>
-          Kiến trúc chỉ định dùng Apicurio Registry. Hiện chưa triển khai, nên chỉ kiểm được
-          &ldquo;trường có mặt hay không&rdquo;, không kiểm được kiểu dữ liệu, và không phân biệt
-          được nguồn <em>thêm</em> trường với nguồn <em>đổi</em> trường.
+          Apicurio Registry 3.1.7 đã chạy với PostgreSQL storage và bước Discover đã đăng ký
+          JSON Schema đầu tiên. Pipeline phân loại <code>NONE</code>, <code>ADDITIVE</code>,
+          <code>BREAKING</code>; thay đổi phá vỡ được ghi <code>schema_blocked</code> thay vì
+          để vé kẹt ở <code>received</code>. Nhánh <code>NONE</code> đã được xác nhận live;
+          <code>ADDITIVE</code> và <code>BREAKING</code> đang được hoàn tất trước khi đóng tình huống 1.
         </p>
       </div>
     </div>
