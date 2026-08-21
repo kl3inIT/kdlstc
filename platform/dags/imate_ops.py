@@ -24,7 +24,7 @@ from warehouse import S3_ENDPOINT
 # The Airflow image itself: psycopg2, boto3 and the mounted /src modules are
 # all it needs, and it is already cached on every node.
 FETCH_IMAGE = os.environ.get(
-    "IMATE_FETCH_IMAGE", "ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-r1")
+    "IMATE_FETCH_IMAGE", "ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-gx1.21.0-r1")
 NAMESPACE = "stc-hy-airflow"
 
 

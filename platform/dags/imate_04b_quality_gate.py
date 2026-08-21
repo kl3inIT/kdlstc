@@ -8,19 +8,17 @@ after Silver-2 has finished writing rather than inside that transaction. The
 file number therefore tracks the ARCHITECTURE step, and the letter records the
 split — one DAG per stage was never the promise; one stage per number is.
 
-Two verdicts, deliberately never averaged into one number:
+Rules come from metadata.quality_rules, not from constants in this file. A
+threshold is a business decision — somebody owns it and approves it — so it has
+to be readable and changeable without a deploy.
 
-    mapping_coverage   share of documents whose kind AND issuing body resolved.
-                       Low coverage is somebody's homework (a new numbering
-                       convention, a missing rule) — the pipeline still runs.
-    quality_score      share of documents free of structural defects (no
-                       usable date). Low quality is broken data — an incident,
-                       and the batch stops HERE, before anything reaches the
-                       tables the report reads.
+great_expectations evaluates each rule and produces the evidence; the decision
+about consequence stays here, because GX has no notion of "this failure stops
+the batch and that one only costs points". See imate_quality for that split.
 
-Scores are computed over the WHOLE current typed snapshot, not just this
-batch: the report is drawn from the whole table, so the gate must judge what
-the reader will actually see.
+Scored over the WHOLE current typed snapshot, not just the batch that arrived:
+the report is drawn from the whole table, so the gate must judge what the reader
+will actually see. A clean batch landing on a broken table is not a pass.
 """
 
 import json
@@ -37,11 +35,10 @@ from airflow.exceptions import AirflowException
 
 from imate_assets import SILVER_TWO, VERDICT
 from imate_common import TENANT_ID, imate_cursor, set_status as set_run_status
+from imate_quality import evaluate, load_rules, load_snapshot, record
 from imate_ops import ticket, worklist_count
 
 
-MIN_MAPPING_COVERAGE = 0.50
-MIN_QUALITY_SCORE = 0.95
 
 
 @dag(
@@ -64,52 +61,35 @@ def imate_04b_quality_gate():
     @task
     def judge(info):
         run_id = info["run_id"]
-        with imate_cursor() as cur:
-            cur.execute("""
-                SELECT count(*),
-                       count(*) FILTER (WHERE kind_mapped AND body_mapped),
-                       count(*) FILTER (WHERE defect_reason IS NULL)
-                  FROM staging.stg_imate__document_typed
-                 WHERE tenant_id = %s
-            """, (TENANT_ID,))
-            total, resolved, clean = cur.fetchone()
 
-            coverage = resolved / total if total else 0.0
-            quality = clean / total if total else 0.0
-
-            cur.execute("""
-                INSERT INTO metadata.quality_exceptions
-                    (run_id, table_name, rule_name, severity,
-                     failed_rows, pass_rate, details)
-                VALUES
-                    (%s, 'stg_imate__document_typed', 'document_no_resolves',
-                     'scoring', %s, %s, %s),
-                    (%s, 'stg_imate__document_typed', 'uploaded_date_present',
-                     'blocker', %s, %s, %s)
-            """, (run_id, total - resolved, round(coverage, 4),
-                  json.dumps({"threshold": MIN_MAPPING_COVERAGE}),
-                  run_id, total - clean, round(quality, 4),
-                  json.dumps({"threshold": MIN_QUALITY_SCORE})))
-
-        verdict = {"total": total, "mapping_coverage": round(coverage, 4),
-                   "quality_score": round(quality, 4)}
-
-        if quality < MIN_QUALITY_SCORE:
-            set_run_status(run_id, "quality_failed",
-                           quality_score=round(quality, 4),
-                           message=json.dumps(verdict))
+        rules = load_rules("imate")
+        if not rules:
             raise AirflowException(
-                f"quality_score {quality:.4f} < {MIN_QUALITY_SCORE} — chan dot")
-        if coverage < MIN_MAPPING_COVERAGE:
+                "khong co luat nao trong metadata.quality_rules cho 'imate' — "
+                "cong chat luong khong duoc phep di qua khi khong co luat")
+
+        verdict = evaluate(load_snapshot(), rules)
+        record(run_id, verdict)
+        print("ket qua: " + json.dumps(verdict, ensure_ascii=False, indent=2))
+
+        if verdict["blocked_by"]:
             set_run_status(run_id, "quality_failed",
-                           quality_score=round(quality, 4),
-                           message=json.dumps(verdict))
+                           quality_score=verdict["score"],
+                           message=json.dumps(verdict, ensure_ascii=False))
             raise AirflowException(
-                f"mapping_coverage {coverage:.4f} < {MIN_MAPPING_COVERAGE} — chan dot")
+                f"luat chan lo khong dat: {verdict['blocked_by']} — dung tai day")
+
+        if verdict["scoring_failed"]:
+            set_run_status(run_id, "quality_failed",
+                           quality_score=verdict["score"],
+                           message=json.dumps(verdict, ensure_ascii=False))
+            raise AirflowException(
+                f"luat cham diem khong dat: {verdict['scoring_failed']} — "
+                f"diem tong {verdict['score']} khong cuu duoc mot luat rot")
 
         set_run_status(run_id, "quality_passed",
-                       quality_score=round(quality, 4),
-                       message=json.dumps(verdict))
+                       quality_score=verdict["score"],
+                       message=json.dumps(verdict, ensure_ascii=False))
         return verdict
 
     @task(outlets=[VERDICT])

@@ -71,6 +71,22 @@ WITH src AS (
           ELSE 'none'
         END AS pattern
       FROM parsed p
+), resolved AS (
+    -- Resolve kind and body ONCE, then judge them separately below. The first
+    -- build computed both flags from the same `pattern IN (...)` test, which
+    -- measured on real data selected the same 5.863 rows for both — one fact
+    -- wearing two names. They are different questions and must be asked apart:
+    -- the kind list is CLOSED by decree, the body list is OPEN and grows.
+    SELECT j.*,
+        CASE j.pattern WHEN 'A' THEN upper(j.ma[3]) WHEN 'B' THEN upper(j.mb[2])
+                       WHEN 'A_cv' THEN 'CV' WHEN 'B_cv' THEN 'CV'
+                       WHEN 'C_cv' THEN 'CV' END AS kind,
+        CASE j.pattern WHEN 'A'    THEN upper(j.ma[4])
+                       WHEN 'A_cv' THEN upper(j.ma[3])   -- token IS the body
+                       WHEN 'B'    THEN upper(j.mb[3])
+                       WHEN 'B_cv' THEN upper(j.mb[3])
+                       WHEN 'C_cv' THEN upper(j.mc[2]) END AS body
+      FROM judged j
 )
 INSERT INTO staging.stg_imate__document_typed
     (run_id, global_id, tenant_id, document_id, document_no, subject,
@@ -85,17 +101,18 @@ SELECT
                    WHEN 'B' THEN j.mb[1] WHEN 'B_cv' THEN j.mb[1]
                    WHEN 'C_cv' THEN j.mc[1] END,
     CASE WHEN j.pattern IN ('A','A_cv') THEN j.ma[2]::int END,
-    CASE j.pattern WHEN 'A' THEN upper(j.ma[3]) WHEN 'B' THEN upper(j.mb[2])
-                   WHEN 'A_cv' THEN 'CV' WHEN 'B_cv' THEN 'CV'
-                   WHEN 'C_cv' THEN 'CV' END,
-    CASE j.pattern WHEN 'A'    THEN upper(j.ma[4])
-                   WHEN 'A_cv' THEN upper(j.ma[3])   -- token IS the body
-                   WHEN 'B'    THEN upper(j.mb[3])
-                   WHEN 'B_cv' THEN upper(j.mb[3])
-                   WHEN 'C_cv' THEN upper(j.mc[2]) END,
+    j.kind,
+    j.body,
     j.pattern,
-    j.pattern IN ('A','A_cv','B','B_cv','C_cv'),
-    j.pattern IN ('A','A_cv','B','B_cv','C_cv'),
+    -- kind_mapped: the resolved kind exists in the CLOSED list of Nghi dinh
+    -- 30/2020. Failing means a numbering convention we have no rule for.
+    EXISTS (SELECT 1 FROM refdata.document_kind k WHERE k.kind_code = j.kind),
+    -- body_mapped: a body code was actually extracted. Membership is NOT
+    -- required here — the body list is open and auto-registers a few statements
+    -- below, so requiring it would test the order of this transaction rather
+    -- than the data. Whether the name is CONFIRMED is a third question, asked
+    -- at the gate against refdata.issuing_body.
+    j.body IS NOT NULL AND j.body <> '',
     (SELECT count(*) FROM staging.stg_imate__routing r
       WHERE r.global_id = j.global_id),
     (SELECT count(*) FROM staging.stg_imate__attachment a
@@ -103,7 +120,7 @@ SELECT
     (SELECT rc.document_type FROM staging.stg_imate__receipt rc
       WHERE rc.global_id = j.global_id ORDER BY rc.seq LIMIT 1),
     CASE WHEN j.up_ts IS NULL THEN 'missing_uploaded_at' END
-FROM judged j
+FROM resolved j
 """
 
 
