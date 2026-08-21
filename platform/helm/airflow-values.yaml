@@ -22,7 +22,7 @@ images:
   airflow:
     repository: ghcr.io/kl3init/kdlstc-airflow
     tag: 3.2.2-dlt1.21.0-gx1.21.0-r1
-    digest: sha256:603175f3c1f7f57fc872947ff3022b3aeb60135ba2b7e34e8810c23c83224cb8
+    digest: sha256:f8bb40efd9554a27627ec5f2bac7c6e6fc8c8188c207274cdf62fa9924de959f
     pullPolicy: Always
 
 # ── bỏ component không dùng ở dev ─────────────────────────────────────────

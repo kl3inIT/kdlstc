@@ -56,7 +56,7 @@ def imate_04b_quality_gate():
     def open_run(**context):
         if not worklist_count("mapped"):
             raise AirflowSkipException("Khong co dot nao cho cham diem.")
-        return ticket("05", context["dag_run"].run_id)
+        return ticket("04b", context["dag_run"].run_id)
 
     @task
     def judge(info):

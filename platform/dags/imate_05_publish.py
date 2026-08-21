@@ -148,7 +148,7 @@ def imate_05_publish():
 
     @task
     def open_run(**context):
-        return ticket("06", context["dag_run"].run_id)
+        return ticket("05", context["dag_run"].run_id)
 
     @task
     def publish(info):
