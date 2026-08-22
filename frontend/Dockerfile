@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM docker.io/library/node:24-alpine AS build
 
 WORKDIR /workspace
 RUN npm install --global pnpm@11.22.0
@@ -11,8 +11,7 @@ ARG VITE_USE_FIXTURES=false
 ENV VITE_USE_FIXTURES=${VITE_USE_FIXTURES}
 RUN pnpm build
 
-FROM nginxinc/nginx-unprivileged:1.29.4-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+FROM docker.io/nginxinc/nginx-unprivileged:1.29.4-alpine
 COPY --from=build /workspace/dist /usr/share/nginx/html
 
 EXPOSE 8080

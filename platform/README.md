@@ -352,9 +352,10 @@ kubectl -n stc-hy rollout status deployment/kdlstc-backend --timeout=5m
 kubectl -n stc-hy rollout status deployment/kdlstc-frontend --timeout=5m
 ```
 Checkpoint 22/08/2026: hai image đã build và smoke local thành công; manifest
-đã qua `kubectl apply --dry-run=server`. GitLab CI chịu trách nhiệm publish;
-Pod chỉ giữ deploy token `read_registry` trong Secret
-`stc-hy/gitlab-registry-kdlstc`.
+đã qua `kubectl apply --dry-run=server`. GitLab CI chịu trách nhiệm publish.
+Secret pull `stc-hy/gitlab-registry-kdlstc` hiện dùng PAT của `datph_dev` vì
+tài khoản này không có quyền tạo project deploy token; cần thay bằng deploy
+token chỉ có `read_registry` trước khi xoay PAT hoặc offboard tài khoản.
 
 ---
 
