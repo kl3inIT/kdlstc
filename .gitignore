@@ -33,4 +33,12 @@ platform/vendor/*.tgz
 .skills/
 .agents/
 .claude/skills/
-backend/
+
+# Refine frontend runtime artifacts
+frontend/node_modules/
+frontend/dist/
+
+# Spring backend runtime artifacts
+backend/.gradle/
+backend/build/
+backend/node_modules/

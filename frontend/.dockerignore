@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.idea/
+*.log
+.env
+.env.*
+!.env.example
+README.md

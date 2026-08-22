@@ -1,0 +1,66 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
+spring:
+  application:
+    name: dwh-backend
+  datasource:
+    url: ${DWH_CONTROL_DB_URL:jdbc:postgresql://localhost:5432/dwh_control}
+    username: ${DWH_CONTROL_DB_USERNAME:dwh_control}
+    password: ${DWH_CONTROL_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ${KEYCLOAK_CLIENT_ID:dwh}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:not-configured}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            authorization-uri: ${KEYCLOAK_AUTHORIZATION_URI:http://sso-stc.10.123.123.194.nip.io/realms/khodl/protocol/openid-connect/auth}
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://sso-stc.10.123.123.194.nip.io/realms/khodl/protocol/openid-connect/token}
+            user-info-uri: ${KEYCLOAK_USERINFO_URI:http://sso-stc.10.123.123.194.nip.io/realms/khodl/protocol/openid-connect/userinfo}
+            jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://sso-stc.10.123.123.194.nip.io/realms/khodl/protocol/openid-connect/certs}
+            user-name-attribute: preferred_username
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  integration:
+    airflow:
+      mode: ${AIRFLOW_MODE:fixture}
+      base-url: ${AIRFLOW_BASE_URL:http://localhost:8080}
+      username: ${AIRFLOW_USERNAME:}
+      password: ${AIRFLOW_PASSWORD:}
+      root-dag-id: ${AIRFLOW_DAG_ID:imate_01_discover}
+      connect-timeout: ${AIRFLOW_CONNECT_TIMEOUT:5s}
+      read-timeout: ${AIRFLOW_READ_TIMEOUT:20s}
+      token-ttl: ${AIRFLOW_TOKEN_TTL:4m}
+      reconcile-delay: ${AIRFLOW_RECONCILE_DELAY:30s}

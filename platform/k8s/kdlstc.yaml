@@ -1,0 +1,299 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kdlstc-backend
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: kdlstc-backend
+    app.kubernetes.io/part-of: kdlstc
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kdlstc-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kdlstc-backend
+        app.kubernetes.io/part-of: kdlstc
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry-kdlstc
+      securityContext:
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: git.dth.com.vn:5050/data-warehouse/kho-so-tai-chinh/kdlstc-operations-backend:0.1.0-20260822.1
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DWH_CONTROL_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kdlstc-db
+                  key: url
+            - name: DWH_CONTROL_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: kdlstc-db
+                  key: username
+            - name: DWH_CONTROL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kdlstc-db
+                  key: password
+            - name: KEYCLOAK_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kdlstc-keycloak
+                  key: client-id
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kdlstc-keycloak
+                  key: client-secret
+            - name: KEYCLOAK_AUTHORIZATION_URI
+              value: http://sso-stc.10.123.123.194.nip.io/realms/khodl/protocol/openid-connect/auth
+            - name: KEYCLOAK_TOKEN_URI
+              value: http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl/protocol/openid-connect/token
+            - name: KEYCLOAK_USERINFO_URI
+              value: http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl/protocol/openid-connect/userinfo
+            - name: KEYCLOAK_JWK_SET_URI
+              value: http://kc-keycloakx-http.stc-hy.svc.cluster.local/realms/khodl/protocol/openid-connect/certs
+            - name: AIRFLOW_MODE
+              value: live
+            - name: AIRFLOW_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jmix-airflow-api
+                  key: base-url
+            - name: AIRFLOW_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: jmix-airflow-api
+                  key: username
+            - name: AIRFLOW_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jmix-airflow-api
+                  key: password
+            - name: SERVER_FORWARD_HEADERS_STRATEGY
+              value: framework
+            - name: SERVER_SHUTDOWN
+              value: graceful
+            - name: SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
+              value: 20s
+            - name: JAVA_TOOL_OPTIONS
+              value: -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            failureThreshold: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 3
+            periodSeconds: 20
+            timeoutSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kdlstc-backend
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: kdlstc-backend
+    app.kubernetes.io/part-of: kdlstc
+spec:
+  selector:
+    app.kubernetes.io/name: kdlstc-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kdlstc-frontend
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: kdlstc-frontend
+    app.kubernetes.io/part-of: kdlstc
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kdlstc-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kdlstc-frontend
+        app.kubernetes.io/part-of: kdlstc
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry-kdlstc
+      securityContext:
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: git.dth.com.vn:5050/data-warehouse/kho-so-tai-chinh/kdlstc-operations-frontend:0.1.0-20260822.1
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 3
+            periodSeconds: 20
+            timeoutSeconds: 2
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /usr/sbin/nginx
+                  - -s
+                  - quit
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kdlstc-frontend
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: kdlstc-frontend
+    app.kubernetes.io/part-of: kdlstc
+spec:
+  selector:
+    app.kubernetes.io/name: kdlstc-frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kdlstc
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: kdlstc
+    app.kubernetes.io/part-of: kdlstc
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kdlstc.example.com
+      http:
+        paths:
+          - path: /login/oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: kdlstc-backend
+                port:
+                  number: 8080
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: kdlstc-backend
+                port:
+                  number: 8080
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: kdlstc-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kdlstc-frontend
+                port:
+                  number: 8080

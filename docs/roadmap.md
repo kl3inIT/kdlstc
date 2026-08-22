@@ -84,10 +84,22 @@ vì Bronze content-addressed đã sẵn mọi phiên bản.
 - Namespace mồ côi `stc-hy-superset` còn sót, chờ xoá.
 - Bố cục báo cáo Superset dựng bằng lệnh gọi API, chưa xuất thành tệp cấu hình
   đưa vào kho mã, nên chưa dựng lại được từ mã nguồn.
-- Secret bootstrap `stc-hy/keycloak-admin` vẫn tồn tại nhưng credential trong
-  đó không đăng nhập được Admin CLI. Cần đối soát/rotate trước khi export realm
-  hoặc tự động hoá tạo client mới; không dùng lại secret client của Airflow,
-  Superset hay SeaweedFS cho app khai thác.
+- Secret bootstrap `stc-hy/keycloak-admin` đã được đối soát lại ngày
+  22/08/2026 và đăng nhập được Admin CLI. Không dùng lại secret client của
+  Airflow, Superset hay SeaweedFS cho app khai thác.
 - `khaithac` vẫn là prototype nối realm mock `stc-mock`; khi đưa lên Rancher
   phải đăng ký client riêng trong realm `khodl` và bơm issuer/client-secret từ
   cấu hình môi trường/Kubernetes Secret.
+- Airflow đã có user máy-máy `jmix-api` role `Op` và Secret
+  `stc-hy/jmix-airflow-api`; tên cũ được giữ vì đây là identity hạ tầng đã
+  smoke-test live. Manifest Spring mới đã nối ba khóa `base-url`, `username`,
+  `password`, nhưng chưa được áp lên cụm.
+- Client Keycloak `kdlstc`, mapper `roles`, PKCE S256 và Secret
+  `stc-hy/kdlstc-keycloak` đã có. Redirect tới realm thật đã smoke local; callback,
+  ánh xạ vai trò và CSRF phải kiểm lại sau rollout Rancher.
+- Backend/frontend production image đã build và smoke local. Manifest Deployment,
+  Service, Ingress, probe, resource limit và Secret wiring đã qua server-side
+  dry-run. Image được chuyển sang GitLab Container Registry của project công ty;
+  pipeline publish và rollout Rancher là hai bước kiểm chứng còn lại.
+- Read model KPI overview vẫn mang số minh họa; timeline/lịch sử đọc ledger thật
+  khi frontend tắt fixture.

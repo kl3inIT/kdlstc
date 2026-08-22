@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+        logicalFilePath="db/changelog/changes/001-pipeline-ledger.xml">
+
+    <changeSet id="001-create-pipeline-run" author="dwh">
+        <createTable tableName="pipeline_run">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="version" type="integer" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="correlation_id" type="varchar(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_pipeline_run_correlation"/>
+            </column>
+            <column name="root_dag_run_id" type="varchar(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_pipeline_run_root_dag_run"/>
+            </column>
+            <column name="pipeline_code" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scope" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="trigger_type" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="initiated_by" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="started_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="finished_at" type="timestamp with time zone"/>
+            <column name="last_synchronized_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="record_count" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="idx_pipeline_run_started_at" tableName="pipeline_run">
+            <column name="started_at" descending="true"/>
+        </createIndex>
+        <createIndex indexName="idx_pipeline_run_status" tableName="pipeline_run">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="002-create-pipeline-step-run" author="dwh">
+        <createTable tableName="pipeline_step_run">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="version" type="integer" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pipeline_run_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage_code" type="varchar(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="step_number" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="dag_id" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="dag_run_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="started_at" type="timestamp with time zone"/>
+            <column name="finished_at" type="timestamp with time zone"/>
+            <column name="record_count" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="warning_count" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_count" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="details" type="clob"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_pipeline_step_run_pipeline"
+                                 baseTableName="pipeline_step_run"
+                                 baseColumnNames="pipeline_run_id"
+                                 referencedTableName="pipeline_run"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <addUniqueConstraint constraintName="uk_pipeline_step_run_stage"
+                             tableName="pipeline_step_run"
+                             columnNames="pipeline_run_id,stage_code"/>
+        <createIndex indexName="idx_pipeline_step_run_pipeline" tableName="pipeline_step_run">
+            <column name="pipeline_run_id"/>
+        </createIndex>
+        <createIndex indexName="idx_pipeline_step_run_dag_run" tableName="pipeline_step_run">
+            <column name="dag_id"/>
+            <column name="dag_run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="003-create-pipeline-run-event" author="dwh">
+        <createTable tableName="pipeline_run_event">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pipeline_run_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="varchar(500)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_pipeline_run_event_key"/>
+            </column>
+            <column name="stage_code" type="varchar(10)"/>
+            <column name="event_type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="actor" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurred_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payload" type="clob"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_pipeline_run_event_pipeline"
+                                 baseTableName="pipeline_run_event"
+                                 baseColumnNames="pipeline_run_id"
+                                 referencedTableName="pipeline_run"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <createIndex indexName="idx_pipeline_run_event_pipeline_time" tableName="pipeline_run_event">
+            <column name="pipeline_run_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

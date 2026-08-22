@@ -69,14 +69,14 @@ Cừ" phải có câu trả lời chỉ được vào một dòng cụ thể.
 
 | Dịch vụ | Địa chỉ |
 |---|---|
-| Airflow | `https://airflow.example.com` |
-| Keycloak | `https://sso.example.com` |
+| Airflow | `http://airflow-stc.10.123.123.194.nip.io` |
+| Keycloak | `http://sso-stc.10.123.123.194.nip.io` |
 | SeaweedFS Admin | `https://storage.example.com` |
 | PostgreSQL inspector (pgweb) | `https://storage.example.com/db/` |
 
-Các hostname trên là placeholder public. Trước khi deploy, thay bằng hostname
-của môi trường trong file values/manifests local đã được Git bỏ qua. Đăng nhập
-bằng Keycloak realm `khodl`.
+Hai hostname `nip.io` trên là ingress đang chạy tại checkpoint 22/08/2026; các
+hostname SeaweedFS bên dưới vẫn là placeholder trong values công khai. Đăng
+nhập bằng Keycloak realm `khodl`.
 
 ---
 
@@ -97,6 +97,8 @@ export AIRFLOW_VALUES_LOCAL="$PWD/helm/airflow-values.local.yaml"
 ./scripts/create-secrets.sh     # bắt buộc chạy trước
 ./scripts/deploy.sh             # helm cho toàn bộ, hoặc: ./deploy.sh airflow
 ./scripts/apply-sql.sh          # schema + danh mục cho kho
+./scripts/create-jmix-airflow-service.sh  # user Op + Secret cho Jmix gọi API
+./scripts/create-jmix-keycloak-client.sh  # client OIDC + roles mapper + Secret
 ```
 
 `deploy.sh` ghim phiên bản chart. Nâng cấp không ghim là cách một cụm đang chạy
@@ -314,7 +316,49 @@ Ghi lại để không phải trả lần nữa.
 
 ---
 
-## 8. Còn phải làm
+## 8. Ứng dụng điều hành
+
+Backend Spring Boot và frontend React có image production riêng trong
+`backend/Dockerfile` và `frontend/Dockerfile`. Frontend được build với
+`VITE_USE_FIXTURES=false`; Nginx chỉ phục vụ SPA, còn Ingress chuyển `/api`,
+`/oauth2` và `/login/oauth2` thẳng tới backend.
+GitLab CI build hai image và đẩy vào Container Registry của project
+`data-warehouse/kho-so-tai-chinh`. Job dùng credential ngắn hạn
+`CI_REGISTRY_USER`/`CI_REGISTRY_PASSWORD`; máy phát triển và repository không
+giữ token push.
+
+Manifest `k8s/kdlstc.yaml` ghim tag image, resource limit, security context và
+ba probe. Host public trong manifest là placeholder; script deploy thay bằng
+hostname thật trong tệp tạm, không ghi cấu hình môi trường vào Git:
+
+```bash
+KDLSTC_HOST=kdlstc-stc.10.123.123.194.nip.io ./scripts/deploy-kdlstc.sh
+```
+
+Script tạo database `kdlstc_control` cùng role riêng trong PostgreSQL hiện có,
+lưu kết nối ở Secret `stc-hy/kdlstc-db`, cập nhật redirect URI của client
+Keycloak `kdlstc`, áp manifest rồi chờ cả hai rollout. Secret
+`stc-hy/jmix-airflow-api` vẫn giữ tên identity cũ vì đã được smoke-test với
+Airflow; deployment mới chỉ đọc lại, không xoay credential.
+
+Rollback không chạy ngược Liquibase. Trước hết trả hai Deployment về
+ReplicaSet trước; changelog hiện chỉ có thay đổi cộng thêm nên binary cũ vẫn
+đọc được:
+
+```bash
+kubectl -n stc-hy rollout undo deployment/kdlstc-backend
+kubectl -n stc-hy rollout undo deployment/kdlstc-frontend
+kubectl -n stc-hy rollout status deployment/kdlstc-backend --timeout=5m
+kubectl -n stc-hy rollout status deployment/kdlstc-frontend --timeout=5m
+```
+Checkpoint 22/08/2026: hai image đã build và smoke local thành công; manifest
+đã qua `kubectl apply --dry-run=server`. GitLab CI chịu trách nhiệm publish;
+Pod chỉ giữ deploy token `read_registry` trong Secret
+`stc-hy/gitlab-registry-kdlstc`.
+
+---
+
+## 9. Còn phải làm
 
 - [ ] Lát cắt 2: nguồn thu/chi ngân sách theo hợp đồng "viên gạch API"
       (`docs/API-VIEN-GACH-DRAFT.md`) — 219/350 biểu thuộc vòng đời ngân sách,

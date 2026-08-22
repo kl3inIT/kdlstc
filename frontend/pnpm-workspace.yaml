@@ -1,0 +1,8 @@
+packages:
+  - .
+
+minimumReleaseAgeExclude:
+  - shadcn@4.19.0
+
+overrides:
+  baseline-browser-mapping: 2.11.16

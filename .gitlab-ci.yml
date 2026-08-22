@@ -1,0 +1,30 @@
+stages:
+  - build
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  KDLSTC_IMAGE_TAG: "0.1.0-20260822.1"
+
+.kdlstc-image:
+  stage: build
+  image: docker:29.4.3-cli
+  services:
+    - name: docker:29.4.3-dind
+      alias: docker
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
+
+build:kdlstc-backend:
+  extends: .kdlstc-image
+  script:
+    - export IMAGE="$CI_REGISTRY_IMAGE/kdlstc-operations-backend:$KDLSTC_IMAGE_TAG"
+    - docker build --pull --platform linux/amd64 --file backend/Dockerfile --tag "$IMAGE" backend
+    - docker push "$IMAGE"
+
+build:kdlstc-frontend:
+  extends: .kdlstc-image
+  script:
+    - export IMAGE="$CI_REGISTRY_IMAGE/kdlstc-operations-frontend:$KDLSTC_IMAGE_TAG"
+    - docker build --pull --platform linux/amd64 --file frontend/Dockerfile --tag "$IMAGE" frontend
+    - docker push "$IMAGE"

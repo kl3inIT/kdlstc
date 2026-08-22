@@ -3,7 +3,7 @@
 Tệp này chỉ ghi **sự việc đã thành hiện thực**. Ý định và thứ chưa làm nằm ở
 [docs/vision.md](docs/vision.md) và [docs/roadmap.md](docs/roadmap.md).
 
-Cập nhật: 21/08/2026.
+Cập nhật: 22/08/2026.
 
 ## Nền tảng
 
@@ -19,7 +19,7 @@ Cập nhật: 21/08/2026.
 | SSO | Keycloak 26.6.4, realm `khodl`, namespace `stc-hy` |
 | Ảnh Airflow | `ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-gx1.21.0-r1` |
 
-Checkpoint Rancher ngày 21/08/2026: Helm release Airflow revision 13 chạy
+Checkpoint Rancher ngày 22/08/2026: Helm release Airflow revision 16 chạy
 digest `sha256:f8bb40efd9554a27627ec5f2bac7c6e6fc8c8188c207274cdf62fa9924de959f`;
 worker và các control-plane pod đều Ready. Apicurio 3.1.7 là bản mới nhất chạy
 được trên CPU hiện tại; từ dòng 3.2, image yêu cầu x86-64-v3 và chết ngay khi
@@ -37,6 +37,8 @@ chung client-secret:
 | Airflow | `airflow` | `stc-hy-airflow/keycloak-airflow` |
 | Superset | `superset` | khóa `keycloak-client-secret` trong `stc-hy-bi/superset-secrets` |
 | SeaweedFS qua oauth2-proxy | `seaweedfs` | `stc-hy/oauth2-proxy-sw` |
+| Spring backend gọi Airflow API | user FAB `jmix-api`, role `Op` | `stc-hy/jmix-airflow-api` |
+| Spring OAuth2 Login | `kdlstc`, code flow + PKCE S256 | `stc-hy/kdlstc-keycloak` |
 
 Tên Secret và tên khóa được ghi để vận hành; giá trị không được đưa vào tài
 liệu hay Git. App khai thác mới phải đăng ký client riêng trong cùng realm,
@@ -74,6 +76,24 @@ Tám DAG phủ bảy bước; bước 4 được chẻ làm hai, ghi bằng ch�
 ```
 
 ## Giao diện
+
+Frontend điều hành nằm trong `frontend/`, dùng React 19.2.8, Refine 5.0.12,
+React Router 7.18.2, Vite 8.2.2, TypeScript 7.0.2 và shadcn/Radix. Lát cắt đầu
+có timeline bảy bước theo run ledger, lịch sử lượt chạy, drill-down từng công
+đoạn và dialog xác nhận chạy lại. Chế độ fixture vẫn có nhãn rõ.
+
+Backend điều hành trong `backend/` dùng Spring Boot 4.1.1, Java 25 LTS, Gradle
+9.7.0, Spring Security/OAuth2 Client, Spring Data JPA và Liquibase 5.0.4; không
+còn Jmix, Vaadin hay FlowUI. Ba bảng `pipeline_run`, `pipeline_step_run` và
+`pipeline_run_event` tách trạng thái hiện tại khỏi audit append-only. Hibernate
+chỉ `validate`; Liquibase là đường duy nhất thay đổi schema.
+
+Adapter Airflow dùng REST API v2, HTTP/1.1 và token cache. Reconciler đọc DAG
+run cùng Asset event, ghép tám DAG thành bảy bước bằng `correlation_id`; bước 4
+giữ hai phase `04`/`04b`. Command trigger ghi ledger trước rồi mới gọi Airflow.
+Frontend/backend chưa triển khai lên Rancher; trình duyệt không gọi trực tiếp
+Airflow hoặc Cube. Contract và cách chạy nằm trong
+[frontend/README.md](frontend/README.md) và [backend/README.md](backend/README.md).
 
 | Công cụ | Địa chỉ | Xác thực |
 |---|---|---|
@@ -148,5 +168,6 @@ platform/helm/       values Helm
 platform/k8s/        manifest thuần
 platform/scripts/    script dựng lại hạ tầng, idempotent
 khaithac/            prototype backend khai thác
+frontend/            React + Refine UI điều hành (lát cắt đầu dùng fixture)
 jmix-mocks/          nguồn mô phỏng Thu/Chi
 ```
