@@ -97,9 +97,9 @@ vì Bronze content-addressed đã sẵn mọi phiên bản.
 - Client Keycloak `kdlstc`, mapper `roles`, PKCE S256 và Secret
   `stc-hy/kdlstc-keycloak` đã có. Redirect tới realm thật đã smoke local; callback,
   ánh xạ vai trò và CSRF phải kiểm lại sau rollout Rancher.
-- Backend/frontend production image đã build và smoke local. Manifest Deployment,
-  Service, Ingress, probe, resource limit và Secret wiring đã qua server-side
-  dry-run. Image được chuyển sang GitLab Container Registry của project công ty;
-  pipeline publish và rollout Rancher là hai bước kiểm chứng còn lại.
+- GitLab pipeline `#1318` đã publish đủ backend/frontend production image.
+  Rollout Rancher đầu tiên bị gỡ lại vì kubelet trên `iks-node4` timeout tới
+  `git.dth.com.vn:5050`; cần mở egress TCP 5050 cho node hoặc cấp endpoint
+  registry nội bộ/443 trước khi deploy và smoke end-to-end.
 - Read model KPI overview vẫn mang số minh họa; timeline/lịch sử đọc ledger thật
   khi frontend tắt fixture.

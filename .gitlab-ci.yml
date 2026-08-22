@@ -16,6 +16,10 @@ variables:
 
 build:kdlstc-backend:
   extends: .kdlstc-image
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - backend/**/*
   script:
     - export IMAGE="$CI_REGISTRY_IMAGE/kdlstc-operations-backend:$KDLSTC_IMAGE_TAG"
     - buildah build --pull --platform linux/amd64 --file backend/Dockerfile --tag "$IMAGE" backend
@@ -23,6 +27,10 @@ build:kdlstc-backend:
 
 build:kdlstc-frontend:
   extends: .kdlstc-image
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - frontend/**/*
   script:
     - export IMAGE="$CI_REGISTRY_IMAGE/kdlstc-operations-frontend:$KDLSTC_IMAGE_TAG"
     - buildah build --pull --platform linux/amd64 --file frontend/Dockerfile --tag "$IMAGE" frontend

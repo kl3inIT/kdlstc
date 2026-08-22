@@ -351,8 +351,11 @@ kubectl -n stc-hy rollout undo deployment/kdlstc-frontend
 kubectl -n stc-hy rollout status deployment/kdlstc-backend --timeout=5m
 kubectl -n stc-hy rollout status deployment/kdlstc-frontend --timeout=5m
 ```
-Checkpoint 22/08/2026: hai image đã build và smoke local thành công; manifest
-đã qua `kubectl apply --dry-run=server`. GitLab CI chịu trách nhiệm publish.
+Checkpoint 22/08/2026: pipeline GitLab `#1318` đã publish đủ hai image. Lần
+rollout đầu bị dừng và gỡ sạch workload vì kubelet trên `iks-node4` timeout khi
+kết nối `git.dth.com.vn:5050`; Secret xác thực đúng nhưng node không có đường
+mạng tới registry. Đội hạ tầng phải mở egress TCP 5050 từ các Rancher node,
+hoặc công bố registry qua endpoint nội bộ/443, rồi chạy lại script deploy.
 Secret pull `stc-hy/gitlab-registry-kdlstc` hiện dùng PAT của `datph_dev` vì
 tài khoản này không có quyền tạo project deploy token; cần thay bằng deploy
 token chỉ có `read_registry` trước khi xoay PAT hoặc offboard tài khoản.
