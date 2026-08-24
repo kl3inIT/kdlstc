@@ -114,8 +114,15 @@ Giao diện Apicurio là container riêng (`apicurio-registry-ui`); đường `/
 API, `/` về giao diện, cùng một hostname vì giao diện gọi ngược lại API bằng địa
 chỉ trình duyệt nhìn thấy.
 
+Hai cái bẫy đã tốn nhiều giờ, ghi lại để không lặp:
+
 **Tài khoản Keycloak phải có `emailVerified = true`** — oauth2-proxy từ chối
-id_token có email chưa xác minh và trả 500 sau khi đăng nhập thành công.
+id_token có email chưa xác minh và trả **500** sau khi đăng nhập thành công. Chỉ
+xảy ra với một số tài khoản nên rất dễ đổ oan cho ứng dụng.
+
+**Bộ đệm nginx phải nâng ở ingress của oauth2-proxy**, không phải ở ingress của
+ứng dụng. Phản hồi `/oauth2/callback` đặt cookie chứa id_token, vượt 4k mặc định
+là **502** ngay trên request callback.
 
 Hostname thật nằm trong các tệp `*-values.local.yaml` không vào git. **Mọi lệnh
 helm upgrade phải kèm tệp local tương ứng** — thiếu nó thì ingress bị ghi đè bằng
