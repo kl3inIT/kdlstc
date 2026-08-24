@@ -98,7 +98,7 @@ vì Bronze content-addressed đã sẵn mọi phiên bản.
   `stc-hy/kdlstc-keycloak` đã có. Redirect tới realm thật đã smoke local; callback,
   ánh xạ vai trò và CSRF phải kiểm lại sau rollout Rancher.
 - GitLab pipeline `#1318` đã publish đủ backend/frontend production image.
-  Rollout Rancher đầu tiên bị gỡ lại vì kubelet trên `iks-node4` timeout tới
+  Lần retry 24/08 vẫn xác nhận kubelet trên `iks-node4` timeout tới
   `git.dth.com.vn:5050`; cần mở egress TCP 5050 cho node hoặc cấp endpoint
   registry nội bộ/443 trước khi deploy và smoke end-to-end.
 - Read model KPI overview vẫn mang số minh họa; timeline/lịch sử đọc ledger thật
