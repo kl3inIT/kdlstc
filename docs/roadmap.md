@@ -39,7 +39,7 @@ chỉ ràng buộc kiểu cho trường nằm trong hợp đồng.
 
 | Công cụ | Bù vào bước | Trạng thái |
 |---|---|---|
-| Apicurio Registry | 1 — lưu phiên bản, phân loại schema drift | Đã triển khai 3.1.7; tích hợp bước 1 đang kiểm chứng |
+| Apicurio Registry | 1 — lưu phiên bản, phân loại schema drift | Đã triển khai 3.1.7; tích hợp bước 1 đã kiểm đủ 5 tình huống |
 | GX Core | 4b — expectation chuẩn, luật điều hành nằm trong DB | Đã triển khai 1.21.0 |
 
 | dlt tầng nạp | 3 — mới dùng tầng trích xuất | Chưa dùng |

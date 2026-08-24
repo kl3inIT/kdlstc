@@ -37,8 +37,9 @@ globalId  tenantId  documentId  documentNo
 uploadedAt  createdAt  updatedAt  processStatus
 ```
 
-Hiện chỉ kiểm **trường có mặt hay không**, chưa kiểm kiểu và chưa kiểm đúng giá
-trị `tenantId`. Xem [../roadmap.md](../roadmap.md), nhóm 1.
+Hợp đồng kiểm đủ trường bắt buộc và đúng `tenantId` trước khi ghi. Kiểu dữ
+liệu của các trường hợp đồng được Apicurio đối chiếu theo schema suy từ mẫu
+thật; thay đổi phá vỡ đưa lượt chạy vào `schema_blocked`.
 
 ## Hai trục thời gian
 
