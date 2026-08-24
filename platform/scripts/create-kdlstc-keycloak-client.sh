@@ -3,15 +3,15 @@ set -euo pipefail
 
 APP_NS="${APP_NS:-stc-hy}"
 REALM="${KEYCLOAK_REALM:-khodl}"
-CLIENT_ID="${JMIX_KEYCLOAK_CLIENT_ID:-kdlstc}"
-SECRET_NAME="${JMIX_KEYCLOAK_SECRET:-kdlstc-keycloak}"
-JMIX_BASE_URL="${JMIX_BASE_URL:-http://localhost:8080}"
-FRONTEND_ORIGIN="${JMIX_FRONTEND_ORIGIN:-http://localhost:5174}"
+CLIENT_ID="${KDLSTC_KEYCLOAK_CLIENT_ID:-kdlstc}"
+SECRET_NAME="${KDLSTC_KEYCLOAK_SECRET:-kdlstc-keycloak}"
+KDLSTC_BASE_URL="${KDLSTC_BASE_URL:-http://localhost:8080}"
+FRONTEND_ORIGIN="${KDLSTC_FRONTEND_ORIGIN:-http://localhost:5174}"
 
 KC_USER="${KC_ADMIN_USER:-$(kubectl -n "$APP_NS" get secret keycloak-admin -o jsonpath='{.data.username}' | base64 -d)}"
 KC_PASSWORD="${KC_ADMIN_PASSWORD:-$(kubectl -n "$APP_NS" get secret keycloak-admin -o jsonpath='{.data.password}' | base64 -d)}"
-if [ -n "${JMIX_KEYCLOAK_CLIENT_SECRET:-}" ]; then
-  CLIENT_SECRET="$JMIX_KEYCLOAK_CLIENT_SECRET"
+if [ -n "${KDLSTC_KEYCLOAK_CLIENT_SECRET:-}" ]; then
+  CLIENT_SECRET="$KDLSTC_KEYCLOAK_CLIENT_SECRET"
 elif existing_secret="$(kubectl -n "$APP_NS" get secret "$SECRET_NAME" -o json 2>/dev/null)"; then
   CLIENT_SECRET="$(printf '%s' "$existing_secret" | python -c 'import base64,json,sys; print(base64.b64decode(json.load(sys.stdin)["data"]["client-secret"]).decode())')"
 else
@@ -33,9 +33,9 @@ if [ -z "\$CID" ]; then
     "serviceAccountsEnabled": false,
     "standardFlowEnabled": true,
     "directAccessGrantsEnabled": false,
-    "rootUrl": "$JMIX_BASE_URL",
+    "rootUrl": "$KDLSTC_BASE_URL",
     "redirectUris": [
-      "$JMIX_BASE_URL/login/oauth2/code/keycloak",
+      "$KDLSTC_BASE_URL/login/oauth2/code/keycloak",
       "$FRONTEND_ORIGIN/login/oauth2/code/keycloak"
     ],
     "webOrigins": ["$FRONTEND_ORIGIN"],
@@ -49,8 +49,8 @@ fi
   -s serviceAccountsEnabled=false \
   -s standardFlowEnabled=true \
   -s directAccessGrantsEnabled=false \
-  -s rootUrl='$JMIX_BASE_URL' \
-  -s 'redirectUris=["$JMIX_BASE_URL/login/oauth2/code/keycloak","$FRONTEND_ORIGIN/login/oauth2/code/keycloak"]' \
+  -s rootUrl='$KDLSTC_BASE_URL' \
+  -s 'redirectUris=["$KDLSTC_BASE_URL/login/oauth2/code/keycloak","$FRONTEND_ORIGIN/login/oauth2/code/keycloak"]' \
   -s 'webOrigins=["$FRONTEND_ORIGIN"]' \
   -s secret='$CLIENT_SECRET'
 \$K update clients/\$CID -r '$REALM' \

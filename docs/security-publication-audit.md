@@ -85,7 +85,7 @@ No remote was configured when this audit was performed. No commit, push, reposit
 - No private key headers, AWS access keys, GitHub tokens, or JWTs detected.
 - No Kubernetes `Secret` manifest was found in the repository.
 - Application and dbt credentials are loaded from environment variables or Kubernetes Secret references.
-- `.env`, `.env.*`, runtime logs, Python caches, Gradle state, Jmix local databases, build outputs, and dbt runtime artifacts are ignored.
+- `.env`, `.env.*`, runtime logs, Python caches, Gradle state, local databases, build outputs, and dbt runtime artifacts are ignored.
 
 ## Recommended publication path
 

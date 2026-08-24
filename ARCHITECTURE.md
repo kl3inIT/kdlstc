@@ -83,10 +83,10 @@ có timeline bảy bước theo run ledger, lịch sử lượt chạy, drill-do
 đoạn và dialog xác nhận chạy lại. Chế độ fixture vẫn có nhãn rõ.
 
 Backend điều hành trong `backend/` dùng Spring Boot 4.1.1, Java 25 LTS, Gradle
-9.7.0, Spring Security/OAuth2 Client, Spring Data JPA và Liquibase 5.0.4; không
-còn Jmix, Vaadin hay FlowUI. Ba bảng `pipeline_run`, `pipeline_step_run` và
-`pipeline_run_event` tách trạng thái hiện tại khỏi audit append-only. Hibernate
-chỉ `validate`; Liquibase là đường duy nhất thay đổi schema.
+9.7.0, Spring Security/OAuth2 Client, Spring Data JPA và Liquibase 5.0.4. Ba
+bảng `pipeline_run`, `pipeline_step_run` và `pipeline_run_event` tách trạng thái
+hiện tại khỏi audit append-only. Hibernate chỉ `validate`; Liquibase là đường
+duy nhất thay đổi schema.
 
 Adapter Airflow dùng REST API v2, HTTP/1.1 và token cache. Reconciler đọc DAG
 run cùng Asset event, ghép tám DAG thành bảy bước bằng `correlation_id`; bước 4

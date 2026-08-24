@@ -120,7 +120,7 @@ Có cảnh báo pending catalog, ELT failure, kích thước Lake/DW và invento
 - `DuplicateCandidate`, `StewardDecision`
 - `ValidationRun`, `AuditEvent`
 
-Jmix nên quản lý metadata, quyền, workflow và audit của các object này. Airflow/dbt vẫn thực thi data plane; backend chỉ trigger, đồng bộ trạng thái và lưu quyết định điều hành.
+Spring BFF quản lý metadata, quyền, workflow và audit của các object này. Airflow/dbt vẫn thực thi data plane; backend chỉ trigger, đồng bộ trạng thái và lưu quyết định điều hành.
 
 ## Đề xuất UI cho Refine + shadcn
 

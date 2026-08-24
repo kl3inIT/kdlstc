@@ -17,9 +17,9 @@ for secret in kdlstc-keycloak jmix-airflow-api; do
 APP_NS="$APP_NS" "$ROOT/scripts/create-kdlstc-database.sh"
 
 APP_NS="$APP_NS" \
-JMIX_BASE_URL="$PUBLIC_ORIGIN" \
-JMIX_FRONTEND_ORIGIN="$PUBLIC_ORIGIN" \
-  "$ROOT/scripts/create-jmix-keycloak-client.sh"
+KDLSTC_BASE_URL="$PUBLIC_ORIGIN" \
+KDLSTC_FRONTEND_ORIGIN="$PUBLIC_ORIGIN" \
+  "$ROOT/scripts/create-kdlstc-keycloak-client.sh"
 
 sed "s/kdlstc\.example\.com/${APP_HOST}/g" "$BASE_MANIFEST" > "$temporary_manifest"
 kubectl apply -f "$temporary_manifest"

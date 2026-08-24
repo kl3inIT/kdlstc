@@ -87,9 +87,6 @@ vì Bronze content-addressed đã sẵn mọi phiên bản.
 - Secret bootstrap `stc-hy/keycloak-admin` đã được đối soát lại ngày
   22/08/2026 và đăng nhập được Admin CLI. Không dùng lại secret client của
   Airflow, Superset hay SeaweedFS cho app khai thác.
-- `khaithac` vẫn là prototype nối realm mock `stc-mock`; khi đưa lên Rancher
-  phải đăng ký client riêng trong realm `khodl` và bơm issuer/client-secret từ
-  cấu hình môi trường/Kubernetes Secret.
 - Airflow có user máy-máy `jmix-api` role `Op` và Secret
   `stc-hy/jmix-airflow-api`; tên cũ được giữ vì đây là identity hạ tầng đã
   smoke-test live. Deployment Spring đã nối `base-url`, `username`, `password`.

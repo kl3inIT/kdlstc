@@ -18,11 +18,6 @@ platform/dbt/dbt_packages/
 platform/helm/*-values.local.yaml
 platform/k8s/*.local.yaml
 
-# Build output of the khaithac web UI. The source lives in khaithac/web/src and
-# `pnpm build` regenerates these bundles byte for byte, so committing them only
-# buys 13 MB of churn on top of the 102 KB of Java they are served from.
-khaithac/src/main/resources/static/assets/
-
 # Charts pulled from an upstream repository, restorable with `helm pull`
 platform/vendor/*.tgz
 

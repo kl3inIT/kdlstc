@@ -1,8 +1,9 @@
 # KDLSTC
 
 Prototype kho dữ liệu tài chính theo mô hình Bronze → Silver → Gold, dùng
-Apache Airflow để điều phối, PostgreSQL làm warehouse, object storage giữ dữ
-liệu Bronze và dbt cho các phép biến đổi SQL có kiểm thử.
+Apache Airflow để điều phối, PostgreSQL làm warehouse, SeaweedFS giữ dữ liệu
+Bronze, Apicurio Registry quản lý phiên bản schema, Great Expectations chấm
+chất lượng và dbt cho các phép biến đổi SQL có kiểm thử.
 
 Repository public chỉ chứa dữ liệu mô phỏng và cấu hình mẫu. IP, registry,
 hostname SSO/Ingress, credential và values của môi trường thật không được lưu
@@ -10,12 +11,12 @@ trong Git.
 
 ## Thành phần chính
 
-- `platform/dags/`: pipeline QL Giá và TABMIS.
+- `platform/dags/`: pipeline iMate, QL Giá và TABMIS.
 - `platform/dbt/`: mô hình Silver được quản lý bằng dbt.
 - `platform/sql/`: schema warehouse và các lát cắt nghiệp vụ.
 - `platform/helm/`, `platform/k8s/`: template triển khai Kubernetes.
-- `jmix-mocks/`: dịch vụ nguồn mô phỏng.
-- `khaithac/`: prototype khai thác và trình bày dữ liệu.
+- `backend/`: Spring Boot BFF, xác thực, run ledger và tích hợp Airflow.
+- `frontend/`: React/Refine UI điều hành production.
 
 ## Tài liệu
 
@@ -37,11 +38,12 @@ Tài liệu vận hành chi tiết nằm tại [platform/README.md](platform/REA
 GitHub Actions build `platform/Dockerfile.airflow` và phát hành:
 
 ```text
-ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-r1
+ghcr.io/kl3init/kdlstc-airflow:3.2.2-dlt1.21.0-gx1.21.0-r1
 ```
 
-Image kế thừa Airflow 3.2.2/Python 3.13 và cài sẵn các dependency được pin
-trong `platform/requirements-airflow.txt`.
+Image kế thừa Airflow 3.2.2/Python 3.13 và cài sẵn `dlt`, `openpyxl`,
+Great Expectations theo phiên bản được pin trong
+`platform/requirements-airflow.txt`.
 
 ## Cấu hình môi trường
 

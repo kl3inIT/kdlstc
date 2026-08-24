@@ -1,6 +1,6 @@
 # Bản phác contract "viên gạch API" — làm ngược từ metadata 358 biểu
 
-> Bản nháp v1 (2026-07-31) — phục vụ prototype 2 app Jmix mock (Thu + Chi) để validate
+> Bản nháp v1 (2026-07-31) — phục vụ prototype 2 API nguồn Thu + Chi để validate
 > chuỗi: API tổng hợp → MCP tools → agent → ẩn cột theo quyền.
 > Nguồn phân tích: `stc-hungyen-baocao/public/metadata` (358 biểu, 4.844 cột, 237 cột công thức).
 
@@ -132,7 +132,7 @@ tìm/dựng biểu dùng tool 4-5.
 
 ## 8. Quyền & ẩn cột (nhắc lại quy tắc đã chốt)
 
-- Token user forward nguyên vẹn xuống API Jmix (SSO Keycloak `auth.x2h.com.vn`).
+- Token user forward nguyên vẹn xuống API nguồn qua SSO Keycloak.
 - **403 từ 1 API → ẩn toàn bộ nhóm cột lấy từ API đó + cột dẫn xuất (lan truyền)**;
   kết quả kèm `nguon_bi_an: [...]`, agent bắt buộc khai báo trong câu trả lời.
 - **Lỗi khác 403 (5xx/timeout) → báo lỗi biểu, KHÔNG ẩn im lặng.** Fail closed.
@@ -140,17 +140,17 @@ tìm/dựng biểu dùng tool 4-5.
 
 ## 9. Checklist nghiệm thu prototype (định nghĩa "validate xong")
 
-1. [ ] Login SSO 1 lần → token đi xuyên agent → MCP → API cả 2 app Jmix.
+1. [ ] Login SSO 1 lần → token đi xuyên agent → MCP → cả 2 API nguồn.
 2. [ ] `DHTC_CHI_04` dựng được từ ≥2 API của 2 app khác nhau.
 3. [ ] Cột công thức (`can_doi`, `ty_le_giai_ngan`, `cung_ky`) tính đúng ở tầng khai thác.
-4. [ ] Thu quyền app THU trong Jmix → `thu_dia_ban` + dẫn xuất biến mất, agent khai báo thiếu nguồn.
+4. [ ] Thu quyền API THU → `thu_dia_ban` + dẫn xuất biến mất, agent khai báo thiếu nguồn.
 5. [ ] Tắt hẳn 1 app → hiện LỖI, không bị nhầm thành "không có quyền".
 
 ## 10. Việc còn treo (không chặn prototype)
 
 - Kiểu A/C/F + DHVB (19 biểu grain chi tiết, 2 biểu đối chiếu, 4 biểu cảnh báo):
   cần quyết ai làm API chi tiết / rule engine — nêu với team khi validate xong.
-- 5 domain thật của 5 app Jmix (bản đồ tạm từ metadata: Thu | Chi | Đầu tư công &
-  nguồn vốn | Giá (ND85+TT29: 48 biểu) | Tài sản công (TT120+TT35: 24 biểu);
+- 5 domain thật của 5 API nguồn (bản đồ tạm từ metadata: Thu | Chi | Đầu tư công &
+  nguồn vốn | Giá | Tài sản công);
   văn bản (DHVB) + dự toán/công khai (TT26/TT343) chưa rõ thuộc con nào).
 - Danh mục dùng chung (MLNS, địa bàn, đơn vị) đặt ở đâu khi lên 5 app thật.

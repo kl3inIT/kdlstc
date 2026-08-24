@@ -3,9 +3,6 @@
 Toàn bộ hạ tầng và pipeline chạy trên cụm Rancher. Thư mục này là nguồn sự
 thật duy nhất: cụm được dựng lại từ đây, không phải từ lệnh gõ tay.
 
-Thư mục `dags/`, `docs/`, `jmix-mocks/`, `khaithac/` ở gốc repo là bản
-docker-compose đợt trước, không liên quan tới cụm này.
-
 > Mọi định danh trong mã và cơ sở dữ liệu đều bằng tiếng Anh. Tài liệu và giải
 > thích bằng tiếng Việt.
 
@@ -97,8 +94,8 @@ export AIRFLOW_VALUES_LOCAL="$PWD/helm/airflow-values.local.yaml"
 ./scripts/create-secrets.sh     # bắt buộc chạy trước
 ./scripts/deploy.sh             # helm cho toàn bộ, hoặc: ./deploy.sh airflow
 ./scripts/apply-sql.sh          # schema + danh mục cho kho
-./scripts/create-jmix-airflow-service.sh  # user Op + Secret cho Jmix gọi API
-./scripts/create-jmix-keycloak-client.sh  # client OIDC + roles mapper + Secret
+./scripts/create-kdlstc-airflow-service.sh  # identity Op + Secret cho backend
+./scripts/create-kdlstc-keycloak-client.sh  # client OIDC + roles mapper
 ```
 
 `deploy.sh` ghim phiên bản chart. Nâng cấp không ghim là cách một cụm đang chạy

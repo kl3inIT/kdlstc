@@ -1,10 +1,8 @@
 # Backend điều hành kho dữ liệu
 
-Backend dùng **Spring Boot 4.1.1 + Java 25 LTS + Gradle 9.7.0**. Liquibase
-được pin ở bản stable `5.0.4`. Không còn Jmix,
-Vaadin, FlowUI, DataManager hay resource-role của Jmix. React/Refine là UI duy
-nhất; backend là BFF/control plane sở hữu session, phân quyền, run ledger và
-credential Airflow.
+Backend dùng **Spring Boot 4.1.1 + Java 25 LTS + Gradle 9.7.0**; Liquibase
+được pin ở bản stable `5.0.4`. React/Refine là UI duy nhất; backend là
+BFF/control plane sở hữu session, phân quyền, run ledger và credential Airflow.
 
 ## Kiến trúc
 
@@ -62,8 +60,8 @@ Liquibase tạo ba bảng:
 - `pipeline_step_run`: một dòng cho mỗi DAG/phase;
 - `pipeline_run_event`: audit append-only có idempotency key.
 
-Jmix không còn là dependency. JPA entity và changelog phải được thay đổi cùng
-một lần; Hibernate chạy `ddl-auto=validate`, không tự sửa schema.
+JPA entity và changelog phải được thay đổi cùng một lần; Hibernate chạy
+`ddl-auto=validate`, không tự sửa schema.
 
 DAG phát `correlation_id`, actor, scope và metrics trong `AssetEvent.extra`.
 Reconciler đọc Airflow `/api/v2/assets/events` theo lịch, replay event theo thứ
