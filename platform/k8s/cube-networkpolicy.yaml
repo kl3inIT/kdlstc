@@ -1,19 +1,27 @@
-# Giới hạn ai trong cụm gọi tới được Cube.
+# Giới hạn ai trong cụm gọi tới được Cube — và một giới hạn của chính cách này.
 #
-# Cần vì chế độ dev — thứ cho phép mở Playground — làm Cube ngừng cưỡng chế JWT
-# trên REST API. Không có chính sách này thì bất kỳ pod nào trong cụm cũng đọc
-# được kho tài chính mà không cần khoá nào, và ingress qua SSO chỉ chặn được
-# người từ ngoài chứ không chặn được thứ đã ở bên trong.
+# ĐÃ THỬ VÀ KHÔNG DÙNG ĐƯỢC cho cổng 4000 (REST API).
 #
-# Cho phép đúng ba nguồn:
-#   - ingress-nginx        đường của người dùng, đã đi qua oauth2-proxy
-#   - namespace Airflow    bước 7 hỏi chỉ tiêu qua REST API
-#   - namespace BI         Superset hỏi qua SQL API
+# ingress-nginx chạy hostNetwork, và NetworkPolicy không chọn được lưu lượng đó:
+# namespaceSelector không khớp (hostNetwork nằm ngoài mô hình pod), ipBlock theo
+# dải node 10.123.123.0/24 không khớp, ipBlock theo địa chỉ SNAT 10.42.0.0/32
+# cũng không khớp. Áp chính sách vào là người dùng đăng nhập SSO thành công rồi
+# gặp 502 ngay sau đó — nginx bị chặn khi chuyển tiếp.
+#
+# Nới cho cả dải pod 10.42.0.0/16 thì vô nghĩa: mọi pod đều nằm trong dải đó.
+#
+# Hệ quả phải nói thẳng: bật Playground (cần dev mode) đồng nghĩa REST API cổng
+# 4000 KHÔNG cưỡng chế JWT và mọi pod trong cụm gọi được. Chấp nhận được ở môi
+# trường kiểm chứng một chủ, nhưng phải TẮT dev mode trước khi ra thật — xem
+# docs/roadmap.md.
+#
+# Phần còn giữ được: cổng 15432 (SQL API) và Cube Store, vì cả hai chỉ nhận lưu
+# lượng pod-đến-pod, thứ NetworkPolicy chọn được chính xác.
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: cube-chi-cho-ba-nguon
+  name: cube-sql-chi-cho-bi
   namespace: stc-hy
 spec:
   podSelector:
@@ -21,19 +29,20 @@ spec:
       app.kubernetes.io/name: cube
   policyTypes: [Ingress]
   ingress:
+    # Cổng 4000 mở cho mọi nguồn — không phải vì muốn, mà vì không chặn được
+    # ingress-nginx mà không chặn luôn người dùng. Lớp bảo vệ thật của cổng này
+    # là ingress đứng sau SSO.
+    - ports:
+        - { protocol: TCP, port: 4000 }
+    # Cổng SQL thì chặn được: chỉ Superset và Airflow là pod thường.
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: stc-hy-airflow
-        - namespaceSelector:
-            matchLabels:
               kubernetes.io/metadata.name: stc-hy-bi
-        # ingress-nginx của RKE2 nằm ở kube-system
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              kubernetes.io/metadata.name: stc-hy-airflow
       ports:
-        - { protocol: TCP, port: 4000 }
         - { protocol: TCP, port: 15432 }
 ---
 # Cube Store chỉ phục vụ Cube, không ai khác cần chạm tới.
