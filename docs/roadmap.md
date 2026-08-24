@@ -94,11 +94,9 @@ vì Bronze content-addressed đã sẵn mọi phiên bản.
   `stc-hy/jmix-airflow-api`; tên cũ được giữ vì đây là identity hạ tầng đã
   smoke-test live. Deployment Spring đã nối `base-url`, `username`, `password`.
 - Client Keycloak `kdlstc`, mapper `roles`, PKCE S256 và Secret
-  `stc-hy/kdlstc-keycloak` đã có; production redirect đã kiểm. Callback, ánh xạ
-  vai trò và CSRF còn chờ smoke bằng user nghiệp vụ.
+  `stc-hy/kdlstc-keycloak` đã chạy production. User `admin` đăng nhập, gọi POST
+  có CSRF và trigger Airflow thành công.
 - Backend/frontend đã rollout từ GHCR public vào Rancher; PostgreSQL,
-  Liquibase, probe, UI 200, BFF 401 và redirect SSO production đều đã kiểm.
-  Còn cần đăng nhập bằng một user nghiệp vụ để smoke callback, role mapping,
-  CSRF, trigger Airflow và ledger end-to-end.
-- Read model KPI overview vẫn mang số minh họa; timeline/lịch sử đọc ledger thật
-  khi frontend tắt fixture.
+  Liquibase, probe, UI, callback SSO, trigger Airflow và ledger đều đã kiểm.
+  Smoke không chạy tiếp sau bước 01 vì worklist `discovered` bằng 0; DAG chủ
+  động skip Asset để không đánh thức sáu bước rỗng.

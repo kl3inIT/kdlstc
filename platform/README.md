@@ -356,6 +356,11 @@ vào namespace `stc-hy`. Backend chạy Spring Boot 4.1.1/Java 25, Liquibase xá
 nhận đủ ba changeset trên PostgreSQL `kdlstc_control`; frontend production tắt
 fixture. Ingress trả UI 200, `/api/me` chưa đăng nhập trả 401 và nút SSO chuyển
 đúng realm `khodl` với callback production cùng PKCE S256.
+User `admin` đã đăng nhập và trigger run
+`0ad9bbf7-a920-47dd-8a46-dcb1f587af2f`: backend ghi audit, Airflow nhận
+`imate_01_discover`, reconciler đưa bước 01 từ `RUNNING` sang `SUCCESS`. Nguồn
+không có worklist `discovered`, nên task đóng run skip Asset theo thiết kế và
+chuỗi dừng ở `PARTIAL_SUCCESS` thay vì chạy sáu bước rỗng.
 
 ---
 
