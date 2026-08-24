@@ -42,3 +42,6 @@ frontend/dist/
 backend/.gradle/
 backend/build/
 backend/node_modules/
+
+# Project-local OMP runtime configuration and per-user MCP session URLs
+.omp/
