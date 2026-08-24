@@ -9,11 +9,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
+import org.hibernate.Length;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -68,7 +68,7 @@ public class PipelineStepRun {
     @Column(name = "error_count", nullable = false)
     private long errorCount;
 
-    @Lob
+    @Column(length = Length.LONG32)
     private String details;
 
     public UUID getId() {

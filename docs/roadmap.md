@@ -90,16 +90,15 @@ vì Bronze content-addressed đã sẵn mọi phiên bản.
 - `khaithac` vẫn là prototype nối realm mock `stc-mock`; khi đưa lên Rancher
   phải đăng ký client riêng trong realm `khodl` và bơm issuer/client-secret từ
   cấu hình môi trường/Kubernetes Secret.
-- Airflow đã có user máy-máy `jmix-api` role `Op` và Secret
+- Airflow có user máy-máy `jmix-api` role `Op` và Secret
   `stc-hy/jmix-airflow-api`; tên cũ được giữ vì đây là identity hạ tầng đã
-  smoke-test live. Manifest Spring mới đã nối ba khóa `base-url`, `username`,
-  `password`, nhưng chưa được áp lên cụm.
+  smoke-test live. Deployment Spring đã nối `base-url`, `username`, `password`.
 - Client Keycloak `kdlstc`, mapper `roles`, PKCE S256 và Secret
-  `stc-hy/kdlstc-keycloak` đã có. Redirect tới realm thật đã smoke local; callback,
-  ánh xạ vai trò và CSRF phải kiểm lại sau rollout Rancher.
-- GitLab Registry đã publish image nhưng Rancher node không tới được cổng 5050.
-  Manifest đã chuyển sang GHCR public của `kl3inIT/kdlstc`; hai package hiện
-  vẫn private và chờ chủ tài khoản tự đổi visibility trước khi deploy và smoke
-  end-to-end.
+  `stc-hy/kdlstc-keycloak` đã có; production redirect đã kiểm. Callback, ánh xạ
+  vai trò và CSRF còn chờ smoke bằng user nghiệp vụ.
+- Backend/frontend đã rollout từ GHCR public vào Rancher; PostgreSQL,
+  Liquibase, probe, UI 200, BFF 401 và redirect SSO production đều đã kiểm.
+  Còn cần đăng nhập bằng một user nghiệp vụ để smoke callback, role mapping,
+  CSRF, trigger Airflow và ledger end-to-end.
 - Read model KPI overview vẫn mang số minh họa; timeline/lịch sử đọc ledger thật
   khi frontend tắt fixture.

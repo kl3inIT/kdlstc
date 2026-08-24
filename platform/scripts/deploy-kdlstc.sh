@@ -10,7 +10,7 @@ PUBLIC_ORIGIN="http://${APP_HOST}"
 temporary_manifest="$(mktemp)"
 trap 'rm -f "$temporary_manifest"' EXIT
 
-for secret in gitlab-registry-kdlstc kdlstc-keycloak jmix-airflow-api; do
+for secret in kdlstc-keycloak jmix-airflow-api; do
   kubectl -n "$APP_NS" get secret "$secret" -o name >/dev/null
  done
 

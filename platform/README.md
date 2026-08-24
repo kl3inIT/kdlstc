@@ -351,11 +351,11 @@ kubectl -n stc-hy rollout undo deployment/kdlstc-frontend
 kubectl -n stc-hy rollout status deployment/kdlstc-backend --timeout=5m
 kubectl -n stc-hy rollout status deployment/kdlstc-frontend --timeout=5m
 ```
-Checkpoint 25/08/2026: GitLab pipeline `#1318` đã publish image nhưng Rancher
-node không tới được `git.dth.com.vn:5050`. Manifest đã chuyển sang hai package
-GHCR dưới repository `kl3inIT/kdlstc`, không dùng pull Secret khi package public.
-Hai package hiện vẫn private; chủ tài khoản GitHub sẽ tự đổi visibility trước
-khi chạy lại rollout. Agent không thao tác giao diện hoặc remote GitHub.
+Checkpoint 24/08/2026: backend và frontend đã rollout thành công từ GHCR public
+vào namespace `stc-hy`. Backend chạy Spring Boot 4.1.1/Java 25, Liquibase xác
+nhận đủ ba changeset trên PostgreSQL `kdlstc_control`; frontend production tắt
+fixture. Ingress trả UI 200, `/api/me` chưa đăng nhập trả 401 và nút SSO chuyển
+đúng realm `khodl` với callback production cùng PKCE S256.
 
 ---
 

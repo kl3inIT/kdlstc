@@ -9,9 +9,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.Length;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -44,7 +44,7 @@ public class PipelineRunEvent {
     @Column(name = "occurred_at", nullable = false)
     private OffsetDateTime occurredAt;
 
-    @Lob
+    @Column(length = Length.LONG32)
     private String payload;
 
     public UUID getId() {

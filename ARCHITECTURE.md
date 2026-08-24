@@ -91,7 +91,8 @@ chỉ `validate`; Liquibase là đường duy nhất thay đổi schema.
 Adapter Airflow dùng REST API v2, HTTP/1.1 và token cache. Reconciler đọc DAG
 run cùng Asset event, ghép tám DAG thành bảy bước bằng `correlation_id`; bước 4
 giữ hai phase `04`/`04b`. Command trigger ghi ledger trước rồi mới gọi Airflow.
-Frontend/backend chưa triển khai lên Rancher; trình duyệt không gọi trực tiếp
+Frontend/backend đã triển khai trong namespace `stc-hy` từ image GHCR public,
+dùng PostgreSQL `kdlstc_control` và Airflow live. Trình duyệt không gọi trực tiếp
 Airflow hoặc Cube. Contract và cách chạy nằm trong
 [frontend/README.md](frontend/README.md) và [backend/README.md](backend/README.md).
 
@@ -102,6 +103,7 @@ Airflow hoặc Cube. Contract và cách chạy nằm trong
 | Apicurio | `registry-stc.<node>.nip.io` | SSO qua oauth2-proxy |
 | pgweb · SeaweedFS | `s3-stc.<node>.nip.io` | SSO qua oauth2-proxy |
 | Keycloak | `sso-stc.<node>.nip.io` | riêng |
+| Điều hành KDLSTC | `kdlstc-stc.10.123.123.194.nip.io` | SSO Keycloak |
 
 Cube không có giao diện: chế độ thật tắt Playground, chỉ còn API sau JWT.
 
