@@ -101,11 +101,21 @@ Airflow hoặc Cube. Contract và cách chạy nằm trong
 | Airflow | `airflow-stc.<node>.nip.io` | đăng nhập riêng |
 | Superset | `bi-stc.<node>.nip.io` | SSO Keycloak |
 | Apicurio | `registry-stc.<node>.nip.io` | SSO qua oauth2-proxy |
+| Cube Playground | `cube-stc.<node>.nip.io` | SSO + NetworkPolicy |
 | pgweb · SeaweedFS | `s3-stc.<node>.nip.io` | SSO qua oauth2-proxy |
 | Keycloak | `sso-stc.<node>.nip.io` | riêng |
 | Điều hành KDLSTC | `kdlstc-stc.10.123.123.194.nip.io` | SSO Keycloak |
 
-Cube không có giao diện: chế độ thật tắt Playground, chỉ còn API sau JWT.
+Cube Playground chỉ tồn tại ở chế độ dev, mà chế độ dev cũng làm Cube ngừng cưỡng
+chế JWT. Bù bằng hai lớp: ingress qua SSO chặn từ ngoài, NetworkPolicy chặn từ
+trong cụm — chỉ Airflow, Superset và ingress gọi tới được.
+
+Giao diện Apicurio là container riêng (`apicurio-registry-ui`); đường `/apis` về
+API, `/` về giao diện, cùng một hostname vì giao diện gọi ngược lại API bằng địa
+chỉ trình duyệt nhìn thấy.
+
+**Tài khoản Keycloak phải có `emailVerified = true`** — oauth2-proxy từ chối
+id_token có email chưa xác minh và trả 500 sau khi đăng nhập thành công.
 
 Hostname thật nằm trong các tệp `*-values.local.yaml` không vào git. **Mọi lệnh
 helm upgrade phải kèm tệp local tương ứng** — thiếu nó thì ingress bị ghi đè bằng
@@ -169,7 +179,6 @@ platform/dbt/        mô hình dbt cho lát cắt QL Giá
 platform/helm/       values Helm
 platform/k8s/        manifest thuần
 platform/scripts/    script dựng lại hạ tầng, idempotent
-khaithac/            prototype backend khai thác
-frontend/            React + Refine UI điều hành (lát cắt đầu dùng fixture)
-jmix-mocks/          nguồn mô phỏng Thu/Chi
+backend/             Spring Boot BFF, run ledger và adapter Airflow
+frontend/            React + Refine UI điều hành production
 ```
