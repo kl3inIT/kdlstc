@@ -9,6 +9,7 @@ COPY src ./src
 RUN ./gradlew --no-daemon bootJar
 
 FROM docker.io/library/eclipse-temurin:25-jre-noble
+LABEL org.opencontainers.image.source="https://github.com/kl3inIT/kdlstc"
 RUN groupadd --gid 10001 application \
     && useradd --uid 10001 --gid application --create-home --shell /usr/sbin/nologin application
 

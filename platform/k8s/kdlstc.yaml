@@ -22,15 +22,13 @@ spec:
         app.kubernetes.io/name: kdlstc-backend
         app.kubernetes.io/part-of: kdlstc
     spec:
-      imagePullSecrets:
-        - name: gitlab-registry-kdlstc
       securityContext:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: backend
-          image: git.dth.com.vn:5050/data-warehouse/kho-so-tai-chinh/kdlstc-operations-backend:0.1.0-20260822.1
+          image: ghcr.io/kl3init/kdlstc-operations-backend:0.1.0-20260822.1
           imagePullPolicy: Always
           ports:
             - name: http
@@ -179,15 +177,13 @@ spec:
         app.kubernetes.io/name: kdlstc-frontend
         app.kubernetes.io/part-of: kdlstc
     spec:
-      imagePullSecrets:
-        - name: gitlab-registry-kdlstc
       securityContext:
         fsGroup: 101
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: git.dth.com.vn:5050/data-warehouse/kho-so-tai-chinh/kdlstc-operations-frontend:0.1.0-20260822.1
+          image: ghcr.io/kl3init/kdlstc-operations-frontend:0.1.0-20260822.1
           imagePullPolicy: Always
           ports:
             - name: http
