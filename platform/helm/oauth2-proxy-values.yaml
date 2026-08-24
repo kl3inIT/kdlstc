@@ -69,6 +69,7 @@ ingress:
   hosts:
     - storage.example.com
     - registry.example.com
+    - cube.example.com
 
 serviceAccount:
   enabled: true

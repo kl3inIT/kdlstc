@@ -20,7 +20,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import WORKLIST
+from imate_assets import WORKLIST, chain_context, publish_chain_event
 from imate_ops import fetch_pod, run_message, ticket, worklist_count
 from imate_common import set_status as set_run_status
 
@@ -38,12 +38,15 @@ def imate_01_discover():
 
     @task
     def open_run(**context):
-        return ticket("01", context["dag_run"].run_id)
+        return {
+            **ticket("01", context["dag_run"].run_id),
+            **chain_context(context, "01", 1),
+        }
 
     discover = fetch_pod("discover", "discover", timeout_minutes=10)
 
     @task(outlets=[WORKLIST])
-    def close_run(info):
+    def close_run(info, *, outlet_events=None):
         """
         Read what the pod wrote into the ledger and decide whether to ring
         the bell. A skipped task emits no asset event, so "nothing to do"
@@ -54,7 +57,9 @@ def imate_01_discover():
         set_run_status(info["run_id"], "parsed")
         if not pending:
             raise AirflowSkipException("Khong co gi moi va khong con viec cho.")
-        return {"pending": pending, **summary}
+        result = {"pending": pending, **summary}
+        publish_chain_event(outlet_events, WORKLIST, info, result)
+        return result
 
     info = open_run()
     info >> discover >> close_run(info)

@@ -22,7 +22,7 @@ except ImportError:
 
 from psycopg2.extras import execute_values
 
-from imate_assets import BRONZE, SILVER_ONE
+from imate_assets import BRONZE, SILVER_ONE, chain_context, publish_chain_event
 from imate_common import S3_BUCKET, TENANT_ID, imate_cursor, set_status as set_run_status
 from imate_common import DETAIL_CONTRACT, SourceContractError
 from imate_schema import SchemaBreakingChange, check as check_schema
@@ -51,7 +51,10 @@ def imate_03_silver_one():
 
     @task
     def open_run(**context):
-        return ticket("03", context["dag_run"].run_id)
+        return {
+            **ticket("03", context["dag_run"].run_id),
+            **chain_context(context, "03", 3),
+        }
 
     @task
     def load(info):
@@ -217,13 +220,14 @@ def imate_03_silver_one():
         return {"staged": staged, "failed": failed}
 
     @task(outlets=[SILVER_ONE])
-    def close_run(result):
+    def close_run(info, result, *, outlet_events=None):
         if not result["staged"]:
             raise AirflowSkipException("Khong dong nao sang silver-1.")
+        publish_chain_event(outlet_events, SILVER_ONE, info, result)
         return result
 
     info = open_run()
-    close_run(load(info))
+    close_run(info, load(info))
 
 
 imate_03_silver_one()

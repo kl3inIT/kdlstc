@@ -38,7 +38,7 @@ except ImportError:
 
 from airflow.exceptions import AirflowException
 
-from imate_assets import BRONZE
+from imate_assets import BRONZE, chain_context, publish_chain_event
 from imate_common import S3_BUCKET, TENANT_ID, imate_cursor, set_status as set_run_status
 from imate_ops import ticket
 from warehouse import object_store
@@ -61,7 +61,10 @@ def imate_08_replay():
 
     @task
     def open_run(**context):
-        return ticket("08", context["dag_run"].run_id)
+        return {
+            **ticket("08", context["dag_run"].run_id),
+            **chain_context(context, "08", 0),
+        }
 
     @task(outlets=[BRONZE])
     def rewind(info, **context):
@@ -154,6 +157,7 @@ def imate_08_replay():
 
         set_run_status(run_id, "parsed", row_count=len(chosen),
                        message=json.dumps(summary, ensure_ascii=False))
+        publish_chain_event(context["outlet_events"], BRONZE, info, summary)
         return summary
 
     rewind(open_run())

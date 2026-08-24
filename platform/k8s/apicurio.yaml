@@ -93,3 +93,62 @@ spec:
     - name: http
       port: 80
       targetPort: http
+---
+# Giao diện quản trị — container RIÊNG kể từ Apicurio 3.x.
+#
+# Ảnh apicurio-registry chỉ phục vụ API; gọi vào gốc của nó chỉ ra trang liệt kê
+# tài liệu API. Muốn có màn hình xem và so sánh hợp đồng dữ liệu thì phải chạy
+# thêm ảnh này, và trỏ nó về API bằng địa chỉ TRÌNH DUYỆT nhìn thấy — không phải
+# địa chỉ Service nội bộ, vì mã chạy trong trình duyệt người dùng.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apicurio-ui
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: apicurio-ui
+    app.kubernetes.io/part-of: kho-du-lieu-stc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apicurio-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apicurio-ui
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: ui
+          image: quay.io/apicurio/apicurio-registry-ui:3.1.7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: REGISTRY_API_URL
+              valueFrom:
+                configMapKeyRef: { name: apicurio-ui-config, key: api-url }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 300m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apicurio-ui
+  namespace: stc-hy
+  labels:
+    app.kubernetes.io/name: apicurio-ui
+spec:
+  selector:
+    app.kubernetes.io/name: apicurio-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

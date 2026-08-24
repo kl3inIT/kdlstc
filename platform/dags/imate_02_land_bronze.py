@@ -16,7 +16,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import BRONZE, WORKLIST
+from imate_assets import BRONZE, WORKLIST, chain_context, publish_chain_event
 from imate_ops import fetch_pod, run_message, ticket, worklist_count
 from imate_common import set_status as set_run_status
 
@@ -39,16 +39,20 @@ def imate_02_land_bronze():
         # security surface attached.
         if not worklist_count("discovered"):
             raise AirflowSkipException("Khong co van ban cho tai.")
-        return ticket("02", context["dag_run"].run_id)
+        return {
+            **ticket("02", context["dag_run"].run_id),
+            **chain_context(context, "02", 2),
+        }
 
     land = fetch_pod("land", "land", timeout_minutes=30)
 
     @task(outlets=[BRONZE])
-    def close_run(info):
+    def close_run(info, *, outlet_events=None):
         summary = run_message(info["run_id"])
         set_run_status(info["run_id"], "parsed")
         if not summary.get("landed"):
             raise AirflowSkipException("Khong tep nao dap dat.")
+        publish_chain_event(outlet_events, BRONZE, info, summary)
         return summary
 
     info = open_run()

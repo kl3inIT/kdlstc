@@ -1,0 +1,42 @@
+# Ingress cho Playground của Cube, đứng sau oauth2-proxy.
+#
+# Bắt buộc phải sau SSO: Playground chỉ tồn tại ở chế độ dev, mà chế độ dev cũng
+# chính là thứ làm Cube ngừng cưỡng chế JWT. Mở thẳng ra ingress là mở kho tài
+# chính cho bất kỳ ai gọi tới được, không cần khoá nào.
+#
+# Lớp thứ hai là NetworkPolicy trong cube-networkpolicy.yaml — chặn phía trong
+# cụm, thứ mà ingress không chặn được.
+#
+# Hostname là placeholder; hostname thật nằm trong tệp local không vào git.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cube-playground
+  namespace: stc-hy
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "http://o2p-oauth2-proxy.stc-hy.svc.cluster.local/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "http://cube.example.com/oauth2/start?rd=$escaped_request_uri"
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Preferred-Username"
+    # Bộ đệm lớn hơn mặc định 4k.
+    #
+    # Sau khi đăng nhập, mỗi request mang theo cookie phiên của oauth2-proxy cộng
+    # ba header danh tính. Tổng vượt 4k là nginx trả 502 — và 502 sau một lần
+    # đăng nhập THÀNH CÔNG là dấu hiệu rất dễ đọc nhầm thành ứng dụng hỏng.
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    # Playground dùng WebSocket cho phần xem trước truy vấn.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: cube.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cube
+                port:
+                  number: 80

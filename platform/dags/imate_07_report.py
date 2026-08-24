@@ -31,7 +31,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import SERVING
+from imate_assets import COMPLETE, SERVING, chain_context, publish_chain_event
 from imate_common import S3_BUCKET, imate_cursor, set_status as set_run_status
 from imate_ops import ticket
 from imate_semantic import query as ask_cube, rows as cube_rows
@@ -53,10 +53,13 @@ def imate_07_report():
 
     @task
     def open_run(**context):
-        return ticket("07", context["dag_run"].run_id)
+        return {
+            **ticket("07", context["dag_run"].run_id),
+            **chain_context(context, "07", 7),
+        }
 
-    @task
-    def render(info):
+    @task(outlets=[COMPLETE])
+    def render(info, *, outlet_events=None):
         run_id = info["run_id"]
 
         # Bốn câu hỏi, không câu nào là SQL. Tên chỉ tiêu và tên chiều là hợp
@@ -152,6 +155,7 @@ def imate_07_report():
                    "engine": "cube"}
         set_run_status(run_id, "published", row_count=total,
                        message=json.dumps(summary, ensure_ascii=False))
+        publish_chain_event(outlet_events, COMPLETE, info, summary)
         return summary
 
     render(open_run())

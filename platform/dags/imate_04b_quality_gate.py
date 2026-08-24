@@ -33,7 +33,7 @@ except ImportError:
 
 from airflow.exceptions import AirflowException
 
-from imate_assets import SILVER_TWO, VERDICT
+from imate_assets import SILVER_TWO, VERDICT, chain_context, publish_chain_event
 from imate_common import TENANT_ID, imate_cursor, set_status as set_run_status
 from imate_quality import evaluate, load_rules, load_snapshot, record
 from imate_ops import ticket, worklist_count
@@ -56,7 +56,10 @@ def imate_04b_quality_gate():
     def open_run(**context):
         if not worklist_count("mapped"):
             raise AirflowSkipException("Khong co dot nao cho cham diem.")
-        return ticket("04b", context["dag_run"].run_id)
+        return {
+            **ticket("04b", context["dag_run"].run_id),
+            **chain_context(context, "04b", 4),
+        }
 
     @task
     def judge(info):
@@ -93,11 +96,12 @@ def imate_04b_quality_gate():
         return verdict
 
     @task(outlets=[VERDICT])
-    def close_run(verdict):
+    def close_run(info, verdict, *, outlet_events=None):
+        publish_chain_event(outlet_events, VERDICT, info, verdict)
         return verdict
 
     info = open_run()
-    close_run(judge(info))
+    close_run(info, judge(info))
 
 
 imate_04b_quality_gate()

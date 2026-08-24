@@ -1,0 +1,56 @@
+# Giới hạn ai trong cụm gọi tới được Cube.
+#
+# Cần vì chế độ dev — thứ cho phép mở Playground — làm Cube ngừng cưỡng chế JWT
+# trên REST API. Không có chính sách này thì bất kỳ pod nào trong cụm cũng đọc
+# được kho tài chính mà không cần khoá nào, và ingress qua SSO chỉ chặn được
+# người từ ngoài chứ không chặn được thứ đã ở bên trong.
+#
+# Cho phép đúng ba nguồn:
+#   - ingress-nginx        đường của người dùng, đã đi qua oauth2-proxy
+#   - namespace Airflow    bước 7 hỏi chỉ tiêu qua REST API
+#   - namespace BI         Superset hỏi qua SQL API
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cube-chi-cho-ba-nguon
+  namespace: stc-hy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cube
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: stc-hy-airflow
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: stc-hy-bi
+        # ingress-nginx của RKE2 nằm ở kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: TCP, port: 4000 }
+        - { protocol: TCP, port: 15432 }
+---
+# Cube Store chỉ phục vụ Cube, không ai khác cần chạm tới.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cubestore-chi-cho-cube
+  namespace: stc-hy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cubestore
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cube
+      ports:
+        - { protocol: TCP, port: 3030 }

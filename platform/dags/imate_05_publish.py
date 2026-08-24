@@ -35,7 +35,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import CURATED, VERDICT
+from imate_assets import CURATED, VERDICT, chain_context, publish_chain_event
 from imate_common import TENANT_ID, imate_cursor, set_status as set_run_status
 from imate_ops import dbt_pod, ticket
 
@@ -56,7 +56,10 @@ def imate_05_publish():
 
     @task
     def open_run(**context):
-        return ticket("05", context["dag_run"].run_id)
+        return {
+            **ticket("05", context["dag_run"].run_id),
+            **chain_context(context, "05", 5),
+        }
 
     @task
     def pick_batch(info):
@@ -136,11 +139,12 @@ def imate_05_publish():
         return summary
 
     @task(outlets=[CURATED])
-    def close_run(result):
+    def close_run(info, result, *, outlet_events=None):
+        publish_chain_event(outlet_events, CURATED, info, result)
         return result
 
     batch = pick_batch(open_run())
-    batch >> build_star >> close_run(finish(batch))
+    batch >> build_star >> close_run(batch, finish(batch))
 
 
 imate_05_publish()

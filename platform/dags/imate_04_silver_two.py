@@ -29,7 +29,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import SILVER_ONE, SILVER_TWO
+from imate_assets import SILVER_ONE, SILVER_TWO, chain_context, publish_chain_event
 from imate_common import TENANT_ID, imate_cursor, set_status as set_run_status
 from airflow.exceptions import AirflowException
 
@@ -157,7 +157,10 @@ def imate_04_silver_two():
 
     @task
     def open_run(**context):
-        return ticket("04", context["dag_run"].run_id)
+        return {
+            **ticket("04", context["dag_run"].run_id),
+            **chain_context(context, "04", 4),
+        }
 
     @task
     def transform(info):
@@ -238,11 +241,12 @@ def imate_04_silver_two():
         return summary
 
     @task(outlets=[SILVER_TWO])
-    def close_run(result):
+    def close_run(info, result, *, outlet_events=None):
+        publish_chain_event(outlet_events, SILVER_TWO, info, result)
         return result
 
     info = open_run()
-    close_run(transform(info))
+    close_run(info, transform(info))
 
 
 imate_04_silver_two()

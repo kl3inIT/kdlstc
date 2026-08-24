@@ -43,16 +43,23 @@ spec:
             - name: sql
               containerPort: 15432
           env:
-            # TẮT chế độ dev, kể cả ở môi trường kiểm chứng.
+            # Playground BẬT, nhưng chỉ vì có hai lớp bù bên dưới.
             #
-            # Bật lên thì Cube ngừng cưỡng chế JWT và mở Playground cho bất kỳ ai
-            # gọi tới được Service — tức toàn bộ pod trong cụm đọc được kho tài
-            # chính mà không cần khoá nào. Client của pipeline vốn đã tự ký JWT
-            # ngắn hạn, nên chế độ dev không mua lại gì ngoài lỗ hổng đó.
+            # Đánh đổi phải nói rõ: dev mode làm Cube NGỪNG cưỡng chế JWT trên
+            # REST API. Trước đây tắt nó chính vì lý do ấy. Bật lại để có giao
+            # diện thì phải trả bằng hai thứ khác, nếu không là quay về đúng lỗ
+            # hổng cũ với một cái tên khác:
             #
-            # "Ra thật sẽ tắt" là loại ghi chú không bao giờ được thực hiện.
+            #   1. Ingress đi qua oauth2-proxy — không ai từ ngoài vào được nếu
+            #      chưa đăng nhập Keycloak.
+            #   2. NetworkPolicy trong cube-networkpolicy.yaml — trong cụm chỉ
+            #      Airflow, Superset và ingress-nginx gọi tới được. Thiếu lớp này
+            #      thì mọi pod trong cụm đọc được kho tài chính không cần khoá.
+            #
+            # SQL API mà Superset dùng KHÔNG bị ảnh hưởng: nó có user/mật khẩu
+            # riêng, không dùng JWT.
             - name: CUBEJS_DEV_MODE
-              value: "false"
+              value: "true"
             - name: CUBEJS_CUBESTORE_HOST
               value: cubestore.stc-hy.svc.cluster.local
             - name: CUBEJS_CUBESTORE_PORT

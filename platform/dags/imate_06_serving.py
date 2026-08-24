@@ -35,7 +35,7 @@ except ImportError:
     from airflow.decorators import dag, task
     from airflow.exceptions import AirflowSkipException
 
-from imate_assets import CURATED, SERVING
+from imate_assets import CURATED, SERVING, chain_context, publish_chain_event
 from imate_common import imate_cursor, reader_cursor, set_status as set_run_status
 from imate_ops import ticket
 
@@ -65,7 +65,10 @@ def imate_06_serving():
 
     @task
     def open_run(**context):
-        return ticket("06", context["dag_run"].run_id)
+        return {
+            **ticket("06", context["dag_run"].run_id),
+            **chain_context(context, "06", 6),
+        }
 
     @task
     def check_readable(info):
@@ -115,7 +118,7 @@ def imate_06_serving():
             "phai thu hoi quyen ghi truoc khi mo lop phuc vu ra ngoai")
 
     @task(outlets=[SERVING])
-    def close_run(info, counts, _read_only):
+    def close_run(info, counts, _read_only, *, outlet_events=None):
         """
         Record what the serving layer looks like right now, then ring the bell.
 
@@ -145,6 +148,7 @@ def imate_06_serving():
         set_run_status(info["run_id"], "published",
                        row_count=counts["curated.fact_document"],
                        message=json.dumps(summary, ensure_ascii=False))
+        publish_chain_event(outlet_events, SERVING, info, summary)
         return summary
 
     info = open_run()
